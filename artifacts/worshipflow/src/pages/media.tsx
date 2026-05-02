@@ -93,8 +93,33 @@ export default function MediaPage() {
 
   const base = screenState ?? { isBlack: false, isClear: false, contentType: "none" as const };
 
+  /** Convert a blob: URL to a data URL so the broadcast window can load it. */
+  const blobToDataUrl = (blobUrl: string): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1920;
+        const scale = Math.min(1, MAX / img.naturalWidth);
+        const w = Math.round(img.naturalWidth * scale);
+        const h = Math.round(img.naturalHeight * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = reject;
+      img.src = blobUrl;
+    });
+
   const sendCameraToScreen = () => updateScreen({ data: { ...base, isBlack: false, isClear: false, contentType: "custom_text" as const, background: { type: "camera", value: "camera", overlay: overlay[0] } } });
-  const sendImageToScreen = (url: string) => { if (!url) return; updateScreen({ data: { ...base, isBlack: false, isClear: false, background: { type: "image", value: url, overlay: overlay[0] } } }); };
+
+  const sendImageToScreen = async (url: string) => {
+    if (!url) return;
+    // Convert blob URLs to data URLs so they work in the broadcast window
+    const resolved = url.startsWith("blob:") ? await blobToDataUrl(url).catch(() => url) : url;
+    updateScreen({ data: { ...base, isBlack: false, isClear: false, contentType: "image" as const, background: { type: "image", value: resolved, overlay: overlay[0] } } });
+  };
+
   const sendVideoToScreen = (url: string) => { if (!url) return; updateScreen({ data: { ...base, isBlack: false, isClear: false, contentType: "video" as const, background: { type: "video", value: url, overlay: overlay[0] } } }); };
 
   const handleFileUpload = useCallback((files: FileList | null) => {

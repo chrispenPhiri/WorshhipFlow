@@ -34,6 +34,33 @@ function parseSections(lyrics: string): string[] {
     .filter(Boolean);
 }
 
+/** Detect a section header like [Verse 1], [Chorus], CHORUS:, etc. */
+function getSectionInfo(text: string, slideNum: number): { label: string; content: string } {
+  const lines = text.split("\n");
+  const first = lines[0].trim();
+  const rest = lines.slice(1).join("\n").trim();
+
+  // Bracket label: [Verse 1], [Chorus], [Bridge], etc.
+  const bracketMatch = first.match(/^\[([^\]]+)\]$/);
+  if (bracketMatch && rest) {
+    return { label: capitalize(bracketMatch[1].trim()), content: rest };
+  }
+  // Colon label: "Chorus:", "Verse 1:", "Bridge:", etc.
+  const colonMatch = first.match(/^(verse\s*\d*|chorus|bridge|pre[\s-]?chorus|refrain|tag|intro|outro|interlude)\s*:?\s*$/i);
+  if (colonMatch && rest) {
+    return { label: capitalize(colonMatch[1].trim()), content: rest };
+  }
+  // All-caps short header: "CHORUS", "VERSE 1"
+  if (first.length < 20 && /^[A-Z][A-Z\s0-9]*$/.test(first) && rest) {
+    return { label: capitalize(first), content: rest };
+  }
+  return { label: `Slide ${slideNum}`, content: text };
+}
+
+function capitalize(s: string) {
+  return s.replace(/\b\w/g, c => c.toUpperCase());
+}
+
 export default function SongsPage() {
   const [category, setCategory] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -101,12 +128,14 @@ export default function SongsPage() {
     tickerText: screenState?.tickerText ?? undefined,
   };
 
-  const sendSection = (song: any, text: string, label: string) => {
+  const sendSection = (song: any, text: string, slideNum: number) => {
+    const { label, content } = getSectionInfo(text, slideNum);
     updateScreen({
       data: {
         ...safeBase,
-        title: song.title,
-        content: text,
+        // Encode section label after § so the broadcast screen can parse it
+        title: `${song.title}§${label}`,
+        content,
         textStyle: screenState?.textStyle ?? {
           fontFamily: "Inter",
           fontSize: 52,
@@ -117,7 +146,7 @@ export default function SongsPage() {
         background: screenState?.background ?? { type: "color", value: "#000000" },
       },
     });
-    toast({ title: "Sent to screen", description: label });
+    toast({ title: "Sent to screen", description: `${song.title} — ${label}` });
   };
 
   const activeSong = songs.find((s: any) => s.id === activeSongId);
@@ -259,7 +288,7 @@ export default function SongsPage() {
                       <Button
                         size="sm"
                         className="flex-1 gap-1.5"
-                        onClick={e => { e.stopPropagation(); sendSection(song, song.lyrics, song.title); }}
+                        onClick={e => { e.stopPropagation(); sendSection(song, song.lyrics, 1); }}
                       >
                         <Layers className="w-3.5 h-3.5" /> Send All
                       </Button>
@@ -349,7 +378,7 @@ export default function SongsPage() {
                 {/* Send */}
                 <Button
                   className="w-full gap-2"
-                  onClick={() => sendSection(activeSong, currentSection, `${activeSong.title} — slide ${sectionIdx + 1}`)}
+                  onClick={() => sendSection(activeSong, currentSection, sectionIdx + 1)}
                 >
                   <Cast className="w-4 h-4" /> Send slide {sectionIdx + 1}
                 </Button>

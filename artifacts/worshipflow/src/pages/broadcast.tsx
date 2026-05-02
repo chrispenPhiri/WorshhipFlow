@@ -181,6 +181,7 @@ export default function BroadcastPage() {
   const textStyle = screenState?.textStyle;
   const bg = screenState?.background;
   const layout = screenState?.layout;
+  const contentType = screenState?.contentType;
 
   const vAlign = layout?.verticalAlign ?? "center";
   const hAlign = layout?.horizontalAlign ?? "center";
@@ -201,12 +202,47 @@ export default function BroadcastPage() {
         fontWeight: textStyle.bold ? "bold" : "normal",
         fontStyle: textStyle.italic ? "italic" : "normal",
         textAlign: textAlignValue as "left" | "center" | "right",
-        lineHeight: 1.3,
+        lineHeight: 1.4,
         ...getAnimationStyle(textStyle.animation),
       }
     : { color: "#ffffff", fontSize: `${64 * textScale}px`, textAlign: "center" };
 
   const showContent = screenState && !screenState.isBlack && !screenState.isClear && screenState.content;
+
+  // ── Song title § section parsing ──────────────────────────────────────────
+  const rawTitle = screenState?.title ?? "";
+  const sepIdx = rawTitle.indexOf("§");
+  const songName   = sepIdx !== -1 ? rawTitle.slice(0, sepIdx)  : rawTitle;
+  const sectionLabel = sepIdx !== -1 ? rawTitle.slice(sepIdx + 1) : "";
+
+  // ── Verse content renderer with superscript numbers ───────────────────────
+  function renderVerseContent(text: string) {
+    const lines = text.split("\n");
+    return lines.map((line, i) => {
+      const m = line.match(/^(\d+)\s+([\s\S]*)$/);
+      if (m) {
+        return (
+          <span key={i}>
+            {i > 0 && "\n"}
+            <sup
+              style={{
+                fontSize: "0.42em",
+                fontWeight: 700,
+                verticalAlign: "super",
+                opacity: 0.75,
+                letterSpacing: "0.04em",
+                marginRight: "0.18em",
+              }}
+            >{m[1]}</sup>{m[2]}
+          </span>
+        );
+      }
+      return <span key={i}>{i > 0 ? "\n" : ""}{line}</span>;
+    });
+  }
+
+  // ── Ticker bottom offset ─────────────────────────────────────────────────
+  const tickerH = screenState?.tickerEnabled && screenState.tickerText ? 48 : 0;
 
   return (
     <div
@@ -230,7 +266,7 @@ export default function BroadcastPage() {
             alignItems: flexJustify,
             justifyContent: flexAlign,
             paddingTop: `${paddingY}%`,
-            paddingBottom: `${paddingY}%`,
+            paddingBottom: `${paddingY + (tickerH > 0 ? 4 : 0)}%`,
             paddingLeft: `${paddingX}%`,
             paddingRight: `${paddingX}%`,
           }}
@@ -239,15 +275,59 @@ export default function BroadcastPage() {
             style={{ ...contentStyle, width: `${textWidthPct}%`, maxWidth: "100%" }}
             className="whitespace-pre-wrap drop-shadow-lg"
           >
-            {screenState.content}
+            {contentType === "verse"
+              ? renderVerseContent(screenState!.content!)
+              : screenState!.content}
           </div>
         </div>
       )}
 
-      {/* Reference / title label */}
-      {showContent && screenState?.title && (
-        <div className="absolute top-4 left-6 z-30 text-white/30 text-sm font-light tracking-wide pointer-events-none">
-          {screenState.title}
+      {/* ── Bible reference overlay (bottom-right) ─────────────────────────── */}
+      {showContent && contentType === "verse" && songName && (
+        <div
+          className="absolute z-30 pointer-events-none"
+          style={{ bottom: tickerH + 20, right: 28 }}
+        >
+          <div
+            style={{
+              background: "rgba(0,0,0,0.55)",
+              borderLeft: "3px solid rgba(255,255,255,0.4)",
+              borderRadius: "3px",
+              padding: "5px 12px 5px 10px",
+              backdropFilter: "blur(4px)",
+            }}
+          >
+            <span style={{ color: "rgba(255,255,255,0.9)", fontSize: "15px", fontWeight: 500, letterSpacing: "0.04em" }}>
+              {songName}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Song name + section overlay (bottom-left) ──────────────────────── */}
+      {showContent && contentType === "song" && songName && (
+        <div
+          className="absolute z-30 pointer-events-none"
+          style={{ bottom: tickerH + 20, left: 28 }}
+        >
+          <div
+            style={{
+              background: "rgba(0,0,0,0.55)",
+              borderRight: "3px solid rgba(255,255,255,0.4)",
+              borderRadius: "3px",
+              padding: "6px 14px 6px 12px",
+              backdropFilter: "blur(4px)",
+            }}
+          >
+            <div style={{ color: "rgba(255,255,255,0.95)", fontSize: "15px", fontWeight: 600, letterSpacing: "0.02em", lineHeight: 1.2 }}>
+              {songName}
+            </div>
+            {sectionLabel && (
+              <div style={{ color: "rgba(255,255,255,0.55)", fontSize: "12px", fontWeight: 400, letterSpacing: "0.06em", marginTop: "2px" }}>
+                {sectionLabel.toUpperCase()}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
