@@ -8,6 +8,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import {
   HelpCircle, Search, Rocket, Book, Music, Type, Palette, Video, Calendar,
   BookOpen, Sparkles, Settings, Monitor, Keyboard, Lightbulb, ChevronRight, GraduationCap,
+  Gamepad2, Plus,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -292,6 +293,83 @@ const SECTIONS: Section[] = [
     tips: [
       <>Lessons load instantly and work <strong>offline</strong> — no setup needed before class or service.</>,
       <>Use the <strong>Black Screen</strong> button between sections so the class can focus on you, not the projector.</>,
+    ],
+  },
+  {
+    id: "custom-teachings",
+    icon: Plus,
+    title: "Add Your Own Teachings",
+    to: "/teachings",
+    summary: "Write your own lessons by hand or have AI draft one for you, then edit and use it just like the built-in teachings.",
+    steps: [
+      {
+        heading: "Open the Teachings page",
+        body: <p>Go to <strong>Teachings</strong> in the menu. Press the <strong>Add Teaching</strong> button at the top right.</p>,
+      },
+      {
+        heading: "Write it manually",
+        body: (
+          <>
+            <p>Fill in the title, category, theme, key verse (reference + KJV text), summary, three or more teaching points, discussion questions, an activity, and a closing prayer. You can add or remove points and questions with the <em>+</em> / trash buttons. Press <strong>Save Teaching</strong> when done.</p>
+          </>
+        ),
+      },
+      {
+        heading: "Or have AI draft it for you",
+        body: (
+          <>
+            <p>In the same dialog, type a topic (for example <em>Patience</em>, <em>Naomi</em>, or <em>Forgiveness</em>), pick a category, and press <strong>Generate</strong>. The form fills in automatically with a complete lesson — you can still edit anything before saving.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Generation needs an internet connection. Reading and presenting saved teachings still works fully offline.</p>
+          </>
+        ),
+      },
+      {
+        heading: "Find your custom lessons",
+        body: <p>Custom lessons appear at the top of the lesson list with a small star and a yellow <strong>Custom</strong> badge. They mix in with the built-in teachings and respond to the same category, theme, and search filters.</p>,
+      },
+      {
+        heading: "Edit or delete",
+        body: <p>Open any custom lesson. <strong>Edit</strong> and <strong>Delete</strong> buttons appear next to the title — these only show up for your own teachings; built-in lessons cannot be changed.</p>,
+      },
+    ],
+    tips: [
+      <>Custom teachings are saved to <strong>this device</strong>. Use the same browser to find them again.</>,
+      <>The AI draft is a starting point — always read it through and adjust before sharing with your church.</>,
+    ],
+  },
+  {
+    id: "games",
+    icon: Gamepad2,
+    title: "Bible Games",
+    to: "/games",
+    summary: "Four offline Bible games for youth nights, fellowship meetings, family time, or as a service warm-up.",
+    steps: [
+      {
+        heading: "Pick a game",
+        body: (
+          <>
+            <p>Open <strong>Bible Games</strong> from the menu. You can choose:</p>
+            <ul className="list-disc pl-5 mt-1 space-y-1 text-sm">
+              <li><strong>Bible Trivia</strong> — 10 multiple-choice questions per round, with Easy / Medium / Hard / Mixed difficulty.</li>
+              <li><strong>Books of the Bible</strong> — put the OT or NT books in correct order with instant feedback.</li>
+              <li><strong>Who Said It?</strong> — match famous quotes to the Bible figure who spoke them.</li>
+              <li><strong>Bible Charades</strong> — draw a random card and act out the person, event, or parable.</li>
+            </ul>
+          </>
+        ),
+      },
+      {
+        heading: "Play with a group",
+        body: <p>Trivia and Who Said It? give a final score and a per-question review with the correct answers and references. Books of the Bible scores accuracy of placement. Charades has no scoring — it is a card deck designed for playing in person.</p>,
+      },
+      {
+        heading: "Restart anytime",
+        body: <p>Each game has a <strong>Restart</strong> button to reshuffle. The hub remembers which game you last opened so you can pick up where you left off.</p>,
+      },
+    ],
+    tips: [
+      <>Every game works fully <strong>offline</strong>.</>,
+      <>For Charades, only the actor should look at the card — tap to reveal it.</>,
     ],
   },
   {

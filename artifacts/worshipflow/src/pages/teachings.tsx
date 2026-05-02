@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useUpdateScreenState, useGetScreenState, getGetScreenStateQueryKey,
@@ -9,9 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   GraduationCap, Send, Search, BookOpen, MessageCircle, Activity, Heart,
   ChevronRight, Sparkles, X, Users, Baby, UserCircle, HeartHandshake, Shield,
-  Smile, Cross, Droplets, Wine, HandHeart,
+  Smile, Cross, Droplets, Wine, HandHeart, Plus, Pencil, Trash2, Star,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRecentlyPresented } from "@/hooks/use-recently-presented";
@@ -20,6 +24,11 @@ import {
   TEACHINGS, TEACHING_CATEGORIES, getThemes,
   type Teaching, type TeachingCategory,
 } from "@/lib/teachings";
+import {
+  loadCustomTeachings, addCustomTeaching, updateCustomTeaching,
+  deleteCustomTeaching, type CustomTeaching,
+} from "@/lib/custom-teachings";
+import { TeachingFormDialog } from "@/components/teaching-form-dialog";
 
 const CAT_ICONS: Record<TeachingCategory, typeof Baby> = {
   "Sunday School": Baby,
@@ -61,13 +70,38 @@ export default function TeachingsPage() {
   const [search, setSearch] = useLocalStorage("wf-teach-search", "");
   const [catFilter, setCatFilter] = useLocalStorage<TeachingCategory | "All">("wf-teach-cat", "All");
   const [themeFilter, setThemeFilter] = useLocalStorage<string>("wf-teach-theme", "All");
-  const [selectedId, setSelectedId] = useLocalStorage<string | null>("wf-teach-selected", TEACHINGS[0].id);
+  const [selectedId, setSelectedId] = useLocalStorage<string | null>("wf-teach-selected", TEACHINGS[0]?.id ?? null);
+
+  // Custom teachings live in localStorage. We keep a reactive copy that re-reads
+  // whenever a save / delete happens (custom event fires from the helper functions).
+  const [customTeachings, setCustomTeachings] = useState<CustomTeaching[]>(() => loadCustomTeachings());
+  useEffect(() => {
+    const onChange = () => setCustomTeachings(loadCustomTeachings());
+    window.addEventListener("wf-custom-teachings-changed", onChange);
+    window.addEventListener("storage", onChange); // cross-tab
+    return () => {
+      window.removeEventListener("wf-custom-teachings-changed", onChange);
+      window.removeEventListener("storage", onChange);
+    };
+  }, []);
+
+  // Built-in + custom merged. Custom appear first so they're easy to find.
+  const allTeachings: Teaching[] = useMemo(() =>
+    [...customTeachings, ...TEACHINGS],
+    [customTeachings],
+  );
+  const customIds = useMemo(() => new Set(customTeachings.map(t => t.id)), [customTeachings]);
+
+  // Form / delete dialog state.
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingTeaching, setEditingTeaching] = useState<Teaching | undefined>(undefined);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const themes = useMemo(() => getThemes(), []);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return TEACHINGS.filter(l => {
+    return allTeachings.filter(l => {
       if (catFilter !== "All" && l.category !== catFilter) return false;
       if (themeFilter !== "All" && l.theme !== themeFilter) return false;
       if (!q) return true;
@@ -79,10 +113,53 @@ export default function TeachingsPage() {
         l.category.toLowerCase().includes(q)
       );
     });
-  }, [search, catFilter, themeFilter]);
+  }, [allTeachings, search, catFilter, themeFilter]);
 
   const selected: Teaching | undefined =
-    TEACHINGS.find(l => l.id === selectedId) ?? filtered[0];
+    allTeachings.find(l => l.id === selectedId) ?? filtered[0];
+
+  /** Call the api-server's AI proxy to draft a teaching. Returns the draft for the form. */
+  const generateWithAI = async (topic: string, category: TeachingCategory): Promise<Omit<Teaching, "id">> => {
+    const res = await fetch(`${import.meta.env.BASE_URL}api/teachings/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topic, category }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error ?? `Server returned ${res.status}`);
+    }
+    return res.json();
+  };
+
+  const openNewTeachingDialog = () => {
+    setEditingTeaching(undefined);
+    setFormOpen(true);
+  };
+
+  const openEditTeachingDialog = (t: Teaching) => {
+    setEditingTeaching(t);
+    setFormOpen(true);
+  };
+
+  const handleSaveTeaching = (data: Omit<Teaching, "id">) => {
+    if (editingTeaching && customIds.has(editingTeaching.id)) {
+      updateCustomTeaching(editingTeaching.id, data);
+      toast({ title: "Teaching updated", description: data.title });
+    } else {
+      const created = addCustomTeaching(data);
+      setSelectedId(created.id);
+      toast({ title: "Teaching added", description: data.title });
+    }
+  };
+
+  const confirmDelete = () => {
+    if (!deletingId) return;
+    deleteCustomTeaching(deletingId);
+    if (selectedId === deletingId) setSelectedId(TEACHINGS[0]?.id ?? null);
+    setDeletingId(null);
+    toast({ title: "Teaching deleted" });
+  };
 
   /** Send a piece of a teaching to the projection screen with a clear category label. */
   const presentTeaching = (
@@ -134,8 +211,15 @@ export default function TeachingsPage() {
           </p>
         </div>
         <Badge variant="outline" className="hidden sm:flex">
-          {TEACHINGS.length} lessons
+          {allTeachings.length} lessons
         </Badge>
+        <Button
+          onClick={openNewTeachingDialog}
+          className="gap-2"
+          data-testid="button-add-teaching"
+        >
+          <Plus className="w-4 h-4" aria-hidden="true" /> Add Teaching
+        </Button>
       </div>
 
       {/* Filters */}
@@ -245,7 +329,12 @@ export default function TeachingsPage() {
         {/* Lesson list */}
         <Card className="lg:max-h-[calc(100vh-380px)] flex flex-col">
           <CardHeader className="pb-2">
-            <CardDescription>{filtered.length} of {TEACHINGS.length} lessons</CardDescription>
+            <CardDescription>
+              {filtered.length} of {allTeachings.length} lessons
+              {customTeachings.length > 0 && (
+                <> · {customTeachings.length} custom</>
+              )}
+            </CardDescription>
           </CardHeader>
           <CardContent className="flex-1 overflow-hidden p-0">
             <ScrollArea className="h-[420px] lg:h-full">
@@ -258,6 +347,7 @@ export default function TeachingsPage() {
                   filtered.map(l => {
                     const Icon = CAT_ICONS[l.category];
                     const active = selected?.id === l.id;
+                    const isCustom = customIds.has(l.id);
                     return (
                       <button
                         key={l.id}
@@ -272,7 +362,12 @@ export default function TeachingsPage() {
                         <div className="flex items-start gap-2">
                           <Icon className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" aria-hidden="true" />
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium text-sm leading-snug">{l.title}</div>
+                            <div className="font-medium text-sm leading-snug flex items-center gap-1.5">
+                              {l.title}
+                              {isCustom && (
+                                <Star className="w-3 h-3 text-amber-400 shrink-0" aria-label="Custom teaching" />
+                              )}
+                            </div>
                             <div className="text-xs text-muted-foreground mt-0.5 truncate">
                               {l.keyVerse.reference}
                             </div>
@@ -283,6 +378,11 @@ export default function TeachingsPage() {
                               <Badge variant="outline" className="text-[10px] py-0 px-1.5">
                                 {l.theme}
                               </Badge>
+                              {isCustom && (
+                                <Badge variant="outline" className="text-[10px] py-0 px-1.5 bg-amber-500/15 text-amber-300 border-amber-500/30">
+                                  Custom
+                                </Badge>
+                              )}
                             </div>
                           </div>
                           {active && <ChevronRight className="w-4 h-4 text-primary shrink-0" />}
@@ -304,15 +404,42 @@ export default function TeachingsPage() {
               <CardHeader>
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <Badge variant="outline" className={CAT_COLOURS[selected.category]}>
                         {selected.category}
                       </Badge>
                       <Badge variant="outline">{selected.theme}</Badge>
+                      {customIds.has(selected.id) && (
+                        <Badge variant="outline" className="bg-amber-500/15 text-amber-300 border-amber-500/30 gap-1">
+                          <Star className="w-3 h-3" aria-hidden="true" /> Custom
+                        </Badge>
+                      )}
                     </div>
                     <CardTitle className="text-2xl">{selected.title}</CardTitle>
                     <CardDescription className="mt-1.5">{selected.summary}</CardDescription>
                   </div>
+                  {customIds.has(selected.id) && (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openEditTeachingDialog(selected)}
+                        className="gap-1.5"
+                        data-testid="button-edit-teaching"
+                      >
+                        <Pencil className="w-3.5 h-3.5" aria-hidden="true" /> Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setDeletingId(selected.id)}
+                        className="gap-1.5 text-rose-300 hover:text-rose-200 border-rose-500/40 hover:border-rose-500/60"
+                        data-testid="button-delete-teaching"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" aria-hidden="true" /> Delete
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
@@ -524,6 +651,38 @@ export default function TeachingsPage() {
           </Card>
         )}
       </div>
+
+      {/* Add / Edit dialog (manual + AI generation) */}
+      <TeachingFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        initial={editingTeaching}
+        onSave={handleSaveTeaching}
+        onGenerate={generateWithAI}
+        title={editingTeaching ? "Edit Teaching" : "New Teaching"}
+      />
+
+      {/* Delete confirm */}
+      <AlertDialog open={deletingId !== null} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent data-testid="dialog-delete-teaching">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this teaching?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes your custom teaching from this device. Built-in teachings are not affected.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+              data-testid="button-confirm-delete"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

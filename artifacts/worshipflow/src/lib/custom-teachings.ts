@@ -6,7 +6,7 @@
  * Custom lessons can be edited and deleted; built-in ones cannot.
  */
 
-import type { Teaching, TeachingCategory } from "./teachings";
+import { TEACHING_CATEGORIES, type Teaching, type TeachingCategory } from "./teachings";
 
 const STORAGE_KEY = "wf-custom-teachings";
 
@@ -66,20 +66,47 @@ export function deleteCustomTeaching(id: string): void {
   saveCustomTeachings(all.filter(t => t.id !== id));
 }
 
-/** Defensive guard against malformed localStorage entries. */
+/**
+ * Strict guard against malformed localStorage entries.
+ *
+ * Why this matters: the Teachings page indexes UI maps with the category
+ * (`CAT_ICONS[l.category]`) and renders deep fields (`keyVerse.reference`,
+ * `points[i].heading`, etc.). A corrupt entry would crash the whole list.
+ * Anything that doesn't match exactly is filtered out instead of rendered.
+ */
+const VALID_CATEGORIES = new Set<string>(TEACHING_CATEGORIES);
+
+function isStr(x: unknown): x is string {
+  return typeof x === "string";
+}
+
+function isPoint(x: unknown): boolean {
+  if (!x || typeof x !== "object") return false;
+  const o = x as Record<string, unknown>;
+  return isStr(o["heading"]) && isStr(o["body"]);
+}
+
+function isKeyVerse(x: unknown): boolean {
+  if (!x || typeof x !== "object") return false;
+  const o = x as Record<string, unknown>;
+  return isStr(o["reference"]) && isStr(o["text"]);
+}
+
 function isValidCustomTeaching(x: unknown): x is CustomTeaching {
   if (!x || typeof x !== "object") return false;
   const obj = x as Record<string, unknown>;
   return (
-    typeof obj["id"] === "string" &&
-    typeof obj["title"] === "string" &&
-    typeof obj["category"] === "string" &&
-    typeof obj["theme"] === "string" &&
-    obj["keyVerse"] != null && typeof obj["keyVerse"] === "object" &&
-    Array.isArray(obj["points"]) &&
-    Array.isArray(obj["discussionQuestions"]) &&
-    typeof obj["activity"] === "string" &&
-    typeof obj["prayer"] === "string"
+    isStr(obj["id"]) &&
+    isStr(obj["title"]) &&
+    isStr(obj["category"]) && VALID_CATEGORIES.has(obj["category"]) &&
+    isStr(obj["theme"]) &&
+    isKeyVerse(obj["keyVerse"]) &&
+    isStr(obj["summary"]) &&
+    Array.isArray(obj["points"]) && obj["points"].length > 0 && obj["points"].every(isPoint) &&
+    Array.isArray(obj["discussionQuestions"]) && obj["discussionQuestions"].every(isStr) &&
+    isStr(obj["activity"]) &&
+    isStr(obj["prayer"]) &&
+    (obj["memoryVerse"] === undefined || obj["memoryVerse"] === null || isStr(obj["memoryVerse"]))
   );
 }
 

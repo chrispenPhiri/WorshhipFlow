@@ -1,0 +1,139 @@
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Gamepad2, Brain, BookOpen, Quote, Drama, ArrowLeft,
+} from "lucide-react";
+import { useLocalStorage } from "@/hooks/use-local-storage";
+import { TriviaGame } from "@/components/games/trivia";
+import { BooksOfBibleGame } from "@/components/games/books-of-bible";
+import { WhoSaidItGame } from "@/components/games/who-said-it";
+import { CharadesGame } from "@/components/games/charades";
+
+type ActiveGame = null | "trivia" | "books" | "whosaid" | "charades";
+
+interface GameMeta {
+  id: Exclude<ActiveGame, null>;
+  title: string;
+  description: string;
+  icon: typeof Brain;
+  badge: string;
+  colour: string;
+}
+
+const GAMES: GameMeta[] = [
+  {
+    id: "trivia",
+    title: "Bible Trivia",
+    description: "10 multiple-choice questions per round. Pick a difficulty (Easy / Medium / Hard) or play Mixed.",
+    icon: Brain,
+    badge: "40 questions",
+    colour: "text-amber-400",
+  },
+  {
+    id: "books",
+    title: "Books of the Bible",
+    description: "Place the books of the Old or New Testament in the correct order. Instant feedback as you go.",
+    icon: BookOpen,
+    badge: "39 OT + 27 NT",
+    colour: "text-emerald-400",
+  },
+  {
+    id: "whosaid",
+    title: "Who Said It?",
+    description: "Guess which Bible figure spoke each famous line. 8 quotes per round.",
+    icon: Quote,
+    badge: "20 quotes",
+    colour: "text-sky-400",
+  },
+  {
+    id: "charades",
+    title: "Bible Charades",
+    description: "Draw a random card and act out the Bible person, event, or parable for your group to guess.",
+    icon: Drama,
+    badge: "30 cards",
+    colour: "text-fuchsia-400",
+  },
+];
+
+export default function GamesPage() {
+  const [active, setActive] = useLocalStorage<ActiveGame>("wf-active-game", null);
+
+  const activeMeta = GAMES.find(g => g.id === active);
+
+  if (active && activeMeta) {
+    const Icon = activeMeta.icon;
+    return (
+      <div className="space-y-5 max-w-4xl">
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={() => setActive(null)} className="gap-1.5" data-testid="button-back-to-games">
+            <ArrowLeft className="w-4 h-4" /> All Games
+          </Button>
+          <div className="flex items-center gap-2">
+            <Icon className={`w-5 h-5 ${activeMeta.colour}`} aria-hidden="true" />
+            <h1 className="text-2xl font-bold tracking-tight">{activeMeta.title}</h1>
+          </div>
+        </div>
+
+        {active === "trivia" && <TriviaGame />}
+        {active === "books" && <BooksOfBibleGame />}
+        {active === "whosaid" && <WhoSaidItGame />}
+        {active === "charades" && <CharadesGame />}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5 max-w-5xl">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="p-2 bg-primary/20 rounded-lg text-primary">
+          <Gamepad2 className="w-6 h-6" />
+        </div>
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold tracking-tight">Bible Games</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">
+            Fun, scripture-rooted games for youth nights, fellowship meetings, family time, or as a service warm-up.
+          </p>
+        </div>
+        <Badge variant="outline" className="hidden sm:flex">{GAMES.length} games</Badge>
+      </div>
+
+      {/* Game grid */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {GAMES.map(g => {
+          const Icon = g.icon;
+          return (
+            <Card key={g.id} className="hover:border-primary/40 transition-colors">
+              <CardHeader>
+                <div className="flex items-start gap-3">
+                  <div className={`p-2.5 rounded-lg bg-muted ${g.colour}`}>
+                    <Icon className="w-6 h-6" aria-hidden="true" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-xl">{g.title}</CardTitle>
+                    <Badge variant="outline" className="mt-1 text-[10px] py-0">{g.badge}</Badge>
+                  </div>
+                </div>
+                <CardDescription className="mt-3">{g.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  onClick={() => setActive(g.id)}
+                  className="gap-2 w-full"
+                  data-testid={`button-start-${g.id}`}
+                >
+                  Start
+                </Button>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      <div className="text-xs text-muted-foreground text-center pt-4">
+        All games work offline — no internet needed.
+      </div>
+    </div>
+  );
+}
