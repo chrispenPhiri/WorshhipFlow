@@ -298,3 +298,237 @@ export const HANGMAN_WORDS: HangmanWord[] = [
   { id: "h24", word: "PSALMS",       category: "Object", hint: "150 songs" },
   { id: "h25", word: "MOUNTAIN",     category: "Place",  hint: "Sermon delivered here" },
 ];
+
+// ─── TRUE OR FALSE ────────────────────────────────────────────────────────
+//
+// Quick-fire binary statements about people, places, and events in the
+// Bible.  Great for warming up a group — every statement either has a
+// supporting reference or a brief explanation so the operator can speak
+// to it after the reveal.
+
+export interface TrueFalseStatement {
+  id: string;
+  statement: string;
+  answer: boolean;        // true = TRUE statement
+  explanation: string;    // why it's true / what the actual fact is
+  reference?: string;
+  difficulty: TriviaDifficulty;
+}
+
+export const TRUE_OR_FALSE: TrueFalseStatement[] = [
+  { id: "tf1",  statement: "Methuselah lived to be 969 years old.",                                              answer: true,  explanation: "The oldest person recorded in the Bible.",                                                  reference: "Genesis 5:27",        difficulty: "Easy" },
+  { id: "tf2",  statement: "Noah's ark had three decks.",                                                        answer: true,  explanation: "Lower, second, and third stories.",                                                          reference: "Genesis 6:16",        difficulty: "Medium" },
+  { id: "tf3",  statement: "There are 66 books in the Protestant Bible.",                                        answer: true,  explanation: "39 in the Old Testament and 27 in the New Testament.",                                       difficulty: "Easy" },
+  { id: "tf4",  statement: "David wrote all 150 Psalms.",                                                        answer: false, explanation: "David is credited with about 73; others contributed including Asaph, the sons of Korah, and Moses.", difficulty: "Medium" },
+  { id: "tf5",  statement: "Jesus turned water into bread at the wedding in Cana.",                              answer: false, explanation: "He turned water into wine — His first miracle.",                                             reference: "John 2:1-11",         difficulty: "Easy" },
+  { id: "tf6",  statement: "The KJV says a whale swallowed Jonah.",                                              answer: false, explanation: "It says a 'great fish'. The species is not named.",                                          reference: "Jonah 1:17",          difficulty: "Hard" },
+  { id: "tf7",  statement: "The Bible says the Wise Men numbered three.",                                        answer: false, explanation: "Matthew never gives a number — only that they brought three kinds of gifts.",                reference: "Matthew 2:11",        difficulty: "Hard" },
+  { id: "tf8",  statement: "Eve was made from one of Adam's ribs.",                                              answer: true,  explanation: "God formed her from a rib taken while Adam slept.",                                          reference: "Genesis 2:21-22",     difficulty: "Easy" },
+  { id: "tf9",  statement: "Goliath was over nine feet tall.",                                                   answer: true,  explanation: "He is described as 'six cubits and a span', roughly 9 feet 9 inches.",                       reference: "1 Samuel 17:4",       difficulty: "Medium" },
+  { id: "tf10", statement: "Paul wrote the Book of Hebrews.",                                                    answer: false, explanation: "Hebrews is anonymous; authorship has long been debated.",                                    difficulty: "Hard" },
+  { id: "tf11", statement: "The shortest verse in the KJV Bible is 'Jesus wept.'",                               answer: true,  explanation: "Just two words.",                                                                            reference: "John 11:35",          difficulty: "Easy" },
+  { id: "tf12", statement: "The Ten Commandments first appear in Genesis.",                                      answer: false, explanation: "They appear in Exodus 20 (and again in Deuteronomy 5).",                                     difficulty: "Medium" },
+  { id: "tf13", statement: "Moses parted the Jordan River for Israel to cross.",                                 answer: false, explanation: "Moses parted the Red Sea. The Jordan was parted later under Joshua.",                       reference: "Exodus 14",           difficulty: "Medium" },
+  { id: "tf14", statement: "There are four Gospels in the New Testament.",                                       answer: true,  explanation: "Matthew, Mark, Luke, and John.",                                                             difficulty: "Easy" },
+  { id: "tf15", statement: "Jesus's first miracle was performed at a wedding.",                                  answer: true,  explanation: "The wedding at Cana in Galilee.",                                                            reference: "John 2",              difficulty: "Easy" },
+  { id: "tf16", statement: "Genesis names three sons of Adam and Eve.",                                          answer: true,  explanation: "Cain, Abel, and Seth (others are implied but unnamed).",                                     reference: "Genesis 4-5",         difficulty: "Medium" },
+  { id: "tf17", statement: "Peter raised Lazarus from the dead.",                                                answer: false, explanation: "Jesus raised Lazarus.",                                                                      reference: "John 11",             difficulty: "Easy" },
+  { id: "tf18", statement: "The Sermon on the Mount is recorded in the Gospel of John.",                         answer: false, explanation: "It is in Matthew 5-7.",                                                                      difficulty: "Medium" },
+  { id: "tf19", statement: "The Apostle John is traditionally credited with writing Revelation.",                answer: true,  explanation: "He received the vision while exiled on Patmos.",                                             reference: "Revelation 1:9",      difficulty: "Medium" },
+  { id: "tf20", statement: "Solomon built the first temple in Jerusalem.",                                       answer: true,  explanation: "It took seven years to build.",                                                              reference: "1 Kings 6",           difficulty: "Easy" },
+  { id: "tf21", statement: "Bethlehem was the birthplace of King David.",                                        answer: true,  explanation: "And, centuries later, of Jesus.",                                                            reference: "1 Samuel 16",         difficulty: "Medium" },
+  { id: "tf22", statement: "Saul was the first king of Israel.",                                                 answer: true,  explanation: "Anointed by Samuel.",                                                                        reference: "1 Samuel 10",         difficulty: "Easy" },
+  { id: "tf23", statement: "The Garden of Eden contained two named trees.",                                      answer: true,  explanation: "The Tree of Life and the Tree of the Knowledge of Good and Evil.",                           reference: "Genesis 2:9",         difficulty: "Medium" },
+  { id: "tf24", statement: "Joseph (son of Jacob) had ten brothers.",                                            answer: false, explanation: "He had eleven — Jacob had twelve sons in total.",                                            difficulty: "Medium" },
+  { id: "tf25", statement: "The Book of Acts was written by Luke.",                                              answer: true,  explanation: "A companion volume to his Gospel.",                                                          difficulty: "Medium" },
+  { id: "tf26", statement: "Pentecost occurred 40 days after the Resurrection.",                                 answer: false, explanation: "It was 50 days after — 'Pentecost' means fiftieth.",                                         difficulty: "Hard" },
+  { id: "tf27", statement: "Cain killed Abel out of jealousy.",                                                  answer: true,  explanation: "Because God respected Abel's offering and not Cain's.",                                      reference: "Genesis 4",           difficulty: "Easy" },
+  { id: "tf28", statement: "The Tower of Babel was built in Egypt.",                                             answer: false, explanation: "It was built on the plain of Shinar (Babylonia).",                                            reference: "Genesis 11:2",        difficulty: "Hard" },
+  { id: "tf29", statement: "Mary Magdalene was the first person to see the risen Jesus.",                        answer: true,  explanation: "She met Him at the empty tomb.",                                                             reference: "John 20:14-16",       difficulty: "Medium" },
+  { id: "tf30", statement: "There are twelve Minor Prophets in the Old Testament.",                              answer: true,  explanation: "Hosea through Malachi — 'minor' refers to length, not importance.",                          difficulty: "Medium" },
+  { id: "tf31", statement: "The Book of Esther never mentions God by name.",                                     answer: true,  explanation: "Esther is the only Bible book that does not directly name God, though His providence is everywhere implied.", difficulty: "Hard" },
+  { id: "tf32", statement: "The KJV Book of Isaiah mentions 'Lucifer' by name.",                                 answer: true,  explanation: "Isaiah 14:12 in the KJV: 'How art thou fallen from heaven, O Lucifer, son of the morning!'",  reference: "Isaiah 14:12",        difficulty: "Hard" },
+  { id: "tf33", statement: "Aaron was Moses' younger brother.",                                                  answer: false, explanation: "Aaron was three years older than Moses.",                                                    reference: "Exodus 7:7",          difficulty: "Hard" },
+  { id: "tf34", statement: "Pontius Pilate held the title of king.",                                             answer: false, explanation: "Pilate was the Roman governor (prefect) of Judea, not a king.",                              difficulty: "Hard" },
+  { id: "tf35", statement: "By the Genesis chronology, Methuselah died in the year of the Flood.",               answer: true,  explanation: "Adding the ages in Genesis 5 places Methuselah's death in the same year the Flood began.",  reference: "Genesis 5; 7:6",      difficulty: "Hard" },
+  { id: "tf36", statement: "The Wise Men visited the baby Jesus at the stable on the night He was born.",       answer: false, explanation: "Matthew 2:11 says they came to the 'house' where the young child was — sometime after His birth.", reference: "Matthew 2:11", difficulty: "Hard" },
+];
+
+// ─── BIBLE SPELL-IT ───────────────────────────────────────────────────────
+//
+// Show a clue and a pool of letters; the player taps letters in order to
+// spell the answer.  The pool always contains every letter of the answer
+// plus a small handful of distractor letters to keep the puzzle honest.
+
+export interface SpellWord {
+  id: string;
+  word: string;          // uppercase A-Z, no spaces
+  clue: string;
+  category: "Person" | "Place" | "Concept" | "Object" | "Book";
+  /** Extra "decoy" letters added to the pool; keep small (2-4). */
+  decoys: string[];
+}
+
+export const SPELL_WORDS: SpellWord[] = [
+  { id: "sp1",  word: "NAZARETH",  clue: "The hometown of Jesus.",                                                category: "Place",   decoys: ["B", "S", "M"] },
+  { id: "sp2",  word: "SAMARITAN", clue: "The 'good ___' from one of Jesus' parables.",                            category: "Person",  decoys: ["O", "P", "F"] },
+  { id: "sp3",  word: "PROPHET",   clue: "One who speaks God's message to the people.",                            category: "Concept", decoys: ["A", "S"] },
+  { id: "sp4",  word: "APOSTLE",   clue: "A 'sent-out' follower of Christ.",                                       category: "Person",  decoys: ["I", "R"] },
+  { id: "sp5",  word: "PSALMS",    clue: "The book of 150 songs and prayers.",                                     category: "Book",    decoys: ["B", "T"] },
+  { id: "sp6",  word: "PARABLE",   clue: "A short teaching story Jesus often told.",                               category: "Concept", decoys: ["S", "M"] },
+  { id: "sp7",  word: "BAPTISM",   clue: "Immersion in water as a public sign of faith.",                          category: "Concept", decoys: ["O", "R"] },
+  { id: "sp8",  word: "GENTILE",   clue: "A non-Jewish person, in New-Testament terms.",                           category: "Person",  decoys: ["S", "B"] },
+  { id: "sp9",  word: "SHEPHERD",  clue: "Cares for sheep; a famous metaphor for Jesus.",                          category: "Person",  decoys: ["L", "A"] },
+  { id: "sp10", word: "MESSIAH",   clue: "'The Anointed One' — a title for Jesus.",                                category: "Person",  decoys: ["O", "P"] },
+  { id: "sp11", word: "JERUSALEM", clue: "The holy city of Israel.",                                                category: "Place",   decoys: ["P", "B"] },
+  { id: "sp12", word: "WORSHIP",   clue: "Reverence and praise offered to God.",                                    category: "Concept", decoys: ["A", "L"] },
+  { id: "sp13", word: "HARVEST",   clue: "Gathering crops; a metaphor for reaping souls.",                          category: "Concept", decoys: ["I", "L"] },
+  { id: "sp14", word: "KINGDOM",   clue: "The realm of God's rule.",                                                category: "Concept", decoys: ["P", "S"] },
+  { id: "sp15", word: "COVENANT",  clue: "A binding agreement (e.g. with Abraham).",                                category: "Concept", decoys: ["S", "R"] },
+  { id: "sp16", word: "REPENT",    clue: "To turn away from sin.",                                                  category: "Concept", decoys: ["S", "A"] },
+  { id: "sp17", word: "TRINITY",   clue: "Father, Son, and Holy Spirit — one God in three Persons.",                category: "Concept", decoys: ["S", "A"] },
+  { id: "sp18", word: "WISDOM",    clue: "What Solomon famously asked God to give him.",                            category: "Concept", decoys: ["E", "P"] },
+  { id: "sp19", word: "SALVATION", clue: "Deliverance from sin and death.",                                         category: "Concept", decoys: ["B", "M"] },
+  { id: "sp20", word: "GOSPEL",    clue: "Literally 'good news'.",                                                  category: "Concept", decoys: ["A", "T"] },
+  { id: "sp21", word: "EXODUS",    clue: "The book that tells of Israel's departure from Egypt.",                   category: "Book",    decoys: ["A", "T"] },
+  { id: "sp22", word: "GENESIS",   clue: "The first book of the Bible — meaning 'beginning'.",                      category: "Book",    decoys: ["P", "L"] },
+  { id: "sp23", word: "EPISTLE",   clue: "A letter, especially in the New Testament.",                              category: "Concept", decoys: ["A", "B"] },
+  { id: "sp24", word: "MIRACLE",   clue: "A wonder that points to God's power.",                                    category: "Concept", decoys: ["S", "P"] },
+  { id: "sp25", word: "TEMPLE",    clue: "Solomon built the first one in Jerusalem.",                               category: "Place",   decoys: ["A", "S", "R"] },
+];
+
+// ─── TWO TRUTHS AND A LIE ─────────────────────────────────────────────────
+//
+// Each round names a Bible figure and gives three statements about them —
+// two are true, one is a clever-sounding falsehood.  Tap the lie.
+
+export interface TwoTruthsRound {
+  id: string;
+  subject: string;        // e.g. "Moses"
+  statements: string[];   // exactly 3
+  lieIndex: number;       // 0, 1, or 2 — which statement is the lie
+  explanation: string;    // why the lie is wrong / what the truth actually is
+  reference?: string;
+}
+
+export const TWO_TRUTHS: TwoTruthsRound[] = [
+  {
+    id: "tt1",
+    subject: "Noah",
+    statements: [
+      "He built an ark on God's instruction.",
+      "He lived to be 950 years old.",
+      "He had four sons named in Genesis.",
+    ],
+    lieIndex: 2,
+    explanation: "Noah had three sons: Shem, Ham, and Japheth.",
+    reference: "Genesis 5-9",
+  },
+  {
+    id: "tt2",
+    subject: "Moses",
+    statements: [
+      "He was raised in Pharaoh's household.",
+      "He led Israel into the Promised Land.",
+      "God spoke to him from a burning bush.",
+    ],
+    lieIndex: 1,
+    explanation: "Moses saw the Promised Land from Mount Nebo but did not enter — Joshua led Israel in.",
+    reference: "Deuteronomy 34",
+  },
+  {
+    id: "tt3",
+    subject: "David",
+    statements: [
+      "He killed the Philistine Goliath with a sling.",
+      "He composed many of the Psalms.",
+      "He was the youngest of seven brothers.",
+    ],
+    lieIndex: 2,
+    explanation: "David was the youngest of eight brothers — Jesse had eight sons.",
+    reference: "1 Samuel 16:10-11",
+  },
+  {
+    id: "tt4",
+    subject: "Solomon",
+    statements: [
+      "He built the first temple in Jerusalem.",
+      "He famously asked God for wisdom.",
+      "He had a hundred wives.",
+    ],
+    lieIndex: 2,
+    explanation: "Solomon had 700 wives and 300 concubines, by the Bible's own account.",
+    reference: "1 Kings 11:3",
+  },
+  {
+    id: "tt5",
+    subject: "Daniel",
+    statements: [
+      "He interpreted King Nebuchadnezzar's dreams.",
+      "He was thrown into a den of lions and survived.",
+      "He served as a prophet during the reign of King Saul.",
+    ],
+    lieIndex: 2,
+    explanation: "Daniel served during the Babylonian exile — many centuries after Saul.",
+    reference: "Daniel 1-6",
+  },
+  {
+    id: "tt6",
+    subject: "Mary, mother of Jesus",
+    statements: [
+      "She visited her relative Elisabeth while expecting Jesus.",
+      "She gave birth to Jesus in Bethlehem.",
+      "She lived in Jerusalem her whole life.",
+    ],
+    lieIndex: 2,
+    explanation: "Mary lived in Nazareth — Bethlehem was a temporary visit for the census.",
+    reference: "Luke 1-2",
+  },
+  {
+    id: "tt7",
+    subject: "Peter",
+    statements: [
+      "He worked as a fisherman before following Jesus.",
+      "He denied Jesus three times.",
+      "He wrote one of the four Gospels.",
+    ],
+    lieIndex: 2,
+    explanation: "Peter wrote two epistles (1 & 2 Peter) but none of the Gospels are attributed to him.",
+  },
+  {
+    id: "tt8",
+    subject: "Paul",
+    statements: [
+      "He was once known as Saul of Tarsus.",
+      "He wrote many of the New-Testament epistles.",
+      "He was one of the original twelve disciples.",
+    ],
+    lieIndex: 2,
+    explanation: "Paul met the risen Christ on the road to Damascus, well after the Twelve were chosen.",
+    reference: "Acts 9",
+  },
+  {
+    id: "tt9",
+    subject: "John the Baptist",
+    statements: [
+      "He ate locusts and wild honey.",
+      "He baptised Jesus in the Jordan River.",
+      "He was Jesus' twin brother.",
+    ],
+    lieIndex: 2,
+    explanation: "John was Jesus' relative — the son of Elisabeth, Mary's cousin.",
+    reference: "Luke 1:36",
+  },
+  {
+    id: "tt10",
+    subject: "Joseph (son of Jacob)",
+    statements: [
+      "He was given a coat of many colours by his father.",
+      "He was sold into slavery in Egypt by his brothers.",
+      "He died and was buried back in Canaan.",
+    ],
+    lieIndex: 2,
+    explanation: "Joseph died in Egypt at 110; his bones were carried back to Canaan generations later, during the Exodus.",
+    reference: "Genesis 50:26",
+  },
+];

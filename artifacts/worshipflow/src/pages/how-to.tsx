@@ -342,7 +342,7 @@ const SECTIONS: Section[] = [
     icon: Gamepad2,
     title: "Bible Games",
     to: "/games",
-    summary: "Seven offline Bible games for youth nights, fellowship meetings, family time, or as a service warm-up — most can be projected on the main screen.",
+    summary: "Ten offline Bible games for youth nights, fellowship meetings, family time, or as a service warm-up — most can be projected on the main screen.",
     steps: [
       {
         heading: "Pick a game",
@@ -357,13 +357,16 @@ const SECTIONS: Section[] = [
               <li><strong>Verse Scramble</strong> — tap the words in the right order to rebuild a familiar verse (KJV).</li>
               <li><strong>Bible Emoji Quiz</strong> — guess the Bible story or person from a row of emojis.</li>
               <li><strong>Bible Hangman</strong> — classic letter-by-letter word guessing with six lives.</li>
+              <li><strong>True or False</strong> — quick-fire Bible statements, with explanations after every reveal.</li>
+              <li><strong>Bible Spell-It</strong> — read a clue and tap letters in order to spell the word.</li>
+              <li><strong>Two Truths and a Lie</strong> — three statements about a Bible figure; spot the lie.</li>
             </ul>
           </>
         ),
       },
       {
         heading: "Play with a group",
-        body: <p>Trivia, Who Said It? and Bible Emoji Quiz give a final score and a per-question review with answers and references. Books of the Bible scores accuracy of placement. Charades, Verse Scramble, and Hangman are card-style rounds designed for playing together in person.</p>,
+        body: <p>Trivia, Who Said It?, Bible Emoji Quiz, True or False, and Two Truths and a Lie give a final score and a per-question review with answers and references. Books of the Bible scores accuracy of placement. Charades, Verse Scramble, Hangman, and Spell-It are card-style rounds designed for playing together in person.</p>,
       },
       {
         heading: "Show the game on the projector",

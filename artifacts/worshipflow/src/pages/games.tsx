@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Gamepad2, Brain, BookOpen, Quote, Drama, ArrowLeft,
-  Shuffle, Smile, SpellCheck,
+  Shuffle, Smile, SpellCheck, CheckCheck, Type as TypeIcon, UserCircle2,
 } from "lucide-react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { TriviaGame } from "@/components/games/trivia";
@@ -13,6 +13,9 @@ import { CharadesGame } from "@/components/games/charades";
 import { VerseScrambleGame } from "@/components/games/verse-scramble";
 import { EmojiQuizGame } from "@/components/games/emoji-quiz";
 import { HangmanGame } from "@/components/games/hangman";
+import { TrueOrFalseGame } from "@/components/games/true-or-false";
+import { SpellItGame } from "@/components/games/spell-it";
+import { TwoTruthsGame } from "@/components/games/two-truths";
 
 type ActiveGame =
   | null
@@ -22,7 +25,10 @@ type ActiveGame =
   | "charades"
   | "scramble"
   | "emoji"
-  | "hangman";
+  | "hangman"
+  | "trueorfalse"
+  | "spell"
+  | "twotruths";
 
 interface GameMeta {
   id: Exclude<ActiveGame, null>;
@@ -90,6 +96,30 @@ const GAMES: GameMeta[] = [
     badge: "25 words",
     colour: "text-cyan-400",
   },
+  {
+    id: "trueorfalse",
+    title: "True or False",
+    description: "Quick-fire Bible statements — pick true or false. Choose Easy / Medium / Hard or Mixed.",
+    icon: CheckCheck,
+    badge: "30 statements",
+    colour: "text-lime-400",
+  },
+  {
+    id: "spell",
+    title: "Bible Spell-It",
+    description: "Read a clue and tap letters in order to spell the Bible word from a small letter pool.",
+    icon: TypeIcon,
+    badge: "25 words",
+    colour: "text-orange-400",
+  },
+  {
+    id: "twotruths",
+    title: "Two Truths and a Lie",
+    description: "Three statements about a Bible figure — two are true, one is false. Spot the lie.",
+    icon: UserCircle2,
+    badge: "10 figures",
+    colour: "text-pink-400",
+  },
 ];
 
 export default function GamesPage() {
@@ -118,6 +148,9 @@ export default function GamesPage() {
         {active === "scramble" && <VerseScrambleGame />}
         {active === "emoji" && <EmojiQuizGame />}
         {active === "hangman" && <HangmanGame />}
+        {active === "trueorfalse" && <TrueOrFalseGame />}
+        {active === "spell" && <SpellItGame />}
+        {active === "twotruths" && <TwoTruthsGame />}
       </div>
     );
   }
