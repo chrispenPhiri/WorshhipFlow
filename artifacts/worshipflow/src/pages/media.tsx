@@ -102,6 +102,8 @@ export default function MediaPage() {
   // Side-by-side: CSS background applied to the OTHER (text) half so it isn't pure black.
   // Stored on background.value when type=camera + side layout.
   const [camSideBg, setCamSideBg] = useState<string>("linear-gradient(135deg,#1e1b4b 0%,#0f0a2e 100%)");
+  // Search query for the Icons & Flags tab
+  const [iconSearch, setIconSearch] = useState("");
 
   // Previous background — saved before camera goes live so Cut/Stop can roll back
   const prevBackgroundRef = useRef<{ type: string; value: string; overlay?: number; fit?: "cover" | "contain" | "fill"; loop?: boolean; cameraLayout?: string; cameraShape?: string; cameraPipSize?: number } | null>(null);
@@ -654,6 +656,7 @@ export default function MediaPage() {
           <TabsTrigger value="upload"    className="flex-1 gap-1.5 min-w-0"><Upload   className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Upload</span></TabsTrigger>
           <TabsTrigger value="camera"    className="flex-1 gap-1.5 min-w-0"><Camera   className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Camera</span></TabsTrigger>
           <TabsTrigger value="url"       className="flex-1 gap-1.5 min-w-0"><Video    className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">URL</span></TabsTrigger>
+          <TabsTrigger value="icons"     className="flex-1 gap-1.5 min-w-0"><Sparkles className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Icons</span></TabsTrigger>
           <TabsTrigger value="overlays"  className="flex-1 gap-1.5 min-w-0"><Layers3  className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Overlays</span></TabsTrigger>
           <TabsTrigger value="broadcast" className="flex-1 gap-1.5 min-w-0"><Settings2 className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Broadcast</span></TabsTrigger>
         </TabsList>
@@ -905,6 +908,186 @@ export default function MediaPage() {
         </TabsContent>
 
         {/* ── URL ── */}
+        {/* ── Icons & Flags ── */}
+        <TabsContent value="icons" className="mt-4 space-y-4">
+          {(() => {
+            const ICON_PRESETS: { label: string; url: string; tags: string[] }[] = [
+              { label: "Cross",        url: "https://api.iconify.design/mdi/cross.svg?color=%23ffffff",        tags: ["cross","christ","christian","worship"] },
+              { label: "Cross Celtic", url: "https://api.iconify.design/game-icons/celtic-cross.svg?color=%23ffffff", tags: ["cross","celtic"] },
+              { label: "Church",       url: "https://api.iconify.design/mdi/church.svg?color=%23ffffff",       tags: ["church","building"] },
+              { label: "Bible",        url: "https://api.iconify.design/mdi/bible.svg?color=%23ffffff",        tags: ["bible","scripture","book"] },
+              { label: "Praying Hands",url: "https://api.iconify.design/mdi/hands-pray.svg?color=%23ffffff",   tags: ["pray","prayer","hands"] },
+              { label: "Dove",         url: "https://api.iconify.design/game-icons/dove.svg?color=%23ffffff",  tags: ["dove","spirit","peace"] },
+              { label: "Crown",        url: "https://api.iconify.design/mdi/crown.svg?color=%23ffd700",        tags: ["crown","king","royal"] },
+              { label: "Heart",        url: "https://api.iconify.design/mdi/heart.svg?color=%23ef4444",        tags: ["heart","love"] },
+              { label: "Star",         url: "https://api.iconify.design/mdi/star.svg?color=%23facc15",         tags: ["star","shine"] },
+              { label: "Star of David",url: "https://api.iconify.design/mdi/star-david.svg?color=%23facc15",   tags: ["star","david","jewish","israel"] },
+              { label: "Flame",        url: "https://api.iconify.design/mdi/fire.svg?color=%23f97316",         tags: ["flame","fire","spirit"] },
+              { label: "Sun",          url: "https://api.iconify.design/mdi/white-balance-sunny.svg?color=%23facc15", tags: ["sun","light","day"] },
+              { label: "Music Note",   url: "https://api.iconify.design/mdi/music-note.svg?color=%23ffffff",   tags: ["music","note","song","worship"] },
+              { label: "Microphone",   url: "https://api.iconify.design/mdi/microphone.svg?color=%23ffffff",   tags: ["mic","microphone","preach","speak"] },
+              { label: "Hands Up",     url: "https://api.iconify.design/game-icons/praying.svg?color=%23ffffff", tags: ["hands","praise","worship"] },
+              { label: "Olive Branch", url: "https://api.iconify.design/game-icons/olive-branch.svg?color=%2386efac", tags: ["olive","peace","branch"] },
+              { label: "Anchor",       url: "https://api.iconify.design/mdi/anchor.svg?color=%23ffffff",       tags: ["anchor","hope"] },
+              { label: "Lamb",         url: "https://api.iconify.design/game-icons/sheep.svg?color=%23ffffff", tags: ["lamb","sheep","christ"] },
+              { label: "Lion",         url: "https://api.iconify.design/game-icons/lion.svg?color=%23facc15",  tags: ["lion","judah","king"] },
+              { label: "Bread & Cup",  url: "https://api.iconify.design/mdi/bread-slice.svg?color=%23ffffff",  tags: ["bread","communion","cup"] },
+              { label: "Globe",        url: "https://api.iconify.design/mdi/earth.svg?color=%23ffffff",        tags: ["globe","earth","world","missions"] },
+              { label: "Hand of God",  url: "https://api.iconify.design/game-icons/hand.svg?color=%23ffffff",  tags: ["hand","god"] },
+              { label: "Trumpet",      url: "https://api.iconify.design/mdi/bugle.svg?color=%23ffd700",        tags: ["trumpet","horn","sound"] },
+              { label: "Candle",       url: "https://api.iconify.design/mdi/candle.svg?color=%23facc15",       tags: ["candle","light"] },
+            ];
+
+            const FLAG_PRESETS: { label: string; code: string }[] = [
+              { label: "Australia",       code: "au" },
+              { label: "Zimbabwe",        code: "zw" },
+              { label: "United States",   code: "us" },
+              { label: "United Kingdom",  code: "gb" },
+              { label: "Canada",          code: "ca" },
+              { label: "New Zealand",     code: "nz" },
+              { label: "Ireland",         code: "ie" },
+              { label: "South Africa",    code: "za" },
+              { label: "Kenya",           code: "ke" },
+              { label: "Uganda",          code: "ug" },
+              { label: "Tanzania",        code: "tz" },
+              { label: "Nigeria",         code: "ng" },
+              { label: "Ghana",           code: "gh" },
+              { label: "Ethiopia",        code: "et" },
+              { label: "Rwanda",          code: "rw" },
+              { label: "Botswana",        code: "bw" },
+              { label: "Zambia",          code: "zm" },
+              { label: "Malawi",          code: "mw" },
+              { label: "Mozambique",      code: "mz" },
+              { label: "Namibia",         code: "na" },
+              { label: "Brazil",          code: "br" },
+              { label: "Mexico",          code: "mx" },
+              { label: "Argentina",       code: "ar" },
+              { label: "Colombia",        code: "co" },
+              { label: "Germany",         code: "de" },
+              { label: "France",          code: "fr" },
+              { label: "Spain",           code: "es" },
+              { label: "Italy",           code: "it" },
+              { label: "Netherlands",     code: "nl" },
+              { label: "Sweden",          code: "se" },
+              { label: "Norway",          code: "no" },
+              { label: "India",           code: "in" },
+              { label: "Philippines",     code: "ph" },
+              { label: "Indonesia",       code: "id" },
+              { label: "South Korea",     code: "kr" },
+              { label: "Japan",           code: "jp" },
+              { label: "China",           code: "cn" },
+              { label: "Israel",          code: "il" },
+              { label: "Egypt",           code: "eg" },
+              { label: "United Arab Emirates", code: "ae" },
+            ];
+
+            const flagUrl = (code: string) => `https://flagcdn.com/w160/${code}.png`;
+
+            const q = iconSearch.trim().toLowerCase();
+            const filteredIcons = q
+              ? ICON_PRESETS.filter(p => p.label.toLowerCase().includes(q) || p.tags.some(t => t.includes(q)))
+              : ICON_PRESETS;
+            const filteredFlags = q
+              ? FLAG_PRESETS.filter(p => p.label.toLowerCase().includes(q) || p.code.includes(q))
+              : FLAG_PRESETS;
+
+            const apply = (url: string) => {
+              setLogoUrlDraft(url);
+              setLogoUrlInput(url);
+              updateOverlay({ logoOverlayEnabled: true, logoUrl: url });
+              toast({ title: "Sent to screen", description: "Logo overlay updated. Tweak position/size in the Overlays tab." });
+            };
+
+            return (
+              <>
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between gap-3">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <Sparkles className="w-4 h-4" /> Icons & Country Flags
+                      </CardTitle>
+                      {screenState?.logoOverlayEnabled && <Badge className="text-[10px] py-0 h-4 bg-green-600 border-0">LIVE</Badge>}
+                    </div>
+                    <CardDescription>
+                      Click any icon or flag to set it as the logo overlay and show it on screen instantly.
+                      Use the <span className="font-medium">Overlays → Logo Overlay</span> card to adjust position, size, shape, and opacity.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-5">
+                    <div className="space-y-1.5">
+                      <Input
+                        data-testid="input-icon-search"
+                        placeholder="Search icons or flags (e.g. cross, dove, australia, zw)…"
+                        value={iconSearch}
+                        onChange={e => setIconSearch(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-primary" /> Icons <span className="text-xs font-normal text-muted-foreground">({filteredIcons.length})</span></h3>
+                      </div>
+                      {filteredIcons.length === 0 ? (
+                        <p className="text-xs text-muted-foreground italic">No icons match "{q}".</p>
+                      ) : (
+                        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                          {filteredIcons.map(p => (
+                            <button
+                              key={p.label}
+                              type="button"
+                              data-testid={`button-icon-${p.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                              title={p.label}
+                              onClick={() => apply(p.url)}
+                              className={`group aspect-square rounded-lg border transition-all flex flex-col items-center justify-center gap-1 p-1.5 bg-muted/30 hover:bg-muted/60 hover:scale-[1.03] ${screenState?.logoUrl === p.url ? "border-primary ring-2 ring-primary/40" : "border-border"}`}
+                            >
+                              <img src={p.url} alt={p.label} className="h-7 w-7 object-contain" loading="lazy" />
+                              <span className="text-[9px] text-muted-foreground group-hover:text-foreground truncate max-w-full leading-tight">{p.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2 pt-2 border-t border-border/50">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold flex items-center gap-1.5">🌍 Country Flags <span className="text-xs font-normal text-muted-foreground">({filteredFlags.length})</span></h3>
+                      </div>
+                      {filteredFlags.length === 0 ? (
+                        <p className="text-xs text-muted-foreground italic">No flags match "{q}".</p>
+                      ) : (
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                          {filteredFlags.map(p => {
+                            const url = flagUrl(p.code);
+                            return (
+                              <button
+                                key={p.code}
+                                type="button"
+                                data-testid={`button-flag-${p.code}`}
+                                title={p.label}
+                                onClick={() => apply(url)}
+                                className={`group rounded-lg border overflow-hidden transition-all flex flex-col items-center justify-center gap-1 p-2 bg-muted/30 hover:bg-muted/60 hover:scale-[1.02] ${screenState?.logoUrl === url ? "border-primary ring-2 ring-primary/40" : "border-border"}`}
+                              >
+                                <img src={url} alt={p.label} className="h-7 w-auto object-contain rounded shadow-sm" loading="lazy" />
+                                <span className="text-[10px] text-muted-foreground group-hover:text-foreground truncate max-w-full leading-tight">{p.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    <p className="text-[11px] text-muted-foreground bg-muted/30 rounded px-3 py-2">
+                      Tip: Selecting an item enables the logo overlay automatically. Use the
+                      <span className="font-medium"> Overlays</span> tab to fine-tune placement and styling, or to hide the logo.
+                    </p>
+                  </CardContent>
+                </Card>
+              </>
+            );
+          })()}
+        </TabsContent>
+
         <TabsContent value="url" className="mt-4 space-y-4">
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><Video className="w-4 h-4" /> Video from URL</CardTitle></CardHeader>
@@ -1472,90 +1655,9 @@ export default function MediaPage() {
                 </div>
               </div>
 
-              {/* ── Quick Presets: church icons + country flags ── */}
-              {(() => {
-                const ICON_PRESETS: { label: string; url: string }[] = [
-                  { label: "Cross",       url: "https://api.iconify.design/mdi/cross.svg?color=%23ffffff" },
-                  { label: "Church",      url: "https://api.iconify.design/mdi/church.svg?color=%23ffffff" },
-                  { label: "Bible",       url: "https://api.iconify.design/mdi/bible.svg?color=%23ffffff" },
-                  { label: "Praying",     url: "https://api.iconify.design/mdi/hands-pray.svg?color=%23ffffff" },
-                  { label: "Dove",        url: "https://api.iconify.design/game-icons/dove.svg?color=%23ffffff" },
-                  { label: "Crown",       url: "https://api.iconify.design/mdi/crown.svg?color=%23ffd700" },
-                  { label: "Heart",       url: "https://api.iconify.design/mdi/heart.svg?color=%23ef4444" },
-                  { label: "Star",        url: "https://api.iconify.design/mdi/star.svg?color=%23facc15" },
-                  { label: "Flame",       url: "https://api.iconify.design/mdi/fire.svg?color=%23f97316" },
-                  { label: "Cross-Celtic",url: "https://api.iconify.design/game-icons/celtic-cross.svg?color=%23ffffff" },
-                  { label: "Music",       url: "https://api.iconify.design/mdi/music-note.svg?color=%23ffffff" },
-                  { label: "Sun",         url: "https://api.iconify.design/mdi/white-balance-sunny.svg?color=%23facc15" },
-                ];
-                const FLAG_PRESETS: { label: string; code: string }[] = [
-                  { label: "Australia",     code: "au" },
-                  { label: "Zimbabwe",      code: "zw" },
-                  { label: "USA",           code: "us" },
-                  { label: "UK",            code: "gb" },
-                  { label: "Canada",        code: "ca" },
-                  { label: "New Zealand",   code: "nz" },
-                  { label: "South Africa",  code: "za" },
-                  { label: "Kenya",         code: "ke" },
-                  { label: "Nigeria",       code: "ng" },
-                  { label: "Ghana",         code: "gh" },
-                  { label: "Brazil",        code: "br" },
-                  { label: "Mexico",        code: "mx" },
-                  { label: "Germany",       code: "de" },
-                  { label: "France",        code: "fr" },
-                  { label: "India",         code: "in" },
-                  { label: "Philippines",   code: "ph" },
-                ];
-                const flagUrl = (code: string) => `https://flagcdn.com/w160/${code}.png`;
-                return (
-                  <div className="space-y-3 pt-2 border-t border-border/50">
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm font-medium">Quick Icons</label>
-                        <span className="text-[10px] text-muted-foreground">Click to set as logo</span>
-                      </div>
-                      <div className="grid grid-cols-6 gap-1.5">
-                        {ICON_PRESETS.map(p => (
-                          <button
-                            key={p.label}
-                            type="button"
-                            data-testid={`button-logo-icon-${p.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
-                            title={p.label}
-                            onClick={() => { setLogoUrlDraft(p.url); setLogoUrlInput(p.url); }}
-                            className={`h-12 rounded border transition-colors flex items-center justify-center bg-muted/40 hover:bg-muted/70 ${logoUrlDraft === p.url ? "border-primary ring-1 ring-primary" : "border-border"}`}
-                          >
-                            <img src={p.url} alt={p.label} className="h-7 w-7 object-contain" />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm font-medium">Country Flags</label>
-                        <span className="text-[10px] text-muted-foreground">Click to set as logo</span>
-                      </div>
-                      <div className="grid grid-cols-4 gap-1.5">
-                        {FLAG_PRESETS.map(p => {
-                          const url = flagUrl(p.code);
-                          return (
-                            <button
-                              key={p.code}
-                              type="button"
-                              data-testid={`button-logo-flag-${p.code}`}
-                              title={p.label}
-                              onClick={() => { setLogoUrlDraft(url); setLogoUrlInput(url); }}
-                              className={`h-12 rounded border overflow-hidden transition-colors flex flex-col items-center justify-center bg-muted/40 hover:bg-muted/70 ${logoUrlDraft === url ? "border-primary ring-1 ring-primary" : "border-border"}`}
-                            >
-                              <img src={url} alt={p.label} className="h-5 w-auto object-contain" loading="lazy" />
-                              <span className="text-[9px] mt-0.5 text-muted-foreground truncate max-w-full px-1">{p.label}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
+              <p className="text-[11px] text-muted-foreground bg-muted/20 rounded px-2 py-1.5">
+                Looking for ready-made icons or country flags? Open the <span className="font-medium text-foreground">Icons</span> tab.
+              </p>
 
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Position</label>
