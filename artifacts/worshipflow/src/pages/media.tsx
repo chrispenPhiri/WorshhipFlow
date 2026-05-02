@@ -11,7 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   Camera, Video, Image as ImageIcon, Cast, CameraOff, Play, Square,
   MonitorSpeaker, Monitor, Settings2, Loader2, CheckCircle2,
-  PictureInPicture2, Maximize2, EyeOff, RotateCcw, ChevronRight,
+  PictureInPicture2, Maximize2, EyeOff, RotateCcw, ChevronRight, ChevronDown,
   Upload, X, FileImage, FileVideo, User, Clock, Scissors, RefreshCw, Layers3,
   Bold, Italic, AlignLeft, AlignCenter, AlignRight,
   Circle, StopCircle, Download, Radio,
@@ -66,6 +66,29 @@ export default function MediaPage() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>("");
+
+  // Track which overlay sub-cards are expanded. Default: all collapsed for a clean tab.
+  const [openOverlays, setOpenOverlays] = useState<Set<string>>(new Set());
+  const toggleOverlay = (k: string) => setOpenOverlays(prev => {
+    const n = new Set(prev);
+    if (n.has(k)) n.delete(k); else n.add(k);
+    return n;
+  });
+  const SectionChevron = ({ section }: { section: string }) => {
+    const open = openOverlays.has(section);
+    return (
+      <button
+        type="button"
+        aria-label={open ? "Collapse settings" : "Expand settings"}
+        aria-expanded={open}
+        onClick={() => toggleOverlay(section)}
+        data-testid={`button-overlay-toggle-${section}`}
+        className="p-1 rounded-md hover:bg-muted/60 transition-colors text-muted-foreground hover:text-foreground"
+      >
+        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${open ? "rotate-0" : "-rotate-90"}`} />
+      </button>
+    );
+  };
   const [overlay, setOverlay] = useState([0]);
   const [imageUrl, setImageUrl] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
@@ -987,6 +1010,7 @@ export default function MediaPage() {
               <div className="flex items-center justify-between gap-3">
                 <CardTitle className="flex items-center gap-2 text-base"><User className="w-4 h-4" /> Presenter Lower-Third</CardTitle>
                 <div className="flex items-center gap-2">
+                  <SectionChevron section="lt" />
                   {screenState?.lowerThirdEnabled && <Badge className="text-[10px] py-0 h-4 bg-green-600 border-0">LIVE</Badge>}
                   <Switch
                     checked={screenState?.lowerThirdEnabled ?? false}
@@ -1013,7 +1037,7 @@ export default function MediaPage() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4" hidden={!openOverlays.has("lt")}>
               {/* Name + Title */}
               <div className="grid sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -1159,12 +1183,13 @@ export default function MediaPage() {
               <div className="flex items-center justify-between gap-3">
                 <CardTitle className="flex items-center gap-2 text-base"><Clock className="w-4 h-4" /> Clock Overlay</CardTitle>
                 <div className="flex items-center gap-2">
+                  <SectionChevron section="clock" />
                   {screenState?.clockOverlayEnabled && <Badge className="text-[10px] py-0 h-4 bg-green-600 border-0">LIVE</Badge>}
                   <Switch checked={screenState?.clockOverlayEnabled ?? false} onCheckedChange={v => updateOverlay({ clockOverlayEnabled: v })} />
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4" hidden={!openOverlays.has("clock")}>
               {/* Position */}
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Position</label>
@@ -1319,6 +1344,7 @@ export default function MediaPage() {
               <div className="flex items-center justify-between gap-3">
                 <CardTitle className="flex items-center gap-2 text-base"><ImageIcon className="w-4 h-4" /> Logo Overlay</CardTitle>
                 <div className="flex items-center gap-2">
+                  <SectionChevron section="logo" />
                   {screenState?.logoOverlayEnabled && <Badge className="text-[10px] py-0 h-4 bg-green-600 border-0">LIVE</Badge>}
                   <Switch
                     checked={screenState?.logoOverlayEnabled ?? false}
@@ -1328,7 +1354,7 @@ export default function MediaPage() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4" hidden={!openOverlays.has("logo")}>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Logo Image</label>
                 <input ref={logoFileInputRef} type="file" accept="image/*" className="hidden"
@@ -1511,6 +1537,7 @@ export default function MediaPage() {
               <div className="flex items-center justify-between gap-3">
                 <CardTitle className="flex items-center gap-2 text-base"><FileImage className="w-4 h-4" /> Text Overlay</CardTitle>
                 <div className="flex items-center gap-2">
+                  <SectionChevron section="to" />
                   {screenState?.textOverlayEnabled && <Badge className="text-[10px] py-0 h-4 bg-green-600 border-0">LIVE</Badge>}
                   <Switch
                     checked={screenState?.textOverlayEnabled ?? false}
@@ -1520,7 +1547,7 @@ export default function MediaPage() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4" hidden={!openOverlays.has("to")}>
               {/* Text content */}
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Text</label>
@@ -1859,6 +1886,7 @@ export default function MediaPage() {
                   <div className="flex items-center justify-between gap-3">
                     <CardTitle className="flex items-center gap-2 text-base"><TimerIcon className="w-4 h-4" /> Timer / Stopwatch</CardTitle>
                     <div className="flex items-center gap-2">
+                      <SectionChevron section="timer" />
                       {serverEnabled && isRunning && <Badge className="text-[10px] py-0 h-4 bg-emerald-600 border-0 animate-pulse">RUNNING</Badge>}
                       {serverEnabled && !isRunning && accumulated > 0 && <Badge className="text-[10px] py-0 h-4 bg-amber-600 border-0">PAUSED</Badge>}
                       <Switch
@@ -1874,7 +1902,7 @@ export default function MediaPage() {
                   </div>
                   <CardDescription className="text-xs">Stopwatch counts up. Countdown counts down then turns red.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4" hidden={!openOverlays.has("timer")}>
                   {/* Live preview readout */}
                   <div className="flex items-center justify-center py-3 rounded-md border border-border bg-muted/30">
                     <div className="text-3xl font-mono font-bold tabular-nums tracking-wider"
@@ -2063,12 +2091,15 @@ export default function MediaPage() {
                   <CardTitle className="text-base">Scrolling Ticker</CardTitle>
                   <CardDescription className="text-xs">News-style scrolling text bar at the bottom</CardDescription>
                 </div>
-                {screenState?.tickerEnabled && (
-                  <Badge variant="default" className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30">Live</Badge>
-                )}
+                <div className="flex items-center gap-2">
+                  <SectionChevron section="ticker" />
+                  {screenState?.tickerEnabled && (
+                    <Badge variant="default" className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30">Live</Badge>
+                  )}
+                </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-3" hidden={!openOverlays.has("ticker")}>
               <div>
                 <label className="text-xs font-medium text-foreground">Ticker text</label>
                 <Input
