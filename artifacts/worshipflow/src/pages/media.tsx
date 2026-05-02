@@ -5,14 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { useUpdateScreenState, useGetScreenState, getGetScreenStateQueryKey } from "@workspace/api-client-react";
+import { useUpdateScreenState, useGetScreenState, getGetScreenStateQueryKey, type Background } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Camera, Video, Image as ImageIcon, Cast, CameraOff, Play, Square,
   MonitorSpeaker, Monitor, Settings2, Loader2, CheckCircle2,
   PictureInPicture2, Maximize2, EyeOff, RotateCcw, ChevronRight,
   Upload, X, FileImage, FileVideo, User, Clock, Scissors, RefreshCw, Layers3,
-  Bold, Italic, AlignLeft, AlignCenter, AlignRight
+  Bold, Italic, AlignLeft, AlignCenter, AlignRight,
+  Circle, StopCircle, Download, Radio
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -73,6 +74,15 @@ export default function MediaPage() {
   const [camLayout, setCamLayout] = useState<"fullscreen" | "pip-topright" | "pip-topleft" | "pip-bottomright" | "pip-bottomleft" | "side-left" | "side-right">("fullscreen");
   const [camShape, setCamShape] = useState<"rect" | "circle" | "rounded">("rect");
   const [camPipSize, setCamPipSize] = useState(30);
+
+  // Previous background — saved before camera goes live so Cut/Stop can roll back
+  const prevBackgroundRef = useRef<{ type: string; value: string; overlay?: number; fit?: "cover" | "contain" | "fill"; loop?: boolean; cameraLayout?: string; cameraShape?: string; cameraPipSize?: number } | null>(null);
+
+  // Recording state
+  const [recState, setRecState] = useState<"idle" | "recording">("idle");
+  const [recDuration, setRecDuration] = useState(0);
+  const [recDownloadUrl, setRecDownloadUrl] = useState<string | null>(null);
+  const recRef = useRef<{ recorder: MediaRecorder; chunks: Blob[]; timer: ReturnType<typeof setInterval> } | null>(null);
 
   // Lower-third draft state
   const [ltName, setLtName] = useState("");
@@ -187,6 +197,20 @@ export default function MediaPage() {
 
   const stopCamera = () => {
     if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); setCameraStream(null); }
+    // If camera is currently live on the presentation screen, revert to previous background
+    if (screenState?.background?.type === "camera") {
+      const prevBg = prevBackgroundRef.current;
+      updateScreen({
+        data: {
+          ...safeFullState(),
+          isBlack: false,
+          isClear: !prevBg,
+          background: (prevBg ?? { type: "color", value: "#000000" }) as Background,
+        }
+      });
+      prevBackgroundRef.current = null;
+      toast({ title: "Camera stopped", description: "Presentation screen reverted to previous background." });
+    }
   };
 
   const switchCamera = async (deviceId: string) => {
@@ -196,9 +220,16 @@ export default function MediaPage() {
   };
 
   const cutFeed = () => {
-    stopCamera();
-    updateScreen({ data: { isBlack: true, isClear: false, contentType: (screenState?.contentType ?? "none") as "none" | "verse" | "song" | "custom_text" | "image" | "video" } });
-    toast({ title: "Feed cut", description: "Camera stopped and screen blacked out." });
+    if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); setCameraStream(null); }
+    const prevBg = prevBackgroundRef.current;
+    if (prevBg && prevBg.type !== "camera") {
+      updateScreen({ data: { ...safeFullState(), isBlack: false, background: prevBg as Background } });
+      prevBackgroundRef.current = null;
+      toast({ title: "Feed cut", description: "Camera stopped. Presentation restored to previous background." });
+    } else {
+      updateScreen({ data: { ...safeFullState(), isBlack: true, isClear: false } });
+      toast({ title: "Feed cut", description: "Camera stopped and screen blacked out." });
+    }
   };
 
   /** Build a safe full state object preserving all overlay fields. */
@@ -314,15 +345,60 @@ export default function MediaPage() {
       img.src = blobUrl;
     });
 
-  const sendCameraToScreen = () => updateScreen({
-    data: {
-      ...safeFullState(),
-      isBlack: false,
-      isClear: false,
-      contentType: "custom_text" as const,
-      background: { type: "camera", value: "camera", overlay: overlay[0], cameraLayout: camLayout, cameraShape: camShape, cameraPipSize: camPipSize },
+  const sendCameraToScreen = () => {
+    // Save current background so Cut/Stop can roll back to it
+    if (screenState?.background?.type !== "camera") {
+      prevBackgroundRef.current = screenState?.background ?? null;
     }
-  });
+    updateScreen({
+      data: {
+        ...safeFullState(),
+        isBlack: false,
+        isClear: false,
+        contentType: "custom_text" as const,
+        background: { type: "camera", value: "camera", overlay: overlay[0], cameraLayout: camLayout, cameraShape: camShape, cameraPipSize: camPipSize },
+      }
+    });
+  };
+
+  const startRecording = async () => {
+    try {
+      setRecDownloadUrl(null);
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true } as DisplayMediaStreamOptions);
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ? "video/webm;codecs=vp9" : "video/webm";
+      const chunks: Blob[] = [];
+      const recorder = new MediaRecorder(displayStream, { mimeType });
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+      recorder.onstop = () => {
+        displayStream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(chunks, { type: "video/webm" });
+        setRecDownloadUrl(URL.createObjectURL(blob));
+        setRecState("idle");
+        setRecDuration(0);
+        if (recRef.current) clearInterval(recRef.current.timer);
+        recRef.current = null;
+        new BroadcastChannel("wf-broadcast-cmd").postMessage({ type: "rec_stop" });
+      };
+      const timer = setInterval(() => setRecDuration(d => d + 1), 1000);
+      recRef.current = { recorder, chunks, timer };
+      recorder.start(1000);
+      setRecState("recording");
+      setRecDuration(0);
+      new BroadcastChannel("wf-broadcast-cmd").postMessage({ type: "rec_start" });
+      // If user stops sharing via browser UI, treat as stop
+      displayStream.getVideoTracks()[0].addEventListener("ended", () => {
+        if (recRef.current?.recorder.state === "recording") recRef.current.recorder.stop();
+      });
+    } catch (e) {
+      if ((e as DOMException)?.name !== "NotAllowedError") {
+        toast({ title: "Recording failed", description: "Could not start screen capture.", variant: "destructive" });
+      }
+    }
+  };
+
+  const stopRecording = () => {
+    if (recRef.current?.recorder.state === "recording") recRef.current.recorder.stop();
+  };
 
   const sendImageToScreen = async (url: string, fit: "cover" | "contain" | "fill" = "cover") => {
     if (!url) return;
@@ -709,6 +785,56 @@ export default function MediaPage() {
                     <li><strong className="text-foreground">Video/Camera</strong> — native video PiP (any browser)</li>
                     <li><strong className="text-foreground">Other</strong> — Document PiP (Chrome 116+)</li>
                   </ul>
+                </CardContent>
+              </Card>
+
+              {/* ── Recording ── */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between gap-3">
+                    <CardTitle className="flex items-center gap-2"><Radio className="w-4 h-4" /> Record &amp; Broadcast</CardTitle>
+                    {recState === "recording" && (
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-red-400">
+                        <Circle className="w-2.5 h-2.5 fill-red-500 text-red-500 animate-pulse" />
+                        {String(Math.floor(recDuration / 60)).padStart(2, "0")}:{String(recDuration % 60).padStart(2, "0")}
+                      </div>
+                    )}
+                  </div>
+                  <CardDescription>Record the presentation screen as a video file, or capture with OBS</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {recState === "idle" ? (
+                    <Button onClick={startRecording} className="w-full gap-2">
+                      <Circle className="w-3.5 h-3.5 fill-red-500 text-red-500" /> Start Recording
+                    </Button>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 p-2 rounded-lg bg-red-500/10 border border-red-500/30">
+                        <Circle className="w-2.5 h-2.5 fill-red-500 text-red-500 animate-pulse" />
+                        <span className="text-sm font-medium text-red-400">Recording</span>
+                        <span className="ml-auto text-sm font-mono text-red-400 tabular-nums">
+                          {String(Math.floor(recDuration / 60)).padStart(2, "0")}:{String(recDuration % 60).padStart(2, "0")}
+                        </span>
+                      </div>
+                      <Button variant="destructive" onClick={stopRecording} className="w-full gap-2">
+                        <StopCircle className="w-4 h-4" /> Stop Recording
+                      </Button>
+                    </div>
+                  )}
+                  {recDownloadUrl && (
+                    <a href={recDownloadUrl} download={`worship-${new Date().toISOString().slice(0,10)}.webm`} className="block">
+                      <Button variant="outline" className="w-full gap-2">
+                        <Download className="w-4 h-4" /> Download Recording
+                      </Button>
+                    </a>
+                  )}
+                  <div className="rounded-md bg-muted/40 border border-border p-3 space-y-1.5">
+                    <p className="text-xs font-medium text-foreground">Live Streaming with OBS</p>
+                    <p className="text-xs text-muted-foreground">Open the broadcast window, then in OBS add a <strong className="text-foreground">Window Capture</strong> source pointing at it. Stream to any RTMP destination (YouTube, Facebook, Twitch, etc.).</p>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Clicking "Start Recording" prompts you to select your broadcast window or display.
+                  </p>
                 </CardContent>
               </Card>
             </div>
