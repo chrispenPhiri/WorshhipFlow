@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
 import NotFound from "@/pages/not-found";
+import { useApplyControlAppearance } from "@/hooks/use-control-appearance";
 
 import BiblePage from "@/pages/bible";
 import SongsPage from "@/pages/songs";
@@ -20,6 +21,7 @@ const queryClient = new QueryClient();
 function Router() {
   return (
     <Switch>
+      {/* Broadcast intentionally bypasses the operator theme — it has its own per-content theming */}
       <Route path="/broadcast" component={BroadcastPage} />
       <Route>
         <Layout>
@@ -41,6 +43,8 @@ function Router() {
 }
 
 function App() {
+  // Apply the operator's saved control-screen appearance (color + font) before pages render.
+  useApplyControlAppearance();
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
