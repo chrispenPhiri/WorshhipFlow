@@ -78,7 +78,7 @@ export default function SettingsPage() {
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {BIBLE_TRANSLATIONS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  {BIBLE_TRANSLATIONS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

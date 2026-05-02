@@ -31,6 +31,83 @@ function getAnimationStyle(animation: string | undefined): React.CSSProperties {
   return {};
 }
 
+// ── Lower-third presenter overlay ────────────────────────────────────────────
+function LowerThirdOverlay({ name, title, position, style, tickerH }: {
+  name: string; title: string; position: string; style: string; tickerH: number;
+}) {
+  const isLeft   = position === "bottom-left";
+  const isCenter = position === "bottom-center";
+  const hStyle: React.CSSProperties = isCenter
+    ? { left: "50%", transform: "translateX(-50%)" }
+    : isLeft ? { left: 28 } : { right: 28 };
+  const bottom = tickerH + 72;
+
+  if (style === "modern") {
+    return (
+      <div style={{ position: "absolute", zIndex: 32, bottom, ...hStyle, pointerEvents: "none" }}>
+        <div style={{ background: "rgba(0,0,0,0.72)", borderLeft: "4px solid rgba(255,255,255,0.75)", borderRadius: "0 4px 4px 0", padding: "10px 22px 10px 14px", backdropFilter: "blur(8px)", minWidth: "220px" }}>
+          <div style={{ color: "#fff", fontSize: "22px", fontWeight: 700, lineHeight: 1.2, letterSpacing: "0.01em" }}>{name}</div>
+          {title && <div style={{ color: "rgba(255,255,255,0.65)", fontSize: "13px", fontWeight: 400, letterSpacing: "0.08em", marginTop: "3px", textTransform: "uppercase" }}>{title}</div>}
+        </div>
+      </div>
+    );
+  }
+  if (style === "classic") {
+    return (
+      <div style={{ position: "absolute", zIndex: 32, bottom, ...hStyle, pointerEvents: "none" }}>
+        <div style={{ background: "rgba(0,0,0,0.88)", minWidth: "220px" }}>
+          <div style={{ height: "3px", background: "#fff" }} />
+          <div style={{ padding: "8px 20px 10px 16px" }}>
+            <div style={{ color: "#fff", fontSize: "21px", fontWeight: 700 }}>{name}</div>
+            {title && <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "13px", marginTop: "2px" }}>{title}</div>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (style === "gradient") {
+    const dir = isLeft ? "to right" : isCenter ? "to right" : "to left";
+    return (
+      <div style={{ position: "absolute", zIndex: 32, bottom, ...hStyle, pointerEvents: "none" }}>
+        <div style={{ background: `linear-gradient(${dir}, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.6) 60%, transparent 100%)`, padding: "12px 48px 12px 20px", minWidth: "260px" }}>
+          <div style={{ color: "#fff", fontSize: "23px", fontWeight: 700 }}>{name}</div>
+          {title && <div style={{ color: "rgba(255,255,255,0.72)", fontSize: "13px", marginTop: "2px" }}>{title}</div>}
+        </div>
+      </div>
+    );
+  }
+  // minimal
+  return (
+    <div style={{ position: "absolute", zIndex: 32, bottom, ...hStyle, pointerEvents: "none" }}>
+      <div style={{ padding: "6px 12px", textAlign: isCenter ? "center" : isLeft ? "left" : "right" }}>
+        <div style={{ color: "#fff", fontSize: "22px", fontWeight: 700, textShadow: "0 2px 16px rgba(0,0,0,0.95),0 0 40px rgba(0,0,0,0.7)" }}>{name}</div>
+        {title && <div style={{ color: "rgba(255,255,255,0.82)", fontSize: "13px", marginTop: "1px", textShadow: "0 2px 10px rgba(0,0,0,0.95)" }}>{title}</div>}
+      </div>
+    </div>
+  );
+}
+
+// ── Clock overlay ─────────────────────────────────────────────────────────────
+function ClockOverlay({ time, position, clockStyle }: { time: Date; position: string; clockStyle: string }) {
+  const h = time.getHours().toString().padStart(2, "0");
+  const m = time.getMinutes().toString().padStart(2, "0");
+  const s = time.getSeconds().toString().padStart(2, "0");
+  const str = clockStyle === "digital" ? `${h}:${m}:${s}` : `${h}:${m}`;
+  const pos: React.CSSProperties = {
+    top:    position.startsWith("top")    ? 16 : undefined,
+    bottom: position.startsWith("bottom") ? 16 : undefined,
+    left:   position.endsWith("left")     ? 20 : undefined,
+    right:  position.endsWith("right")    ? 20 : undefined,
+  };
+  return (
+    <div style={{ position: "absolute", zIndex: 31, pointerEvents: "none", ...pos }}>
+      <div style={{ background: "rgba(0,0,0,0.52)", borderRadius: "6px", padding: "4px 13px", backdropFilter: "blur(4px)", color: "rgba(255,255,255,0.92)", fontFamily: clockStyle === "digital" ? "monospace" : "inherit", fontSize: clockStyle === "digital" ? "16px" : "19px", fontWeight: clockStyle === "digital" ? 400 : 300, letterSpacing: clockStyle === "digital" ? "0.1em" : "0.04em" }}>
+        {str}
+      </div>
+    </div>
+  );
+}
+
 function BackgroundLayer({ background, cameraStream }: {
   background?: { type: string; value: string; overlay?: number } | null;
   cameraStream: MediaStream | null;
@@ -156,6 +233,13 @@ export default function BroadcastPage() {
       }
     };
     return () => ch.close();
+  }, []);
+
+  // Clock
+  const [clockTime, setClockTime] = useState(new Date());
+  useEffect(() => {
+    const id = setInterval(() => setClockTime(new Date()), 1000);
+    return () => clearInterval(id);
   }, []);
 
   // Animate on content change
@@ -329,6 +413,26 @@ export default function BroadcastPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* ── Presenter lower-third ── */}
+      {screenState?.lowerThirdEnabled && screenState.lowerThirdName && !screenState.isBlack && (
+        <LowerThirdOverlay
+          name={screenState.lowerThirdName}
+          title={screenState.lowerThirdTitle ?? ""}
+          position={screenState.lowerThirdPosition ?? "bottom-left"}
+          style={screenState.lowerThirdStyle ?? "modern"}
+          tickerH={tickerH}
+        />
+      )}
+
+      {/* ── Clock ── */}
+      {screenState?.clockOverlayEnabled && !screenState.isBlack && (
+        <ClockOverlay
+          time={clockTime}
+          position={screenState.clockPosition ?? "top-right"}
+          clockStyle={screenState.clockStyle ?? "digital"}
+        />
       )}
 
       {/* Ticker */}

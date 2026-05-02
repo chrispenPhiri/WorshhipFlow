@@ -254,6 +254,43 @@ export const ScreenStateContentType = {
   video: "video",
 } as const;
 
+export type ScreenStateLowerThirdPosition =
+  (typeof ScreenStateLowerThirdPosition)[keyof typeof ScreenStateLowerThirdPosition];
+
+export const ScreenStateLowerThirdPosition = {
+  "bottom-left": "bottom-left",
+  "bottom-center": "bottom-center",
+  "bottom-right": "bottom-right",
+} as const;
+
+export type ScreenStateLowerThirdStyle =
+  (typeof ScreenStateLowerThirdStyle)[keyof typeof ScreenStateLowerThirdStyle];
+
+export const ScreenStateLowerThirdStyle = {
+  modern: "modern",
+  classic: "classic",
+  gradient: "gradient",
+  minimal: "minimal",
+} as const;
+
+export type ScreenStateClockPosition =
+  (typeof ScreenStateClockPosition)[keyof typeof ScreenStateClockPosition];
+
+export const ScreenStateClockPosition = {
+  "top-left": "top-left",
+  "top-right": "top-right",
+  "bottom-left": "bottom-left",
+  "bottom-right": "bottom-right",
+} as const;
+
+export type ScreenStateClockStyle =
+  (typeof ScreenStateClockStyle)[keyof typeof ScreenStateClockStyle];
+
+export const ScreenStateClockStyle = {
+  digital: "digital",
+  clean: "clean",
+} as const;
+
 export interface ScreenState {
   isBlack: boolean;
   isClear: boolean;
@@ -265,6 +302,14 @@ export interface ScreenState {
   layout?: Layout;
   tickerEnabled?: boolean;
   tickerText?: string;
+  lowerThirdEnabled?: boolean;
+  lowerThirdName?: string;
+  lowerThirdTitle?: string;
+  lowerThirdPosition?: ScreenStateLowerThirdPosition;
+  lowerThirdStyle?: ScreenStateLowerThirdStyle;
+  clockOverlayEnabled?: boolean;
+  clockPosition?: ScreenStateClockPosition;
+  clockStyle?: ScreenStateClockStyle;
 }
 
 export type ListSongsParams = {

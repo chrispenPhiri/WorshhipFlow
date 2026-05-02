@@ -520,6 +520,20 @@ export const GetScreenStateResponse = zod.object({
     .optional(),
   tickerEnabled: zod.boolean().optional(),
   tickerText: zod.string().optional(),
+  lowerThirdEnabled: zod.boolean().optional(),
+  lowerThirdName: zod.string().optional(),
+  lowerThirdTitle: zod.string().optional(),
+  lowerThirdPosition: zod
+    .enum(["bottom-left", "bottom-center", "bottom-right"])
+    .optional(),
+  lowerThirdStyle: zod
+    .enum(["modern", "classic", "gradient", "minimal"])
+    .optional(),
+  clockOverlayEnabled: zod.boolean().optional(),
+  clockPosition: zod
+    .enum(["top-left", "top-right", "bottom-left", "bottom-right"])
+    .optional(),
+  clockStyle: zod.enum(["digital", "clean"]).optional(),
 });
 
 /**
@@ -576,6 +590,20 @@ export const UpdateScreenStateBody = zod.object({
     .optional(),
   tickerEnabled: zod.boolean().optional(),
   tickerText: zod.string().optional(),
+  lowerThirdEnabled: zod.boolean().optional(),
+  lowerThirdName: zod.string().optional(),
+  lowerThirdTitle: zod.string().optional(),
+  lowerThirdPosition: zod
+    .enum(["bottom-left", "bottom-center", "bottom-right"])
+    .optional(),
+  lowerThirdStyle: zod
+    .enum(["modern", "classic", "gradient", "minimal"])
+    .optional(),
+  clockOverlayEnabled: zod.boolean().optional(),
+  clockPosition: zod
+    .enum(["top-left", "top-right", "bottom-left", "bottom-right"])
+    .optional(),
+  clockStyle: zod.enum(["digital", "clean"]).optional(),
 });
 
 export const UpdateScreenStateResponse = zod.object({
@@ -629,4 +657,18 @@ export const UpdateScreenStateResponse = zod.object({
     .optional(),
   tickerEnabled: zod.boolean().optional(),
   tickerText: zod.string().optional(),
+  lowerThirdEnabled: zod.boolean().optional(),
+  lowerThirdName: zod.string().optional(),
+  lowerThirdTitle: zod.string().optional(),
+  lowerThirdPosition: zod
+    .enum(["bottom-left", "bottom-center", "bottom-right"])
+    .optional(),
+  lowerThirdStyle: zod
+    .enum(["modern", "classic", "gradient", "minimal"])
+    .optional(),
+  clockOverlayEnabled: zod.boolean().optional(),
+  clockPosition: zod
+    .enum(["top-left", "top-right", "bottom-left", "bottom-right"])
+    .optional(),
+  clockStyle: zod.enum(["digital", "clean"]).optional(),
 });

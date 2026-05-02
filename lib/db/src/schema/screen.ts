@@ -60,6 +60,14 @@ export const screenStateTable = pgTable("screen_state", {
   }),
   tickerEnabled: boolean("ticker_enabled").notNull().default(false),
   tickerText: text("ticker_text"),
+  lowerThirdEnabled: boolean("lower_third_enabled").notNull().default(false),
+  lowerThirdName: text("lower_third_name"),
+  lowerThirdTitle: text("lower_third_title"),
+  lowerThirdPosition: text("lower_third_position").default("bottom-left"),
+  lowerThirdStyle: text("lower_third_style").default("modern"),
+  clockOverlayEnabled: boolean("clock_overlay_enabled").notNull().default(false),
+  clockPosition: text("clock_position").default("top-right"),
+  clockStyle: text("clock_style").default("digital"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
