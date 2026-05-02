@@ -534,6 +534,32 @@ export const GetScreenStateResponse = zod.object({
     .enum(["top-left", "top-right", "bottom-left", "bottom-right"])
     .optional(),
   clockStyle: zod.enum(["digital", "clean"]).optional(),
+  logoOverlayEnabled: zod.boolean().optional(),
+  logoUrl: zod.string().optional(),
+  logoPosition: zod
+    .enum(["top-left", "top-right", "bottom-left", "bottom-right", "center"])
+    .optional(),
+  logoSize: zod.number().optional(),
+  logoOpacity: zod.number().optional(),
+  textOverlayEnabled: zod.boolean().optional(),
+  textOverlayContent: zod.string().optional(),
+  textOverlayPosition: zod
+    .enum([
+      "top-left",
+      "top-center",
+      "top-right",
+      "center-left",
+      "center",
+      "center-right",
+      "bottom-left",
+      "bottom-center",
+      "bottom-right",
+    ])
+    .optional(),
+  textOverlayFontSize: zod.number().optional(),
+  textOverlayColor: zod.string().optional(),
+  textOverlayBg: zod.string().optional(),
+  textOverlayBold: zod.boolean().optional(),
 });
 
 /**
@@ -604,6 +630,32 @@ export const UpdateScreenStateBody = zod.object({
     .enum(["top-left", "top-right", "bottom-left", "bottom-right"])
     .optional(),
   clockStyle: zod.enum(["digital", "clean"]).optional(),
+  logoOverlayEnabled: zod.boolean().optional(),
+  logoUrl: zod.string().optional(),
+  logoPosition: zod
+    .enum(["top-left", "top-right", "bottom-left", "bottom-right", "center"])
+    .optional(),
+  logoSize: zod.number().optional(),
+  logoOpacity: zod.number().optional(),
+  textOverlayEnabled: zod.boolean().optional(),
+  textOverlayContent: zod.string().optional(),
+  textOverlayPosition: zod
+    .enum([
+      "top-left",
+      "top-center",
+      "top-right",
+      "center-left",
+      "center",
+      "center-right",
+      "bottom-left",
+      "bottom-center",
+      "bottom-right",
+    ])
+    .optional(),
+  textOverlayFontSize: zod.number().optional(),
+  textOverlayColor: zod.string().optional(),
+  textOverlayBg: zod.string().optional(),
+  textOverlayBold: zod.boolean().optional(),
 });
 
 export const UpdateScreenStateResponse = zod.object({
@@ -671,4 +723,30 @@ export const UpdateScreenStateResponse = zod.object({
     .enum(["top-left", "top-right", "bottom-left", "bottom-right"])
     .optional(),
   clockStyle: zod.enum(["digital", "clean"]).optional(),
+  logoOverlayEnabled: zod.boolean().optional(),
+  logoUrl: zod.string().optional(),
+  logoPosition: zod
+    .enum(["top-left", "top-right", "bottom-left", "bottom-right", "center"])
+    .optional(),
+  logoSize: zod.number().optional(),
+  logoOpacity: zod.number().optional(),
+  textOverlayEnabled: zod.boolean().optional(),
+  textOverlayContent: zod.string().optional(),
+  textOverlayPosition: zod
+    .enum([
+      "top-left",
+      "top-center",
+      "top-right",
+      "center-left",
+      "center",
+      "center-right",
+      "bottom-left",
+      "bottom-center",
+      "bottom-right",
+    ])
+    .optional(),
+  textOverlayFontSize: zod.number().optional(),
+  textOverlayColor: zod.string().optional(),
+  textOverlayBg: zod.string().optional(),
+  textOverlayBold: zod.boolean().optional(),
 });

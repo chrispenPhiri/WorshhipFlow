@@ -14,6 +14,7 @@ import {
   Upload, X, FileImage, FileVideo, User, Clock, Scissors, RefreshCw, Layers3
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBroadcast, type ScreenInfo } from "@/hooks/use-broadcast";
 import { useToast } from "@/hooks/use-toast";
 
@@ -53,6 +54,22 @@ export default function MediaPage() {
   const [ltTitleText, setLtTitleText] = useState("");
   const [ltPosition, setLtPosition] = useState<"bottom-left" | "bottom-center" | "bottom-right">("bottom-left");
   const [ltStyle, setLtStyle] = useState<"modern" | "classic" | "gradient" | "minimal">("modern");
+
+  // Logo overlay draft state
+  const logoFileInputRef = useRef<HTMLInputElement>(null);
+  const [logoUrlDraft, setLogoUrlDraft] = useState("");
+  const [logoUrlInput, setLogoUrlInput] = useState("");
+  const [logoPosDraft, setLogoPosDraft] = useState<"top-left" | "top-right" | "bottom-left" | "bottom-right" | "center">("top-right");
+  const [logoSizeDraft, setLogoSizeDraft] = useState(20);
+  const [logoOpacityDraft, setLogoOpacityDraft] = useState(100);
+
+  // Text overlay draft state
+  const [toContent, setToContent] = useState("");
+  const [toPosition, setToPosition] = useState<"top-left" | "top-center" | "top-right" | "center-left" | "center" | "center-right" | "bottom-left" | "bottom-center" | "bottom-right">("top-left");
+  const [toFontSize, setToFontSize] = useState(36);
+  const [toColor, setToColor] = useState("#ffffff");
+  const [toBg, setToBg] = useState("rgba(0,0,0,0.55)");
+  const [toBold, setToBold] = useState(false);
 
   const { toast } = useToast();
 
@@ -142,10 +159,32 @@ export default function MediaPage() {
     clockOverlayEnabled: screenState?.clockOverlayEnabled ?? false,
     clockPosition: (screenState?.clockPosition ?? "top-right") as "top-left" | "top-right" | "bottom-left" | "bottom-right",
     clockStyle: (screenState?.clockStyle ?? "digital") as "digital" | "clean",
+    logoOverlayEnabled: screenState?.logoOverlayEnabled ?? false,
+    logoUrl: screenState?.logoUrl ?? undefined,
+    logoPosition: (screenState?.logoPosition ?? "top-right") as "top-left" | "top-right" | "bottom-left" | "bottom-right" | "center",
+    logoSize: screenState?.logoSize ?? 20,
+    logoOpacity: screenState?.logoOpacity ?? 100,
+    textOverlayEnabled: screenState?.textOverlayEnabled ?? false,
+    textOverlayContent: screenState?.textOverlayContent ?? undefined,
+    textOverlayPosition: (screenState?.textOverlayPosition ?? "top-left") as "top-left" | "top-center" | "top-right" | "center-left" | "center" | "center-right" | "bottom-left" | "bottom-center" | "bottom-right",
+    textOverlayFontSize: screenState?.textOverlayFontSize ?? 36,
+    textOverlayColor: screenState?.textOverlayColor ?? "#ffffff",
+    textOverlayBg: screenState?.textOverlayBg ?? "rgba(0,0,0,0.55)",
+    textOverlayBold: screenState?.textOverlayBold ?? false,
   });
 
   const updateOverlay = (patch: Partial<ReturnType<typeof safeFullState>>) =>
     updateScreen({ data: { ...safeFullState(), ...patch } });
+
+  const handleLogoFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      setLogoUrlDraft(dataUrl);
+      setLogoUrlInput("");
+    };
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => {
     return () => { if (cameraStream) cameraStream.getTracks().forEach(t => t.stop()); };
@@ -708,6 +747,267 @@ export default function MediaPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Logo Overlay */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Image className="w-4 h-4" /> Logo Overlay
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  {screenState?.logoOverlayEnabled && (
+                    <Badge className="text-[10px] py-0 h-4 bg-green-600 border-0">LIVE</Badge>
+                  )}
+                  <Switch
+                    checked={screenState?.logoOverlayEnabled ?? false}
+                    onCheckedChange={v => updateOverlay({ logoOverlayEnabled: v })}
+                    disabled={!screenState?.logoUrl && !logoUrlDraft}
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Source: upload or URL */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Logo Image</label>
+
+                {/* Hidden file input */}
+                <input
+                  ref={logoFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleLogoFile(f); e.target.value = ""; }}
+                />
+
+                {/* Preview + upload button */}
+                <div className="flex gap-2 items-start">
+                  {logoUrlDraft && (
+                    <div className="relative shrink-0">
+                      <img src={logoUrlDraft} alt="logo preview" className="h-16 w-auto max-w-[120px] object-contain rounded border border-border bg-checkerboard" />
+                      <button
+                        onClick={() => { setLogoUrlDraft(""); setLogoUrlInput(""); }}
+                        className="absolute -top-1.5 -right-1.5 bg-background border border-border rounded-full w-4 h-4 flex items-center justify-center text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex-1 space-y-1.5">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full gap-2 h-8 text-xs"
+                      onClick={() => logoFileInputRef.current?.click()}
+                    >
+                      <Upload className="w-3.5 h-3.5" /> Upload image
+                    </Button>
+                    <div className="flex gap-1.5">
+                      <Input
+                        className="h-8 text-xs"
+                        placeholder="or paste URL…"
+                        value={logoUrlInput}
+                        onChange={e => setLogoUrlInput(e.target.value)}
+                        onBlur={() => { if (logoUrlInput) { setLogoUrlDraft(logoUrlInput); } }}
+                        onKeyDown={e => { if (e.key === "Enter" && logoUrlInput) { setLogoUrlDraft(logoUrlInput); } }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Position */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Position</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {([
+                    { value: "top-left",     label: "↖ Top Left" },
+                    { value: "top-right",    label: "↗ Top Right" },
+                    { value: "bottom-left",  label: "↙ Bot Left" },
+                    { value: "bottom-right", label: "↘ Bot Right" },
+                    { value: "center",       label: "⊙ Center" },
+                  ] as const).map(p => (
+                    <button
+                      key={p.value}
+                      onClick={() => setLogoPosDraft(p.value)}
+                      className={`py-1.5 rounded text-xs transition-colors border ${logoPosDraft === p.value ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Size */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between">
+                  <label className="text-sm font-medium">Size</label>
+                  <span className="text-xs text-muted-foreground">{logoSizeDraft}% of screen width</span>
+                </div>
+                <Slider
+                  min={3} max={50} step={1}
+                  value={[logoSizeDraft]}
+                  onValueChange={([v]) => setLogoSizeDraft(v)}
+                />
+              </div>
+
+              {/* Opacity */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between">
+                  <label className="text-sm font-medium">Opacity</label>
+                  <span className="text-xs text-muted-foreground">{logoOpacityDraft}%</span>
+                </div>
+                <Slider
+                  min={10} max={100} step={1}
+                  value={[logoOpacityDraft]}
+                  onValueChange={([v]) => setLogoOpacityDraft(v)}
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1 gap-2"
+                  onClick={() => updateOverlay({
+                    logoOverlayEnabled: true,
+                    logoUrl: logoUrlDraft || undefined,
+                    logoPosition: logoPosDraft,
+                    logoSize: logoSizeDraft,
+                    logoOpacity: logoOpacityDraft,
+                  })}
+                  disabled={!logoUrlDraft}
+                >
+                  <Cast className="w-4 h-4" /> Show Logo
+                </Button>
+                {screenState?.logoOverlayEnabled && (
+                  <Button variant="outline" className="gap-2" onClick={() => updateOverlay({ logoOverlayEnabled: false })}>
+                    Hide
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Standalone Text Overlay */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <FileImage className="w-4 h-4" /> Text Overlay
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  {screenState?.textOverlayEnabled && (
+                    <Badge className="text-[10px] py-0 h-4 bg-green-600 border-0">LIVE</Badge>
+                  )}
+                  <Switch
+                    checked={screenState?.textOverlayEnabled ?? false}
+                    onCheckedChange={v => updateOverlay({ textOverlayEnabled: v })}
+                    disabled={!toContent}
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Text content */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Text</label>
+                <textarea
+                  rows={3}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="Type overlay text here…"
+                  value={toContent}
+                  onChange={e => setToContent(e.target.value)}
+                />
+              </div>
+
+              {/* Position — 3×3 grid */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Position</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {([
+                    "top-left","top-center","top-right",
+                    "center-left","center","center-right",
+                    "bottom-left","bottom-center","bottom-right",
+                  ] as const).map(pos => (
+                    <button
+                      key={pos}
+                      onClick={() => setToPosition(pos)}
+                      className={`py-1 rounded text-[10px] leading-tight transition-colors border ${toPosition === pos ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}
+                    >
+                      {pos.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Style row */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <div className="flex justify-between">
+                    <label className="text-sm font-medium">Font Size</label>
+                    <span className="text-xs text-muted-foreground">{toFontSize}px</span>
+                  </div>
+                  <Slider min={12} max={120} step={2} value={[toFontSize]} onValueChange={([v]) => setToFontSize(v)} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Text Color</label>
+                  <div className="flex gap-1.5 items-center">
+                    <input type="color" value={toColor} onChange={e => setToColor(e.target.value)} className="h-8 w-10 rounded border border-input cursor-pointer bg-transparent p-0.5" />
+                    <Input className="h-8 text-xs font-mono" value={toColor} onChange={e => setToColor(e.target.value)} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Background + bold */}
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium">Bold</label>
+                  <Switch checked={toBold} onCheckedChange={setToBold} />
+                </div>
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <label className="text-sm font-medium shrink-0">Background</label>
+                  <Select value={toBg} onValueChange={setToBg}>
+                    <SelectTrigger className="h-8 text-xs flex-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none" className="text-xs">None</SelectItem>
+                      <SelectItem value="rgba(0,0,0,0.55)" className="text-xs">Dark (55%)</SelectItem>
+                      <SelectItem value="rgba(0,0,0,0.75)" className="text-xs">Dark (75%)</SelectItem>
+                      <SelectItem value="rgba(0,0,0,0.9)" className="text-xs">Dark (90%)</SelectItem>
+                      <SelectItem value="rgba(255,255,255,0.15)" className="text-xs">Light (15%)</SelectItem>
+                      <SelectItem value="rgba(255,255,255,0.35)" className="text-xs">Light (35%)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1 gap-2"
+                  onClick={() => updateOverlay({
+                    textOverlayEnabled: true,
+                    textOverlayContent: toContent || undefined,
+                    textOverlayPosition: toPosition,
+                    textOverlayFontSize: toFontSize,
+                    textOverlayColor: toColor,
+                    textOverlayBg: toBg,
+                    textOverlayBold: toBold,
+                  })}
+                  disabled={!toContent}
+                >
+                  <Cast className="w-4 h-4" /> Show Text
+                </Button>
+                {screenState?.textOverlayEnabled && (
+                  <Button variant="outline" className="gap-2" onClick={() => updateOverlay({ textOverlayEnabled: false })}>
+                    Hide
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>

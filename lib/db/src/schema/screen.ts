@@ -1,4 +1,4 @@
-import { pgTable, serial, text, boolean, json, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, json, timestamp, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -68,6 +68,18 @@ export const screenStateTable = pgTable("screen_state", {
   clockOverlayEnabled: boolean("clock_overlay_enabled").notNull().default(false),
   clockPosition: text("clock_position").default("top-right"),
   clockStyle: text("clock_style").default("digital"),
+  logoOverlayEnabled: boolean("logo_overlay_enabled").notNull().default(false),
+  logoUrl: text("logo_url"),
+  logoPosition: text("logo_position").default("top-right"),
+  logoSize: integer("logo_size").default(20),
+  logoOpacity: integer("logo_opacity").default(100),
+  textOverlayEnabled: boolean("text_overlay_enabled").notNull().default(false),
+  textOverlayContent: text("text_overlay_content"),
+  textOverlayPosition: text("text_overlay_position").default("top-left"),
+  textOverlayFontSize: integer("text_overlay_font_size").default(36),
+  textOverlayColor: text("text_overlay_color").default("#ffffff"),
+  textOverlayBg: text("text_overlay_bg").default("rgba(0,0,0,0.55)"),
+  textOverlayBold: boolean("text_overlay_bold").notNull().default(false),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 

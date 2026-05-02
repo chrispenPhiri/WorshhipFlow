@@ -291,6 +291,32 @@ export const ScreenStateClockStyle = {
   clean: "clean",
 } as const;
 
+export type ScreenStateLogoPosition =
+  (typeof ScreenStateLogoPosition)[keyof typeof ScreenStateLogoPosition];
+
+export const ScreenStateLogoPosition = {
+  "top-left": "top-left",
+  "top-right": "top-right",
+  "bottom-left": "bottom-left",
+  "bottom-right": "bottom-right",
+  center: "center",
+} as const;
+
+export type ScreenStateTextOverlayPosition =
+  (typeof ScreenStateTextOverlayPosition)[keyof typeof ScreenStateTextOverlayPosition];
+
+export const ScreenStateTextOverlayPosition = {
+  "top-left": "top-left",
+  "top-center": "top-center",
+  "top-right": "top-right",
+  "center-left": "center-left",
+  center: "center",
+  "center-right": "center-right",
+  "bottom-left": "bottom-left",
+  "bottom-center": "bottom-center",
+  "bottom-right": "bottom-right",
+} as const;
+
 export interface ScreenState {
   isBlack: boolean;
   isClear: boolean;
@@ -310,6 +336,18 @@ export interface ScreenState {
   clockOverlayEnabled?: boolean;
   clockPosition?: ScreenStateClockPosition;
   clockStyle?: ScreenStateClockStyle;
+  logoOverlayEnabled?: boolean;
+  logoUrl?: string;
+  logoPosition?: ScreenStateLogoPosition;
+  logoSize?: number;
+  logoOpacity?: number;
+  textOverlayEnabled?: boolean;
+  textOverlayContent?: string;
+  textOverlayPosition?: ScreenStateTextOverlayPosition;
+  textOverlayFontSize?: number;
+  textOverlayColor?: string;
+  textOverlayBg?: string;
+  textOverlayBold?: boolean;
 }
 
 export type ListSongsParams = {

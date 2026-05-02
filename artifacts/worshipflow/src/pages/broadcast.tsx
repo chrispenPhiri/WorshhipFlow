@@ -108,6 +108,91 @@ function ClockOverlay({ time, position, clockStyle }: { time: Date; position: st
   );
 }
 
+// ── Logo overlay ─────────────────────────────────────────────────────────────
+function LogoOverlay({ url, position, size, opacity, tickerH }: {
+  url: string; position: string; size: number; opacity: number; tickerH: number;
+}) {
+  const isBottom = position.startsWith("bottom");
+  const isCenterPos = position === "center";
+  const pos: React.CSSProperties = isCenterPos
+    ? { top: "50%", left: "50%", transform: "translate(-50%,-50%)" }
+    : {
+        top:    position.startsWith("top")  ? 16 : undefined,
+        bottom: isBottom                    ? tickerH + 16 : undefined,
+        left:   position.endsWith("left")   ? 16 : undefined,
+        right:  position.endsWith("right")  ? 16 : undefined,
+      };
+  return (
+    <div style={{ position: "absolute", zIndex: 33, pointerEvents: "none", ...pos }}>
+      <img
+        src={url}
+        alt=""
+        style={{
+          width: `${size}vw`,
+          maxWidth: "40vw",
+          opacity: opacity / 100,
+          display: "block",
+          objectFit: "contain",
+          filter: "drop-shadow(0 2px 10px rgba(0,0,0,0.6))",
+        }}
+      />
+    </div>
+  );
+}
+
+// ── Standalone text overlay ───────────────────────────────────────────────────
+function TextOverlayLayer({ content, position, fontSize, color, bg, bold, tickerH }: {
+  content: string; position: string; fontSize: number; color: string; bg: string; bold: boolean; tickerH: number;
+}) {
+  const isCenterPos  = position === "center";
+  const isBottom     = position.startsWith("bottom");
+  const isCenterH    = position.endsWith("-center");
+  const isCenterV    = position.startsWith("center-") || isCenterPos;
+
+  const pos: React.CSSProperties = (() => {
+    if (isCenterPos) return { top: "50%", left: "50%", transform: "translate(-50%,-50%)" };
+    if (isCenterH) {
+      if (position.startsWith("top"))    return { top: 16, left: "50%", transform: "translateX(-50%)" };
+      if (position.startsWith("bottom")) return { bottom: tickerH + 16, left: "50%", transform: "translateX(-50%)" };
+      return { top: "50%", left: "50%", transform: "translate(-50%,-50%)" };
+    }
+    if (isCenterV) {
+      return {
+        top: "50%",
+        left:  position.endsWith("left")  ? 16 : undefined,
+        right: position.endsWith("right") ? 16 : undefined,
+        transform: "translateY(-50%)",
+      };
+    }
+    return {
+      top:    position.startsWith("top")    ? 16 : undefined,
+      bottom: isBottom                       ? tickerH + 16 : undefined,
+      left:   position.endsWith("left")     ? 16 : undefined,
+      right:  position.endsWith("right")    ? 16 : undefined,
+    };
+  })();
+
+  const hasBackground = bg && bg !== "none";
+  return (
+    <div style={{ position: "absolute", zIndex: 34, pointerEvents: "none", maxWidth: "80vw", ...pos }}>
+      <div style={{
+        background: hasBackground ? bg : "transparent",
+        borderRadius: hasBackground ? "4px" : 0,
+        padding: hasBackground ? "8px 18px" : 0,
+        color,
+        fontSize: `${fontSize}px`,
+        fontWeight: bold ? 700 : 400,
+        lineHeight: 1.4,
+        textShadow: hasBackground ? "none" : "0 2px 14px rgba(0,0,0,0.95),0 0 40px rgba(0,0,0,0.7)",
+        whiteSpace: "pre-wrap",
+        backdropFilter: hasBackground ? "blur(6px)" : undefined,
+      }}>
+        {content}
+      </div>
+    </div>
+  );
+}
+
 function BackgroundLayer({ background, cameraStream }: {
   background?: { type: string; value: string; overlay?: number } | null;
   cameraStream: MediaStream | null;
@@ -432,6 +517,30 @@ export default function BroadcastPage() {
           time={clockTime}
           position={screenState.clockPosition ?? "top-right"}
           clockStyle={screenState.clockStyle ?? "digital"}
+        />
+      )}
+
+      {/* ── Logo overlay ── */}
+      {screenState?.logoOverlayEnabled && screenState.logoUrl && !screenState.isBlack && (
+        <LogoOverlay
+          url={screenState.logoUrl}
+          position={screenState.logoPosition ?? "top-right"}
+          size={screenState.logoSize ?? 20}
+          opacity={screenState.logoOpacity ?? 100}
+          tickerH={tickerH}
+        />
+      )}
+
+      {/* ── Standalone text overlay ── */}
+      {screenState?.textOverlayEnabled && screenState.textOverlayContent && !screenState.isBlack && (
+        <TextOverlayLayer
+          content={screenState.textOverlayContent}
+          position={screenState.textOverlayPosition ?? "top-left"}
+          fontSize={screenState.textOverlayFontSize ?? 36}
+          color={screenState.textOverlayColor ?? "#ffffff"}
+          bg={screenState.textOverlayBg ?? "rgba(0,0,0,0.55)"}
+          bold={screenState.textOverlayBold ?? false}
+          tickerH={tickerH}
         />
       )}
 
