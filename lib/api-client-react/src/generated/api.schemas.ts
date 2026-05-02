@@ -478,6 +478,12 @@ export interface ScreenState {
   textOverlayBorderWidth?: number;
   /** Seconds after which the text overlay auto-hides (0 = never). */
   textOverlayAutoDismissSec?: number;
+  /** When true, broadcast renders content and secondaryContent side-by-side (B3.5). */
+  comparisonMode?: boolean;
+  /** Title/reference for the secondary translation when comparisonMode is true. */
+  secondaryTitle?: string;
+  /** Body text for the secondary translation when comparisonMode is true. */
+  secondaryContent?: string;
   timerEnabled?: boolean;
   timerMode?: ScreenStateTimerMode;
   timerStartedAt?: string;

@@ -593,6 +593,24 @@ export const GetScreenStateResponse = zod.object({
     .number()
     .optional()
     .describe("Seconds after which the text overlay auto-hides (0 = never)."),
+  comparisonMode: zod
+    .boolean()
+    .optional()
+    .describe(
+      "When true, broadcast renders content and secondaryContent side-by-side (B3.5).",
+    ),
+  secondaryTitle: zod
+    .string()
+    .optional()
+    .describe(
+      "Title\/reference for the secondary translation when comparisonMode is true.",
+    ),
+  secondaryContent: zod
+    .string()
+    .optional()
+    .describe(
+      "Body text for the secondary translation when comparisonMode is true.",
+    ),
   timerEnabled: zod.boolean().optional(),
   timerMode: zod.enum(["stopwatch", "countdown"]).optional(),
   timerStartedAt: zod.string().optional(),
@@ -778,6 +796,24 @@ export const UpdateScreenStateBody = zod.object({
     .number()
     .optional()
     .describe("Seconds after which the text overlay auto-hides (0 = never)."),
+  comparisonMode: zod
+    .boolean()
+    .optional()
+    .describe(
+      "When true, broadcast renders content and secondaryContent side-by-side (B3.5).",
+    ),
+  secondaryTitle: zod
+    .string()
+    .optional()
+    .describe(
+      "Title\/reference for the secondary translation when comparisonMode is true.",
+    ),
+  secondaryContent: zod
+    .string()
+    .optional()
+    .describe(
+      "Body text for the secondary translation when comparisonMode is true.",
+    ),
   timerEnabled: zod.boolean().optional(),
   timerMode: zod.enum(["stopwatch", "countdown"]).optional(),
   timerStartedAt: zod.string().optional(),
@@ -960,6 +996,24 @@ export const UpdateScreenStateResponse = zod.object({
     .number()
     .optional()
     .describe("Seconds after which the text overlay auto-hides (0 = never)."),
+  comparisonMode: zod
+    .boolean()
+    .optional()
+    .describe(
+      "When true, broadcast renders content and secondaryContent side-by-side (B3.5).",
+    ),
+  secondaryTitle: zod
+    .string()
+    .optional()
+    .describe(
+      "Title\/reference for the secondary translation when comparisonMode is true.",
+    ),
+  secondaryContent: zod
+    .string()
+    .optional()
+    .describe(
+      "Body text for the secondary translation when comparisonMode is true.",
+    ),
   timerEnabled: zod.boolean().optional(),
   timerMode: zod.enum(["stopwatch", "countdown"]).optional(),
   timerStartedAt: zod.string().optional(),

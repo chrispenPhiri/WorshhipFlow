@@ -779,7 +779,31 @@ export default function BroadcastPage() {
   const translationAbbr = pipeIdx !== -1 ? rawTitle.slice(pipeIdx + 1) : "";
   const bookName = verseRef ? verseRef.replace(/\s+\d+:.*$/, "").trim() : "";
 
-  // ── Verse content renderer with superscript numbers ───────────────────────
+  // ── Highlighted-word renderer (B3.3) ──────────────────────────────────────
+  // Splits text on «...» markers and wraps matched chunks in an accent span.
+  function renderHighlightedText(text: string, keyPrefix: string): React.ReactNode {
+    const parts = text.split(/«([^»]+)»/g);
+    return parts.map((part, idx) => {
+      // Even indices are plain text, odd indices are highlighted matches
+      if (idx % 2 === 1) {
+        return (
+          <span
+            key={`${keyPrefix}-h-${idx}`}
+            style={{
+              color: "#fbbf24",
+              fontWeight: 700,
+              textShadow: "0 0 12px rgba(251,191,36,0.45)",
+            }}
+          >
+            {part}
+          </span>
+        );
+      }
+      return <span key={`${keyPrefix}-t-${idx}`}>{part}</span>;
+    });
+  }
+
+  // ── Verse content renderer with superscript numbers + word highlights ─────
   function renderVerseContent(text: string) {
     const lines = text.split("\n");
     return lines.map((line, i) => {
@@ -788,11 +812,12 @@ export default function BroadcastPage() {
         return (
           <span key={i}>
             {i > 0 && "\n"}
-            <sup style={{ fontSize: "0.42em", fontWeight: 700, verticalAlign: "super", opacity: 0.75, letterSpacing: "0.04em", marginRight: "0.18em" }}>{m[1]}</sup>{m[2]}
+            <sup style={{ fontSize: "0.42em", fontWeight: 700, verticalAlign: "super", opacity: 0.75, letterSpacing: "0.04em", marginRight: "0.18em" }}>{m[1]}</sup>
+            {renderHighlightedText(m[2], `v${i}`)}
           </span>
         );
       }
-      return <span key={i}>{i > 0 ? "\n" : ""}{line}</span>;
+      return <span key={i}>{i > 0 ? "\n" : ""}{renderHighlightedText(line, `l${i}`)}</span>;
     });
   }
 
@@ -843,34 +868,104 @@ export default function BroadcastPage() {
       {screenState?.isBlack && <div className="absolute inset-0 bg-black z-40" />}
 
       {/* Content */}
-      {showContent && (
-        <div
-          key={contentKey}
-          className="absolute z-20 flex"
-          style={{
-            // Constrain to the non-camera half when using side-by-side camera layout
-            top: 0,
-            bottom: 0,
-            left: showCameraOverlay && camLayout === "side-left" ? "50%" : 0,
-            right: showCameraOverlay && camLayout === "side-right" ? "50%" : 0,
-            alignItems: flexJustify,
-            justifyContent: flexAlign,
-            paddingTop: `${paddingY}%`,
-            paddingBottom: `${paddingY + (tickerH > 0 ? 4 : 0)}%`,
-            paddingLeft: `${paddingX}%`,
-            paddingRight: `${paddingX}%`,
-          }}
-        >
+      {showContent && (() => {
+        // B3.5 — side-by-side comparison render (only meaningful for verse content)
+        const inComparison =
+          contentType === "verse" &&
+          !!screenState?.comparisonMode &&
+          !!screenState.secondaryContent;
+
+        const containerStyle: React.CSSProperties = {
+          top: 0,
+          bottom: 0,
+          left: showCameraOverlay && camLayout === "side-left" ? "50%" : 0,
+          right: showCameraOverlay && camLayout === "side-right" ? "50%" : 0,
+          alignItems: flexJustify,
+          justifyContent: flexAlign,
+          paddingTop: `${paddingY}%`,
+          paddingBottom: `${paddingY + (tickerH > 0 ? 4 : 0)}%`,
+          paddingLeft: `${paddingX}%`,
+          paddingRight: `${paddingX}%`,
+        };
+
+        if (inComparison) {
+          // Each column is half the available text width; shrink font slightly so
+          // both translations fit comfortably side-by-side.
+          const splitFontSize = typeof contentStyle.fontSize === "number"
+            ? Math.round(contentStyle.fontSize * 0.78)
+            : contentStyle.fontSize;
+          const colStyle: React.CSSProperties = {
+            ...contentStyle,
+            fontSize: splitFontSize,
+            flex: "1 1 0",
+            minWidth: 0,
+          };
+
+          // Parse secondary translation abbr from secondaryTitle (mirrors title format "ref|abbr")
+          const secTitle = screenState!.secondaryTitle ?? "";
+          const secPipe = secTitle.indexOf("|");
+          const secondaryAbbr = secPipe !== -1 ? secTitle.slice(secPipe + 1) : "";
+
+          return (
+            <div
+              key={contentKey}
+              className="absolute z-20 flex"
+              style={containerStyle}
+              data-testid="broadcast-comparison-mode"
+            >
+              <div
+                style={{ width: `${textWidthPct}%`, maxWidth: "100%", display: "flex", gap: "3%", alignItems: "stretch" }}
+              >
+                {/* Primary translation column */}
+                <div style={colStyle} className="whitespace-pre-wrap drop-shadow-lg relative" data-testid="broadcast-compare-primary">
+                  <div style={{
+                    position: "absolute", top: "-1.6em", left: 0, right: 0,
+                    textAlign: contentStyle.textAlign as React.CSSProperties["textAlign"],
+                    fontSize: "0.32em", fontWeight: 700, letterSpacing: "0.18em",
+                    color: "rgba(255,255,255,0.55)", textTransform: "uppercase",
+                  }}>
+                    {translationAbbr}
+                  </div>
+                  {renderVerseContent(screenState!.content!)}
+                </div>
+
+                {/* Divider */}
+                <div style={{ width: "2px", background: "rgba(255,255,255,0.15)", borderRadius: "1px", flexShrink: 0 }} />
+
+                {/* Secondary translation column */}
+                <div style={colStyle} className="whitespace-pre-wrap drop-shadow-lg relative" data-testid="broadcast-compare-secondary">
+                  <div style={{
+                    position: "absolute", top: "-1.6em", left: 0, right: 0,
+                    textAlign: contentStyle.textAlign as React.CSSProperties["textAlign"],
+                    fontSize: "0.32em", fontWeight: 700, letterSpacing: "0.18em",
+                    color: "rgba(125,211,252,0.7)", textTransform: "uppercase",
+                  }}>
+                    {secondaryAbbr}
+                  </div>
+                  {renderVerseContent(screenState!.secondaryContent!)}
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        return (
           <div
-            style={{ ...contentStyle, width: `${textWidthPct}%`, maxWidth: "100%" }}
-            className="whitespace-pre-wrap drop-shadow-lg"
+            key={contentKey}
+            className="absolute z-20 flex"
+            style={containerStyle}
           >
-            {contentType === "verse"
-              ? renderVerseContent(screenState!.content!)
-              : screenState!.content}
+            <div
+              style={{ ...contentStyle, width: `${textWidthPct}%`, maxWidth: "100%" }}
+              className="whitespace-pre-wrap drop-shadow-lg"
+            >
+              {contentType === "verse"
+                ? renderVerseContent(screenState!.content!)
+                : screenState!.content}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── Book name — top center (centered within content half when side-by-side) ── */}
       {showContent && contentType === "verse" && bookName && (

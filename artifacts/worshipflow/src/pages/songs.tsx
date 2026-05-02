@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useRecentlyPresented } from "@/hooks/use-recently-presented";
 import {
   useListSongs,
   useGetSongStats,
@@ -62,6 +63,45 @@ function capitalize(s: string) {
   return s.replace(/\b\w/g, c => c.toUpperCase());
 }
 
+/** Classify a section label so we can color-code it (B3.2). */
+export type SongSectionType =
+  | "verse" | "chorus" | "pre-chorus" | "bridge"
+  | "intro" | "outro" | "interlude" | "tag" | "refrain" | "slide";
+
+function getSectionType(label: string): SongSectionType {
+  const l = label.toLowerCase().trim();
+  if (/^pre[\s-]?chorus/.test(l)) return "pre-chorus";
+  if (l.startsWith("chorus")) return "chorus";
+  if (l.startsWith("verse")) return "verse";
+  if (l.startsWith("bridge")) return "bridge";
+  if (l.startsWith("intro")) return "intro";
+  if (l.startsWith("outro")) return "outro";
+  if (l.startsWith("interlude")) return "interlude";
+  if (l.startsWith("tag")) return "tag";
+  if (l.startsWith("refrain")) return "refrain";
+  return "slide";
+}
+
+/** Tailwind palette per section type (B3.2). */
+const SECTION_TYPE_STYLES: Record<SongSectionType, { active: string; idle: string; abbr: string; ring: string }> = {
+  verse:        { active: "bg-blue-500   text-white",   idle: "bg-blue-500/15   text-blue-300   hover:bg-blue-500/25",   abbr: "V", ring: "ring-blue-400/50"   },
+  chorus:       { active: "bg-amber-500  text-black",   idle: "bg-amber-500/15  text-amber-300  hover:bg-amber-500/25",  abbr: "C", ring: "ring-amber-400/50"  },
+  "pre-chorus": { active: "bg-cyan-500   text-black",   idle: "bg-cyan-500/15   text-cyan-300   hover:bg-cyan-500/25",   abbr: "PC", ring: "ring-cyan-400/50"  },
+  bridge:       { active: "bg-purple-500 text-white",   idle: "bg-purple-500/15 text-purple-300 hover:bg-purple-500/25", abbr: "B", ring: "ring-purple-400/50" },
+  intro:        { active: "bg-slate-500  text-white",   idle: "bg-slate-500/15  text-slate-300  hover:bg-slate-500/25",  abbr: "I", ring: "ring-slate-400/50"  },
+  outro:        { active: "bg-slate-600  text-white",   idle: "bg-slate-600/15  text-slate-300  hover:bg-slate-600/25",  abbr: "O", ring: "ring-slate-400/50"  },
+  interlude:    { active: "bg-teal-500   text-black",   idle: "bg-teal-500/15   text-teal-300   hover:bg-teal-500/25",   abbr: "Int", ring: "ring-teal-400/50" },
+  tag:          { active: "bg-emerald-500 text-black",  idle: "bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25", abbr: "T", ring: "ring-emerald-400/50" },
+  refrain:      { active: "bg-rose-500   text-white",   idle: "bg-rose-500/15   text-rose-300   hover:bg-rose-500/25",   abbr: "R", ring: "ring-rose-400/50"   },
+  slide:        { active: "bg-primary    text-primary-foreground", idle: "bg-muted text-muted-foreground hover:bg-muted/80", abbr: "•", ring: "ring-primary/40" },
+};
+
+/** Pull just the trailing number off a label like "Verse 1" → "1". */
+function getSectionNumber(label: string): string {
+  const m = label.match(/(\d+)\s*$/);
+  return m ? m[1] : "";
+}
+
 export default function SongsPage() {
   const [category, setCategory] = useLocalStorage<string>("wf-songs-category", "all");
   const [search, setSearch] = useLocalStorage("wf-songs-search", "");
@@ -79,6 +119,7 @@ export default function SongsPage() {
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { add: addRecent } = useRecentlyPresented();
 
   const queryParams = {
     ...(category !== "all" && { category }),
@@ -127,6 +168,8 @@ export default function SongsPage() {
     contentType: "song" as const,
     tickerEnabled: screenState?.tickerEnabled ?? false,
     tickerText: screenState?.tickerText ?? undefined,
+    // Always clear comparison mode when sending non-bible content (B3.5)
+    comparisonMode: false,
   };
 
   const sendSection = (song: any, text: string, slideNum: number) => {
@@ -146,6 +189,14 @@ export default function SongsPage() {
         },
         background: screenState?.background ?? { type: "color", value: "#000000" },
       },
+    });
+    // Track in recently-presented (B3.6)
+    addRecent({
+      id: `song-${song.id}`,
+      type: "song",
+      title: song.title,
+      subtitle: song.author,
+      payload: { songId: song.id, sectionIdx: slideNum - 1 },
     });
     toast({ title: "Sent to screen", description: `${song.title} — ${label}` });
   };
@@ -337,29 +388,58 @@ export default function SongsPage() {
                 )}
               </CardHeader>
               <CardContent className="space-y-3">
+                {/* Active section label badge (B3.2) */}
+                {(() => {
+                  const info = getSectionInfo(currentSection, sectionIdx + 1);
+                  const t = getSectionType(info.label);
+                  const s = SECTION_TYPE_STYLES[t];
+                  return (
+                    <div className="flex items-center justify-between">
+                      <span
+                        data-testid={`badge-active-section-type`}
+                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider ${s.active}`}
+                      >
+                        {info.label}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {sectionIdx + 1} / {sections.length}
+                      </span>
+                    </div>
+                  );
+                })()}
+
                 {/* Section display */}
                 <div className="bg-muted/50 rounded-lg p-3 min-h-28 text-sm font-serif whitespace-pre-wrap">
-                  {currentSection}
+                  {(() => {
+                    const info = getSectionInfo(currentSection, sectionIdx + 1);
+                    return info.content;
+                  })()}
                 </div>
 
-                {/* Section count */}
-                <p className="text-xs text-center text-muted-foreground">
-                  Slide {sectionIdx + 1} of {sections.length}
-                </p>
-
-                {/* Section navigation */}
-                <div className="flex gap-1 flex-wrap justify-center">
-                  {sections.map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setSectionIdx(i)}
-                      className={`w-7 h-7 rounded text-xs font-medium transition-colors ${
-                        i === sectionIdx ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80 text-muted-foreground"
-                      }`}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
+                {/* Section navigation — color-coded by type (B3.2) */}
+                <div className="flex gap-1.5 flex-wrap justify-center" data-testid="nav-section-list">
+                  {sections.map((sec, i) => {
+                    const info = getSectionInfo(sec, i + 1);
+                    const t = getSectionType(info.label);
+                    const styles = SECTION_TYPE_STYLES[t];
+                    const num = getSectionNumber(info.label);
+                    const display =
+                      t === "slide" ? `${i + 1}` :
+                      num ? `${styles.abbr}${num}` : styles.abbr;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => setSectionIdx(i)}
+                        title={info.label}
+                        data-testid={`button-section-${i}`}
+                        className={`min-w-9 h-7 px-1.5 rounded text-xs font-bold transition-colors ${
+                          i === sectionIdx ? styles.active : styles.idle
+                        }`}
+                      >
+                        {display}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {/* Prev/Next */}

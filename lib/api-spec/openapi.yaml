@@ -814,6 +814,15 @@ components:
         textOverlayAutoDismissSec:
           type: integer
           description: "Seconds after which the text overlay auto-hides (0 = never)."
+        comparisonMode:
+          type: boolean
+          description: "When true, broadcast renders content and secondaryContent side-by-side (B3.5)."
+        secondaryTitle:
+          type: string
+          description: "Title/reference for the secondary translation when comparisonMode is true."
+        secondaryContent:
+          type: string
+          description: "Body text for the secondary translation when comparisonMode is true."
         timerEnabled:
           type: boolean
         timerMode:

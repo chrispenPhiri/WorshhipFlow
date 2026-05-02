@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useRecentlyPresented } from "@/hooks/use-recently-presented";
 import {
   useListNotes, useCreateNote, useUpdateNote, useDeleteNote,
   useUpdateScreenState, useGetScreenState,
@@ -151,6 +152,7 @@ export default function NotesPage() {
   const [presentAlign, setPresentAlign] = useLocalStorage<"left" | "center" | "right">("wf-notes-present-align", "left");
   const [presentFont, setPresentFont] = useLocalStorage<string>("wf-notes-present-font", "Georgia");
   const [saving, setSaving] = useState(false);
+  const { add: addRecent } = useRecentlyPresented();
 
   const { data: notes = [], isLoading } = useListNotes({ query: { queryKey: getListNotesQueryKey() } });
   const { data: screenState } = useGetScreenState({ query: { queryKey: getGetScreenStateQueryKey() } });
@@ -202,7 +204,17 @@ export default function NotesPage() {
         },
         background: screenState?.background ?? { type: "color", value: "#000000" },
         tickerEnabled: screenState?.tickerEnabled ?? false,
+        // Always clear comparison mode when sending non-bible content (B3.5)
+        comparisonMode: false,
       },
+    });
+    // Track in recently-presented (B3.6)
+    addRecent({
+      id: `note-${note.id}`,
+      type: "note",
+      title: note.title,
+      subtitle: note.speaker,
+      payload: { noteId: note.id },
     });
     toast({ title: "Note sent to screen", description: note.title });
     setPresentNote(null);
