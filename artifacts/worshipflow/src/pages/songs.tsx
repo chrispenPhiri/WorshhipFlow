@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import {
   useListSongs,
@@ -64,9 +64,9 @@ function capitalize(s: string) {
 
 export default function SongsPage() {
   const [category, setCategory] = useLocalStorage<string>("wf-songs-category", "all");
-  const [search, setSearch] = useState("");
-  const [activeSongId, setActiveSongId] = useState<number | null>(null);
-  const [sectionIdx, setSectionIdx] = useState(0);
+  const [search, setSearch] = useLocalStorage("wf-songs-search", "");
+  const [activeSongId, setActiveSongId] = useLocalStorage<number | null>("wf-songs-active-id", null);
+  const [sectionIdx, setSectionIdx] = useLocalStorage<number>("wf-songs-section-idx", 0);
   const [addOpen, setAddOpen] = useState(false);
 
   // Add song form state
@@ -152,6 +152,14 @@ export default function SongsPage() {
 
   const activeSong = songs.find((s: any) => s.id === activeSongId);
   const sections = activeSong ? parseSections(activeSong.lyrics) : [];
+
+  // Clamp persisted sectionIdx if it points past the end of the current song's sections.
+  // (e.g. song was edited/deleted after we saved the index.)
+  useEffect(() => {
+    if (sections.length > 0 && sectionIdx >= sections.length) setSectionIdx(0);
+    if (!activeSong && sectionIdx !== 0) setSectionIdx(0);
+  }, [activeSong, sections.length, sectionIdx, setSectionIdx]);
+
   const currentSection = sections[sectionIdx] ?? "";
 
   return (

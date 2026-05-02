@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 import {
   useListNotes, useCreateNote, useUpdateNote, useDeleteNote,
   useUpdateScreenState, useGetScreenState,
@@ -141,14 +142,14 @@ function NoteFormDialog({
 export default function NotesPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useLocalStorage("wf-notes-search", "");
   const [createOpen, setCreateOpen] = useState(false);
   const [editNote, setEditNote] = useState<any | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [presentNote, setPresentNote] = useState<any | null>(null);
-  const [presentFontSize, setPresentFontSize] = useState<number>(48);
-  const [presentAlign, setPresentAlign] = useState<"left" | "center" | "right">("left");
-  const [presentFont, setPresentFont] = useState<string>("Georgia");
+  const [presentFontSize, setPresentFontSize] = useLocalStorage<number>("wf-notes-present-font-size", 48);
+  const [presentAlign, setPresentAlign] = useLocalStorage<"left" | "center" | "right">("wf-notes-present-align", "left");
+  const [presentFont, setPresentFont] = useLocalStorage<string>("wf-notes-present-font", "Georgia");
   const [saving, setSaving] = useState(false);
 
   const { data: notes = [], isLoading } = useListNotes({ query: { queryKey: getListNotesQueryKey() } });

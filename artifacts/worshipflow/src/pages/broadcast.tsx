@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useGetScreenState, getGetScreenStateQueryKey } from "@workspace/api-client-react";
+import { useGetScreenState, getGetScreenStateQueryKey, useUpdateScreenState } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { LiveWallpaperLayer } from "@/components/live-wallpaper";
 
 const CHANNEL_NAME = "wf-broadcast-cmd";
@@ -593,6 +594,57 @@ export default function BroadcastPage() {
   const { data: screenState } = useGetScreenState({
     query: { queryKey: getGetScreenStateQueryKey(), refetchInterval: 500 },
   });
+  const queryClient = useQueryClient();
+  const { mutate: updateScreen } = useUpdateScreenState({
+    mutation: {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetScreenStateQueryKey() }),
+    },
+  });
+
+  // --- Auto-hide overlays (B2.3) ---------------------------------------------
+  // Track the moment each overlay was first observed enabled, so the timeout
+  // resets only on a fresh false→true transition (not on every poll).
+  const ltShownAtRef = useRef<number | null>(null);
+  const toShownAtRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!screenState) return;
+    const now = Date.now();
+
+    // Lower third
+    if (screenState.lowerThirdEnabled) {
+      if (ltShownAtRef.current === null) ltShownAtRef.current = now;
+      const dismissSec = screenState.lowerThirdAutoDismissSec ?? 0;
+      if (dismissSec > 0 && now - ltShownAtRef.current >= dismissSec * 1000) {
+        ltShownAtRef.current = null;
+        updateScreen({ data: {
+          isBlack: screenState.isBlack,
+          isClear: screenState.isClear,
+          contentType: screenState.contentType,
+          lowerThirdEnabled: false,
+        }});
+      }
+    } else {
+      ltShownAtRef.current = null;
+    }
+
+    // Text overlay
+    if (screenState.textOverlayEnabled) {
+      if (toShownAtRef.current === null) toShownAtRef.current = now;
+      const dismissSec = screenState.textOverlayAutoDismissSec ?? 0;
+      if (dismissSec > 0 && now - toShownAtRef.current >= dismissSec * 1000) {
+        toShownAtRef.current = null;
+        updateScreen({ data: {
+          isBlack: screenState.isBlack,
+          isClear: screenState.isClear,
+          contentType: screenState.contentType,
+          textOverlayEnabled: false,
+        }});
+      }
+    } else {
+      toShownAtRef.current = null;
+    }
+  }, [screenState, updateScreen]);
 
   // Apply URL params set by the launcher
   useEffect(() => {

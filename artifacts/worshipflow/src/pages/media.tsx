@@ -103,6 +103,7 @@ export default function MediaPage() {
   const [ltAccentColor, setLtAccentColor] = useState("rgba(255,255,255,0.75)");
   const [ltNameSize, setLtNameSize] = useState(22);
   const [ltTitleSize, setLtTitleSize] = useState(13);
+  const [ltAutoDismissSec, setLtAutoDismissSec] = useState(0);
   const [ltInitialized, setLtInitialized] = useState(false);
 
   // Logo overlay draft state
@@ -161,6 +162,7 @@ export default function MediaPage() {
   const [toMaxWidth, setToMaxWidth] = useState(80);
   const [toBorderColor, setToBorderColor] = useState("#ffffff");
   const [toBorderWidth, setToBorderWidth] = useState(0);
+  const [toAutoDismissSec, setToAutoDismissSec] = useState(0);
   const [toInitialized, setToInitialized] = useState(false);
 
   const { toast } = useToast();
@@ -194,6 +196,7 @@ export default function MediaPage() {
       if (screenState.lowerThirdAccentColor) setLtAccentColor(screenState.lowerThirdAccentColor);
       if (screenState.lowerThirdNameSize)    setLtNameSize(screenState.lowerThirdNameSize);
       if (screenState.lowerThirdTitleSize)   setLtTitleSize(screenState.lowerThirdTitleSize);
+      if (typeof screenState.lowerThirdAutoDismissSec === "number") setLtAutoDismissSec(screenState.lowerThirdAutoDismissSec);
       setLtInitialized(true);
     }
   }, [screenState, ltInitialized]);
@@ -249,6 +252,7 @@ export default function MediaPage() {
       if (typeof screenState.textOverlayMaxWidth === "number")       setToMaxWidth(screenState.textOverlayMaxWidth);
       if (screenState.textOverlayBorderColor)                        setToBorderColor(screenState.textOverlayBorderColor);
       if (typeof screenState.textOverlayBorderWidth === "number")    setToBorderWidth(screenState.textOverlayBorderWidth);
+      if (typeof screenState.textOverlayAutoDismissSec === "number") setToAutoDismissSec(screenState.textOverlayAutoDismissSec);
       setToInitialized(true);
     }
   }, [screenState, toInitialized]);
@@ -375,6 +379,7 @@ export default function MediaPage() {
     lowerThirdAccentColor: screenState?.lowerThirdAccentColor ?? "rgba(255,255,255,0.75)",
     lowerThirdNameSize: screenState?.lowerThirdNameSize ?? 22,
     lowerThirdTitleSize: screenState?.lowerThirdTitleSize ?? 13,
+    lowerThirdAutoDismissSec: screenState?.lowerThirdAutoDismissSec ?? 0,
     clockShowSeconds: screenState?.clockShowSeconds ?? true,
     clockBgColor: screenState?.clockBgColor ?? "rgba(0,0,0,0.52)",
     clockBgOpacity: screenState?.clockBgOpacity ?? 100,
@@ -394,6 +399,7 @@ export default function MediaPage() {
     textOverlayMaxWidth: screenState?.textOverlayMaxWidth ?? 80,
     textOverlayBorderColor: screenState?.textOverlayBorderColor ?? "transparent",
     textOverlayBorderWidth: screenState?.textOverlayBorderWidth ?? 0,
+    textOverlayAutoDismissSec: screenState?.textOverlayAutoDismissSec ?? 0,
     timerEnabled: screenState?.timerEnabled ?? false,
     timerMode: screenState?.timerMode ?? "stopwatch",
     timerStartedAt: screenState?.timerStartedAt ?? "",
@@ -1085,8 +1091,34 @@ export default function MediaPage() {
                 </div>
               </div>
 
+              {/* Auto-hide */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between">
+                  <label className="text-sm font-medium">Auto-hide after</label>
+                  <span className="text-xs text-muted-foreground" data-testid="text-lt-autodismiss-label">
+                    {ltAutoDismissSec === 0 ? "Off (manual hide)" : `${ltAutoDismissSec}s`}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Slider data-testid="slider-lt-autodismiss" className="flex-1" min={0} max={60} step={1} value={[ltAutoDismissSec]} onValueChange={([v]) => setLtAutoDismissSec(v)} />
+                  <Input
+                    data-testid="input-lt-autodismiss"
+                    type="number"
+                    min={0}
+                    max={60}
+                    value={ltAutoDismissSec}
+                    onChange={(e) => {
+                      const n = parseInt(e.target.value, 10);
+                      setLtAutoDismissSec(isNaN(n) ? 0 : Math.max(0, Math.min(60, n)));
+                    }}
+                    className="h-8 w-16 text-xs"
+                  />
+                </div>
+              </div>
+
               <div className="flex gap-2">
                 <Button className="flex-1 gap-2"
+                  data-testid="button-lt-show"
                   onClick={() => updateOverlay({
                     lowerThirdEnabled: true,
                     lowerThirdName: ltName || undefined,
@@ -1099,6 +1131,7 @@ export default function MediaPage() {
                     lowerThirdAccentColor: ltAccentColor,
                     lowerThirdNameSize: ltNameSize,
                     lowerThirdTitleSize: ltTitleSize,
+                    lowerThirdAutoDismissSec: ltAutoDismissSec,
                   })}
                   disabled={!ltName}
                 >
@@ -1682,11 +1715,37 @@ export default function MediaPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Auto-hide */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between">
+                    <label className="text-sm font-medium">Auto-hide after</label>
+                    <span className="text-xs text-muted-foreground" data-testid="text-to-autodismiss-label">
+                      {toAutoDismissSec === 0 ? "Off (manual hide)" : `${toAutoDismissSec}s`}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Slider data-testid="slider-to-autodismiss" className="flex-1" min={0} max={60} step={1} value={[toAutoDismissSec]} onValueChange={([v]) => setToAutoDismissSec(v)} />
+                    <Input
+                      data-testid="input-to-autodismiss"
+                      type="number"
+                      min={0}
+                      max={60}
+                      value={toAutoDismissSec}
+                      onChange={(e) => {
+                        const n = parseInt(e.target.value, 10);
+                        setToAutoDismissSec(isNaN(n) ? 0 : Math.max(0, Math.min(60, n)));
+                      }}
+                      className="h-8 w-16 text-xs"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Actions */}
               <div className="flex gap-2">
                 <Button className="flex-1 gap-2"
+                  data-testid="button-to-show"
                   onClick={() => updateOverlay({
                     textOverlayEnabled: true,
                     textOverlayContent: toContent || undefined,
@@ -1707,6 +1766,7 @@ export default function MediaPage() {
                     textOverlayMaxWidth: toMaxWidth,
                     textOverlayBorderColor: toBorderColor,
                     textOverlayBorderWidth: toBorderWidth,
+                    textOverlayAutoDismissSec: toAutoDismissSec,
                   })}
                   disabled={!toContent}
                 >

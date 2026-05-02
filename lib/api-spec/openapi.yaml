@@ -757,6 +757,9 @@ components:
           type: integer
         lowerThirdTitleSize:
           type: integer
+        lowerThirdAutoDismissSec:
+          type: integer
+          description: "Seconds after which the lower third auto-hides (0 = never)."
         clockOverlayEnabled:
           type: boolean
         clockPosition:
@@ -808,6 +811,9 @@ components:
           type: string
         textOverlayBorderWidth:
           type: integer
+        textOverlayAutoDismissSec:
+          type: integer
+          description: "Seconds after which the text overlay auto-hides (0 = never)."
         timerEnabled:
           type: boolean
         timerMode:

@@ -556,6 +556,10 @@ export const GetScreenStateResponse = zod.object({
   lowerThirdAccentColor: zod.string().optional(),
   lowerThirdNameSize: zod.number().optional(),
   lowerThirdTitleSize: zod.number().optional(),
+  lowerThirdAutoDismissSec: zod
+    .number()
+    .optional()
+    .describe("Seconds after which the lower third auto-hides (0 = never)."),
   clockOverlayEnabled: zod.boolean().optional(),
   clockPosition: zod
     .enum(["top-left", "top-right", "bottom-left", "bottom-right"])
@@ -585,6 +589,10 @@ export const GetScreenStateResponse = zod.object({
   textOverlayMaxWidth: zod.number().optional(),
   textOverlayBorderColor: zod.string().optional(),
   textOverlayBorderWidth: zod.number().optional(),
+  textOverlayAutoDismissSec: zod
+    .number()
+    .optional()
+    .describe("Seconds after which the text overlay auto-hides (0 = never)."),
   timerEnabled: zod.boolean().optional(),
   timerMode: zod.enum(["stopwatch", "countdown"]).optional(),
   timerStartedAt: zod.string().optional(),
@@ -733,6 +741,10 @@ export const UpdateScreenStateBody = zod.object({
   lowerThirdAccentColor: zod.string().optional(),
   lowerThirdNameSize: zod.number().optional(),
   lowerThirdTitleSize: zod.number().optional(),
+  lowerThirdAutoDismissSec: zod
+    .number()
+    .optional()
+    .describe("Seconds after which the lower third auto-hides (0 = never)."),
   clockOverlayEnabled: zod.boolean().optional(),
   clockPosition: zod
     .enum(["top-left", "top-right", "bottom-left", "bottom-right"])
@@ -762,6 +774,10 @@ export const UpdateScreenStateBody = zod.object({
   textOverlayMaxWidth: zod.number().optional(),
   textOverlayBorderColor: zod.string().optional(),
   textOverlayBorderWidth: zod.number().optional(),
+  textOverlayAutoDismissSec: zod
+    .number()
+    .optional()
+    .describe("Seconds after which the text overlay auto-hides (0 = never)."),
   timerEnabled: zod.boolean().optional(),
   timerMode: zod.enum(["stopwatch", "countdown"]).optional(),
   timerStartedAt: zod.string().optional(),
@@ -907,6 +923,10 @@ export const UpdateScreenStateResponse = zod.object({
   lowerThirdAccentColor: zod.string().optional(),
   lowerThirdNameSize: zod.number().optional(),
   lowerThirdTitleSize: zod.number().optional(),
+  lowerThirdAutoDismissSec: zod
+    .number()
+    .optional()
+    .describe("Seconds after which the lower third auto-hides (0 = never)."),
   clockOverlayEnabled: zod.boolean().optional(),
   clockPosition: zod
     .enum(["top-left", "top-right", "bottom-left", "bottom-right"])
@@ -936,6 +956,10 @@ export const UpdateScreenStateResponse = zod.object({
   textOverlayMaxWidth: zod.number().optional(),
   textOverlayBorderColor: zod.string().optional(),
   textOverlayBorderWidth: zod.number().optional(),
+  textOverlayAutoDismissSec: zod
+    .number()
+    .optional()
+    .describe("Seconds after which the text overlay auto-hides (0 = never)."),
   timerEnabled: zod.boolean().optional(),
   timerMode: zod.enum(["stopwatch", "countdown"]).optional(),
   timerStartedAt: zod.string().optional(),

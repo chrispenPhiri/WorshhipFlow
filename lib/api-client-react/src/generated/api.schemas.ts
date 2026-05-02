@@ -451,6 +451,8 @@ export interface ScreenState {
   lowerThirdAccentColor?: string;
   lowerThirdNameSize?: number;
   lowerThirdTitleSize?: number;
+  /** Seconds after which the lower third auto-hides (0 = never). */
+  lowerThirdAutoDismissSec?: number;
   clockOverlayEnabled?: boolean;
   clockPosition?: ScreenStateClockPosition;
   clockStyle?: ScreenStateClockStyle;
@@ -474,6 +476,8 @@ export interface ScreenState {
   textOverlayMaxWidth?: number;
   textOverlayBorderColor?: string;
   textOverlayBorderWidth?: number;
+  /** Seconds after which the text overlay auto-hides (0 = never). */
+  textOverlayAutoDismissSec?: number;
   timerEnabled?: boolean;
   timerMode?: ScreenStateTimerMode;
   timerStartedAt?: string;

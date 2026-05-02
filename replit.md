@@ -80,10 +80,10 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
   background: { type (color|gradient|image|video|camera|live_wallpaper), value, overlay, fit, loop, cameraLayout, cameraShape, cameraPipSize },
   layout: { textScale, verticalAlign, horizontalAlign, paddingX, paddingY, textWidthPct },
   tickerEnabled, tickerText, tickerSpeed, tickerDivider, tickerColor, tickerBgColor, tickerFontSize,
-  lowerThird*: enabled, name, title, position, style, nameColor, titleColor, bgColor, accentColor, nameSize, titleSize,
+  lowerThird*: enabled, name, title, position, style, nameColor, titleColor, bgColor, accentColor, nameSize, titleSize, autoDismissSec (0=manual; B2.3),
   clock*: overlayEnabled, position, style, showDate, showSeconds, dateFormat, fontSize, color, bgColor, bgOpacity, bgRadius, bgPadding,
   logo*: overlayEnabled, url, position, size, opacity, shape (rect|circle|rounded|hex|shield), text, textColor, textSize, textPosition, textWeight,
-  textOverlay*: enabled, content, position, fontSize, color, bg, bold, italic, align, fontFamily, shadow, opacity, padding, radius, letterSpacing, animation (none|fade_in|slide_up|glow|pulse), maxWidth, borderColor, borderWidth,
+  textOverlay*: enabled, content, position, fontSize, color, bg, bold, italic, align, fontFamily, shadow, opacity, padding, radius, letterSpacing, animation (none|fade_in|slide_up|glow|pulse), maxWidth, borderColor, borderWidth, autoDismissSec (0=manual; B2.3),
   timer*: enabled, mode (stopwatch|countdown), startedAt (ISO; "" = paused/cleared), accumulatedMs, durationSec, position, fontSize, color, bgColor, label, warningSec, warningColor, criticalColor,
   idleWatermark
 }
