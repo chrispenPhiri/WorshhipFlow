@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useGetScreenState, useUpdateScreenState, getGetScreenStateQueryKey } from "@workspace/api-client-react";
 import { Button } from "./ui/button";
-import { Slider } from "./ui/slider";
+import { SliderWithButtons } from "./slider-with-buttons";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle, ExternalLink, Monitor, MonitorSpeaker, ChevronDown, Loader2,
@@ -377,9 +377,16 @@ export function LivePreview() {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-xs flex items-center gap-1.5 text-muted-foreground"><ZoomIn className="w-3 h-3" /> Zoom</label>
-              <span className="text-xs font-mono text-foreground">{Math.round((layout.textScale ?? 1) * 100)}%</span>
+              <span className="text-xs font-mono text-foreground" data-testid="text-stage-zoom-value">{Math.round((layout.textScale ?? 1) * 100)}%</span>
             </div>
-            <Slider value={[Math.round((layout.textScale ?? 1) * 100)]} onValueChange={([v]) => updateLayout({ textScale: v / 100 })} min={40} max={400} step={5} />
+            {/* Big +/- buttons either side of the slider so the operator can
+                nudge zoom one step at a time without precise pointer work. */}
+            <SliderWithButtons
+              data-testid="slider-stage-zoom"
+              value={[Math.round((layout.textScale ?? 1) * 100)]}
+              onValueChange={([v]) => updateLayout({ textScale: (v ?? 100) / 100 })}
+              min={40} max={400} step={5}
+            />
           </div>
 
           <div className="space-y-1.5">
@@ -387,7 +394,11 @@ export function LivePreview() {
               <label className="text-xs text-muted-foreground">Text Width</label>
               <span className="text-xs font-mono text-foreground">{layout.textWidthPct ?? 100}%</span>
             </div>
-            <Slider value={[layout.textWidthPct ?? 100]} onValueChange={([v]) => updateLayout({ textWidthPct: v })} min={30} max={100} step={5} />
+            <SliderWithButtons
+              value={[layout.textWidthPct ?? 100]}
+              onValueChange={([v]) => updateLayout({ textWidthPct: v ?? 100 })}
+              min={30} max={100} step={5}
+            />
           </div>
 
           <div className="space-y-1.5">
@@ -428,14 +439,22 @@ export function LivePreview() {
                 <label className="text-xs text-muted-foreground">H Padding</label>
                 <span className="text-xs font-mono">{layout.paddingX ?? 8}%</span>
               </div>
-              <Slider value={[layout.paddingX ?? 8]} onValueChange={([v]) => updateLayout({ paddingX: v })} min={0} max={30} step={1} />
+              <SliderWithButtons
+                value={[layout.paddingX ?? 8]}
+                onValueChange={([v]) => updateLayout({ paddingX: v ?? 8 })}
+                min={0} max={30} step={1}
+              />
             </div>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-xs text-muted-foreground">V Padding</label>
                 <span className="text-xs font-mono">{layout.paddingY ?? 8}%</span>
               </div>
-              <Slider value={[layout.paddingY ?? 8]} onValueChange={([v]) => updateLayout({ paddingY: v })} min={0} max={30} step={1} />
+              <SliderWithButtons
+                value={[layout.paddingY ?? 8]}
+                onValueChange={([v]) => updateLayout({ paddingY: v ?? 8 })}
+                min={0} max={30} step={1}
+              />
             </div>
           </div>
 

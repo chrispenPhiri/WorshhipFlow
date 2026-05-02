@@ -17,7 +17,9 @@ The application is built as a pnpm monorepo using Node.js 24 and TypeScript 5.9.
 -   **Styling:** Tailwind v4, shadcn/ui
 -   **Routing:** Wouter
 -   **Data Fetching:** TanStack Query
--   **UI/UX:** Features a live preview sidebar (16:9 aspect ratio, updates every 2s) with stage controls (zoom, text width, vertical/horizontal position, padding). Operator-facing control appearance (theme color, app font) is customizable and stored in `localStorage`, with an inline script preventing FOUC.
+-   **UI/UX:** Features a live preview sidebar (16:9 aspect ratio, updates every 2s) with stage controls (zoom, text width, vertical/horizontal position, padding). All Stage Controls sliders use `SliderWithButtons` (Minus/Plus side buttons) for fine, click-only adjustment. Operator-facing control appearance (theme color, app font) is customizable and stored in `localStorage`, with an inline script preventing FOUC.
+-   **Responsive layout (`components/layout.tsx`):** A `useViewportMode()` hook chooses between three shapes: desktop (>=1024) renders the original three-column shell (collapsible sidebar + main + Live Preview); tablet (768-1023) and mobile (<768) render a top bar with a hamburger and a "Preview" button — the sidebar opens in a left `<Sheet>` and Live Preview opens in a right `<Sheet>`. The `LivePreview` is mounted in exactly one location at any moment so its 2s polling and `BroadcastChannel` listener never double up. PC behaviour is unchanged; only sub-1024 viewports use the drawers.
+-   **Main menu icon customisation (`lib/menu-customization.ts`):** `DEFAULT_NAV_ITEMS` is the canonical 12-item nav list, with each item's default icon id. An `ICON_REGISTRY` of ~45 hand-picked lucide icons gives operators a curated palette to swap from. The `useMenuCustomization()` hook reads/writes localStorage key `wf-menu-overrides`. Layout reads from it on every render so a swap appears instantly in the sidebar. Settings shows a `MainMenuCustomizationCard` with a Popover picker per nav row plus per-item and global "Reset" actions. Order/destinations are intentionally fixed to preserve muscle memory.
 
 **Backend:**
 -   **API Framework:** Express 5

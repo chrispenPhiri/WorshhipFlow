@@ -9,14 +9,19 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Settings as SettingsIcon, Palette, Type, RotateCcw, Check } from "lucide-react";
+import { Settings as SettingsIcon, Palette, Type, RotateCcw, Check, LayoutGrid } from "lucide-react";
 import { BIBLE_TRANSLATIONS, FONTS } from "@/lib/constants";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { useControlAppearance } from "@/hooks/use-control-appearance";
 import {
   COLOR_PRESETS, APP_FONTS, DEFAULT_COLOR_ID, DEFAULT_FONT_ID,
 } from "@/lib/control-appearance";
+import {
+  DEFAULT_NAV_ITEMS, ICON_CHOICES, effectiveIconId,
+  getIconComponent, useMenuCustomization,
+} from "@/lib/menu-customization";
 import { InstallAppCard } from "@/components/install-app-card";
 
 export default function SettingsPage() {
@@ -137,7 +142,134 @@ export default function SettingsPage() {
       <InstallAppCard />
 
       <ControlAppearanceCard />
+
+      <MainMenuCustomizationCard />
     </div>
+  );
+}
+
+/**
+ * Lets the operator swap any sidebar item's icon for one of a curated set.
+ * Storage is local-only (per device) — same pattern as ControlAppearanceCard.
+ * Order/destinations of nav items are intentionally fixed to keep muscle
+ * memory; only the icon is configurable.
+ */
+function MainMenuCustomizationCard() {
+  const { overrides, setIcon, resetItem, resetAll } = useMenuCustomization();
+  const { toast } = useToast();
+
+  const hasAnyOverride = Object.keys(overrides).some(k => overrides[k]?.iconId);
+
+  const onReset = () => {
+    resetAll();
+    toast({ title: "Menu icons reset", description: "All sidebar icons returned to their defaults." });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <LayoutGrid className="w-5 h-5 text-primary" />
+              Main Menu Icons
+            </CardTitle>
+            <CardDescription className="mt-1">
+              Personalise the icons in your sidebar. Click any icon to pick a new one.
+              Saved on this device only.
+            </CardDescription>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onReset}
+            disabled={!hasAnyOverride}
+            className="text-muted-foreground hover:text-foreground"
+            data-testid="button-reset-menu-icons"
+          >
+            <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Reset all
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" data-testid="grid-menu-items">
+          {DEFAULT_NAV_ITEMS.map(item => {
+            const currentIconId = effectiveIconId(item, overrides);
+            const CurrentIcon = getIconComponent(currentIconId);
+            const isCustom = !!overrides[item.href]?.iconId;
+            return (
+              <div
+                key={item.href}
+                className="flex items-center gap-2 rounded-md border border-border bg-card/50 px-2 py-1.5"
+              >
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className={`shrink-0 h-9 w-9 rounded-md border flex items-center justify-center transition-colors ${
+                        isCustom
+                          ? "border-primary/60 bg-primary/10 text-primary"
+                          : "border-border bg-background text-foreground hover:bg-muted/60"
+                      }`}
+                      aria-label={`Change icon for ${item.label}`}
+                      title={`Change icon for ${item.label}`}
+                      data-testid={`button-pick-icon-${item.href === "/" ? "home" : item.href.slice(1)}`}
+                    >
+                      <CurrentIcon className="w-4 h-4" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-72 p-3">
+                    <div className="text-xs font-medium text-muted-foreground mb-2">
+                      Pick an icon for <span className="text-foreground font-semibold">{item.label}</span>
+                    </div>
+                    <div className="grid grid-cols-8 gap-1.5 max-h-64 overflow-y-auto pr-1">
+                      {ICON_CHOICES.map(iconId => {
+                        const Icon = getIconComponent(iconId);
+                        const active = iconId === currentIconId;
+                        return (
+                          <button
+                            key={iconId}
+                            type="button"
+                            onClick={() => setIcon(item.href, iconId)}
+                            className={`h-8 w-8 rounded-md border flex items-center justify-center transition-colors ${
+                              active
+                                ? "border-primary bg-primary/15 text-primary"
+                                : "border-border text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                            }`}
+                            aria-label={iconId}
+                            aria-pressed={active}
+                            title={iconId}
+                            data-testid={`icon-choice-${iconId}`}
+                          >
+                            <Icon className="w-4 h-4" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {isCustom && (
+                      <button
+                        type="button"
+                        onClick={() => resetItem(item.href)}
+                        className="mt-3 w-full text-xs text-muted-foreground hover:text-foreground py-1 transition-colors"
+                        data-testid={`button-reset-icon-${item.href === "/" ? "home" : item.href.slice(1)}`}
+                      >
+                        Reset to default
+                      </button>
+                    )}
+                  </PopoverContent>
+                </Popover>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium truncate">{item.label}</div>
+                  <div className="text-[11px] text-muted-foreground truncate">
+                    {isCustom ? `Custom · ${currentIconId}` : `Default · ${currentIconId}`}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
