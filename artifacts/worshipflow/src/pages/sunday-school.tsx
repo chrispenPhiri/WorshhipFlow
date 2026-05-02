@@ -122,8 +122,12 @@ export default function SundaySchoolPage() {
         <CardContent className="pt-5 space-y-4">
           <div className="flex items-center gap-2">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <label htmlFor="ss-search-input" className="sr-only">
+                Search Sunday School lessons
+              </label>
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
               <Input
+                id="ss-search-input"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search lessons by title, theme, or verse…"
@@ -132,11 +136,13 @@ export default function SundaySchoolPage() {
               />
               {search && (
                 <button
+                  type="button"
                   onClick={() => setSearch("")}
+                  aria-label="Clear search"
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   data-testid="button-clear-ss-search"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-4 h-4" aria-hidden="true" />
                 </button>
               )}
             </div>
@@ -171,26 +177,42 @@ export default function SundaySchoolPage() {
           </div>
 
           {/* Theme pills */}
-          <div className="flex flex-wrap gap-1.5">
+          <div
+            className="flex flex-wrap gap-1.5"
+            role="group"
+            aria-label="Filter lessons by theme"
+          >
             <span className="text-xs uppercase tracking-wider text-muted-foreground self-center mr-1">Theme:</span>
-            <Badge
-              variant={themeFilter === "All" ? "default" : "outline"}
-              className="cursor-pointer"
+            <button
+              type="button"
               onClick={() => setThemeFilter("All")}
+              aria-pressed={themeFilter === "All"}
               data-testid="badge-theme-all"
+              className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              All
-            </Badge>
-            {themes.map(t => (
               <Badge
-                key={t}
-                variant={themeFilter === t ? "default" : "outline"}
+                variant={themeFilter === "All" ? "default" : "outline"}
                 className="cursor-pointer"
-                onClick={() => setThemeFilter(t)}
-                data-testid={`badge-theme-${t.toLowerCase().replace(/\s+/g, "-")}`}
               >
-                {t}
+                All
               </Badge>
+            </button>
+            {themes.map(t => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setThemeFilter(t)}
+                aria-pressed={themeFilter === t}
+                data-testid={`badge-theme-${t.toLowerCase().replace(/\s+/g, "-")}`}
+                className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <Badge
+                  variant={themeFilter === t ? "default" : "outline"}
+                  className="cursor-pointer"
+                >
+                  {t}
+                </Badge>
+              </button>
             ))}
           </div>
         </CardContent>
@@ -370,6 +392,7 @@ export default function SundaySchoolPage() {
                     <Button
                       size="sm"
                       variant="ghost"
+                      aria-label={`Send discussion question ${i + 1} to screen`}
                       onClick={() =>
                         presentLesson(`Discussion ${i + 1}`, q, {
                           lessonId: selected.id,
@@ -379,7 +402,7 @@ export default function SundaySchoolPage() {
                       }
                       data-testid={`button-present-question-${i}`}
                     >
-                      <Send className="w-3.5 h-3.5" />
+                      <Send className="w-3.5 h-3.5" aria-hidden="true" />
                     </Button>
                   </div>
                 ))}

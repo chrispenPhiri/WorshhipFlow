@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   HelpCircle, Search, Rocket, Book, Music, Type, Palette, Video, Calendar,
-  BookOpen, Sparkles, Settings, Monitor, Keyboard, Lightbulb, ChevronRight,
+  BookOpen, Sparkles, Settings, Monitor, Keyboard, Lightbulb, ChevronRight, GraduationCap,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -254,6 +254,40 @@ const SECTIONS: Section[] = [
     ],
     tips: [
       <>All content works <strong>offline</strong> — no internet needed during a service.</>,
+    ],
+  },
+  {
+    id: "sunday-school",
+    icon: GraduationCap,
+    title: "Sunday School Teachings",
+    to: "/sunday-school",
+    summary: "Ready-to-use lessons for Children, Youth, and Adult classes.",
+    steps: [
+      {
+        heading: "Pick an age group",
+        body: <p>Filter by <strong>Children</strong>, <strong>Youth</strong>, or <strong>Adult</strong> at the top. Each group has 8 carefully written lessons that match their stage.</p>,
+      },
+      {
+        heading: "Filter by theme",
+        body: <p>Browse by topic — Faith, Prayer, Identity, Family, Mission, and more. Combine with the search box to find exactly what you need.</p>,
+      },
+      {
+        heading: "Use a lesson live",
+        body: (
+          <>
+            <p>Open a lesson from the list on the left. The full lesson appears on the right with a Key Verse, numbered Teaching Points, Discussion Questions, an Activity, and a Closing Prayer.</p>
+            <p className="mt-1">Each section has its own <strong>Send to screen</strong> button so you can project content step-by-step as you teach.</p>
+          </>
+        ),
+      },
+      {
+        heading: "Send all questions at once",
+        body: <p>The Discussion Questions card has a <strong>Send All Questions to Screen</strong> button — perfect for small-group breakout time.</p>,
+      },
+    ],
+    tips: [
+      <>Lessons load instantly and work <strong>offline</strong> — no setup needed before class.</>,
+      <>Use the <strong>Black Screen</strong> button between sections so the class can focus on you, not the projector.</>,
     ],
   },
   {
