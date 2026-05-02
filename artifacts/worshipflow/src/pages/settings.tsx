@@ -17,6 +17,7 @@ import { useControlAppearance } from "@/hooks/use-control-appearance";
 import {
   COLOR_PRESETS, APP_FONTS, DEFAULT_COLOR_ID, DEFAULT_FONT_ID,
 } from "@/lib/control-appearance";
+import { InstallAppCard } from "@/components/install-app-card";
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
@@ -132,6 +133,8 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <InstallAppCard />
 
       <ControlAppearanceCard />
     </div>

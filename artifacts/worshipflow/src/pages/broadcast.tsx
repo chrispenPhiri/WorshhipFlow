@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useGetScreenState, getGetScreenStateQueryKey, useUpdateScreenState } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { LiveWallpaperLayer } from "@/components/live-wallpaper";
+import { subscribeScreenChanges } from "@/lib/local-api";
 
 const CHANNEL_NAME = "wf-broadcast-cmd";
 
@@ -607,6 +608,15 @@ export default function BroadcastPage() {
       onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetScreenStateQueryKey() }),
     },
   });
+
+  // Cross-tab sync: when the operator window writes screen state through the
+  // local API, it posts on a BroadcastChannel.  We invalidate immediately so
+  // the projection updates without waiting for the 500 ms poll.
+  useEffect(() => {
+    return subscribeScreenChanges(() => {
+      queryClient.invalidateQueries({ queryKey: getGetScreenStateQueryKey() });
+    });
+  }, [queryClient]);
 
   // --- Auto-hide overlays (B2.3) ---------------------------------------------
   // Scheduled timeouts so dismissal fires on a real wall-clock timer rather than

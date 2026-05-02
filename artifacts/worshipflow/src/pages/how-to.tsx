@@ -8,7 +8,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import {
   HelpCircle, Search, Rocket, Book, Music, Type, Palette, Video, Calendar,
   BookOpen, Sparkles, Settings, Monitor, Keyboard, Lightbulb, ChevronRight, GraduationCap,
-  Gamepad2, Plus,
+  Gamepad2, Plus, Download,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -413,6 +413,39 @@ const SECTIONS: Section[] = [
         heading: "Recently Presented",
         body: <p>The list of the last 12 things you sent (verses, songs, notes, inspiration). Click any item to re-send it. Remove or clear them with the X buttons.</p>,
       },
+    ],
+  },
+  {
+    id: "install-offline",
+    icon: Download,
+    title: "Install & Offline Use",
+    to: "/settings",
+    summary: "Install the app on your computer and run it without internet.",
+    steps: [
+      {
+        heading: "Install as a desktop app",
+        body: <p>Open <strong>Settings → Install &amp; Offline</strong> and click <strong>Install App</strong>. On Chrome and Edge you can also click the install icon in the address bar. The app then opens in its own window with a desktop icon — no browser tabs.</p>,
+      },
+      {
+        heading: "On Mac / iPad / iPhone",
+        body: <p>Safari doesn't show an install button — instead use <strong>Share → Add to Home Screen</strong> (or <strong>Add to Dock</strong> on macOS Sonoma+).</p>,
+      },
+      {
+        heading: "Your data lives on this device",
+        body: <p>Songs, sermon notes, schedule, custom teachings, themes, screen settings, and recently presented items are saved in your browser's local storage. They survive closing the app, restarting your computer, and going offline. Clearing browser data or using a different device will start you fresh.</p>,
+      },
+      {
+        heading: "What works without internet",
+        body: <p>Songs, notes, schedule, custom teachings, Bible Games, Daily Inspiration, all themes, screen control, and the broadcast window. The first time you open the app online, it caches itself for offline use automatically.</p>,
+      },
+      {
+        heading: "What still needs internet",
+        body: <p>Looking up <em>new</em> Bible verses (uses bible-api.com — verses you've already seen are cached), and the AI <strong>Generate</strong> button on the Add Teaching dialog. Everything else is fully offline.</p>,
+      },
+    ],
+    tips: [
+      <>The operator window and broadcast window stay in sync even offline — they communicate directly through the browser.</>,
+      <>To back up your data, use the browser's export feature or take note of important content elsewhere — local storage is per-device.</>,
     ],
   },
   {

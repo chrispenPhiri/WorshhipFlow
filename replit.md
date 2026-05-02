@@ -2,132 +2,81 @@
 
 ## Overview
 
-Full-stack church worship presentation software (branded "Phiri WorshipFlow"). pnpm workspace monorepo using TypeScript.
+Phiri WorshipFlow is a full-stack church worship presentation software. This pnpm workspace monorepo project, built with TypeScript, aims to provide comprehensive tools for managing and displaying worship content, including Bible passages, songs, custom text, and multimedia. The project focuses on a seamless operator experience and a clear, engaging display for the audience, with features like live previews, multi-display broadcasting, and rich content management.
 
-## Stack
+## User Preferences
 
-- **Monorepo tool**: pnpm workspaces
-- **Node.js version**: 24
-- **Package manager**: pnpm
-- **TypeScript version**: 5.9
-- **Frontend**: React + Vite, Tailwind v4, shadcn/ui, wouter, TanStack Query
-- **API framework**: Express 5
-- **Database**: PostgreSQL + Drizzle ORM
-- **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec)
-- **Build**: esbuild (CJS bundle)
+I want iterative development. I prefer detailed explanations for complex features. I want to be asked before making major architectural changes or introducing new external dependencies.
 
-## Key Commands
+## System Architecture
 
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `pnpm --filter @workspace/api-server run dev` — run API server locally
+The application is built as a pnpm monorepo using Node.js 24 and TypeScript 5.9.
 
-See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+**Frontend:**
+-   **Framework:** React with Vite
+-   **Styling:** Tailwind v4, shadcn/ui
+-   **Routing:** Wouter
+-   **Data Fetching:** TanStack Query
+-   **UI/UX:** Features a live preview sidebar (16:9 aspect ratio, updates every 2s) with stage controls (zoom, text width, vertical/horizontal position, padding). Operator-facing control appearance (theme color, app font) is customizable and stored in `localStorage`, with an inline script preventing FOUC.
 
-## Features
+**Backend:**
+-   **API Framework:** Express 5
+-   **Database:** PostgreSQL with Drizzle ORM
+-   **Validation:** Zod (`zod/v4`), `drizzle-zod`
+-   **API Codegen:** Orval (from OpenAPI spec)
+-   **Build:** esbuild (CJS bundle)
+-   **Note:** In production the React app intercepts every `/api/*` request in the browser (see Offline Local API below) and writes to IndexedDB instead of hitting Express. The server still runs to host `POST /api/teachings/generate` (the AI proxy passthrough); other routes are effectively unused.
 
-### Pages
+**Offline / PWA Layer (`src/lib/local-api/`, `public/sw.js`):**
+-   **Local API interceptor (`src/lib/local-api/index.ts`):** `installLocalApi()` is called in `main.tsx` *before* React mounts. It monkey-patches `window.fetch` so any same-origin `/api/*` request is dispatched to a local handler instead of the network. All Orval-generated React Query hooks (`useGetSongs`, `useUpdateScreenState`, …) keep working unchanged.
+-   **IndexedDB store (`src/lib/local-api/db.ts`):** One database `wf-local-api`, four object stores — `songs`, `notes`, `schedules`, and a `singletons` store that holds the screen-state and settings rows plus auto-increment counters (`_seq:<store>`).
+-   **Handlers (`src/lib/local-api/handlers.ts`):** One async function per OpenAPI operation. Mirrors the Express defaults for `screen_state` and `settings` so existing pages get the same shape they always did. Defaults are kept in sync with `lib/db/src/schema/screen.ts` by hand.
+-   **Pass-through:** `POST /api/teachings/generate` and any non-`/api/*` URL still hit the real network. AI generation needs internet; everything else is fully offline.
+-   **Cross-tab sync:** `updateScreenState` posts on a `BroadcastChannel("wf-screen-state")`. Both `pages/broadcast.tsx` and `components/live-preview.tsx` subscribe via `subscribeScreenChanges()` and call `queryClient.invalidateQueries(getGetScreenStateQueryKey())`, so the projection refreshes the moment the operator clicks send. The 500 ms `refetchInterval` poll is kept as a fallback for browsers without `BroadcastChannel`.
+-   **Service worker (`public/sw.js`, registered only in `import.meta.env.PROD`):** Cache-first for app shell assets (JS/CSS/HTML/icons/fonts), stale-while-revalidate for `bible-api.com` and Google Fonts, network passthrough for `/api/*` (the JS-side interceptor handles those). Skipped on `/broadcast` and in dev (Vite HMR conflict).
+-   **Install UX:** `src/lib/install-prompt.ts` captures `beforeinstallprompt`. `src/components/install-app-card.tsx` (rendered inside Settings) shows install status, online/offline indicator, IndexedDB usage from `navigator.storage.estimate()`, and an Install button. The `manifest.json` (already in `public/`) provides the standalone display, theme color, icons, and shortcuts.
 
-- **Bible** — Look up passages from bible-api.com with translation selector (17 translations, all public-domain; NKJV intentionally not included as it requires a paid copyright license), all 66 books. Verse-by-verse navigation with numbered cards. Toggle verse numbers on/off. Send mode: "One at a time" (navigate per verse) or "All together". Send individual verse or all to screen with reference label. **Word highlighting** (B3.3): comma-separated terms get amber-glow wrapped on broadcast. **Phrase search** (B3.4): filter/dim verses within fetched passage with live match counter. **Side-by-side comparison** (B3.5): toggle a secondary translation; broadcast renders 2-column layout with translation labels. **Recently presented** widget (B3.6): top-of-page card listing last 12 sent items (verses/songs/notes) with restore/remove/clear; backed by localStorage `wf-recent-items` via the `useRecentlyPresented` hook.
-- **Songs** — Library with search + 9 category tabs (shows counts). Full Add Song dialog (title, author, category, key, tempo, lyrics). Lyrics split by blank lines into slides. Slide-by-slide navigation panel. **Color-coded section chips** (B3.2): verse=blue, chorus=amber, bridge=purple, pre-chorus=cyan; active section type shown as a colored badge. Send individual slide or all lyrics to screen. Delete songs. Key/tempo badges. Always sends `comparisonMode:false` to clear any stale bible side-by-side layout.
-- **Custom Text** — Free-form text with font/size/alignment controls.
-- **Themes** — 12 presets + 8 live animated wallpapers (particle, aurora, matrix, starfield, flame, ocean, geometric, neon). Apply with toast feedback.
-- **Media & Broadcast** — Upload tab (drag-drop or file browser for images/videos from local PC, blob URLs, session-scoped), Camera tab (webcam live feed), URL tab (image/video by URL), Broadcast tab (screen detection, auto-fullscreen, cursor hide, video loop toggles).
-- **Schedule** — Drag-and-drop service order builder.
-- **Sermon Notes** — Rich CRUD notes editor with search and present-to-screen.
-- **Daily Inspiration** (`/inspiration`) — Standalone main-menu page. Verse of the Day (60 KJV verses), "Did you know?" Bible/Jesus/God facts (36 items), Christian liturgical calendar with computed Easter (Meeus algorithm) and derived movable feasts (Ash Wed, Palm Sun, Maundy Thu, Good Fri, Easter, Ascension, Pentecost, Trinity Sun, Advent), plus fixed feasts (New Year, Epiphany, Reformation, All Saints, Christmas Eve/Day, Watch Night). Each item has Send-to-screen + Next rotation. **Screen labelling**: when a verse / fact / event is sent to the projection, the category label ("Verse of the Day", "Did You Know?", "Christian Calendar") is prepended to the screen content so the audience sees the context, not just the body text. Content lives in `lib/inspiration.ts` (pure local, offline-friendly).
-- **Teachings** (`/teachings`, also accepts legacy `/sunday-school`) — Main-menu page with 42 ready-to-use lessons grouped into 11 categories: audience-based (**Sunday School** 8, **Youth** 8, **Mothers** 4, **Fathers** 4, **Adults** 5) and topic / occasion-based (**Happiness** 3, **Funeral** 3, **Baptism** 2, **Holy Communion** 2, **Marriage** 1, **Healing** 2). Each lesson has a Key Verse, 3 numbered Teaching Points, Discussion Questions, an Activity, and a Closing Prayer — every section has its own Send-to-screen button. Each Send action prefixes the screen content with `Category · Lesson Title — Section`, so the audience always sees what's being taught. Master/detail layout with category filter, theme pills, and search. Data lives in `lib/teachings.ts` (pure local, offline-friendly).
-  - **Add Your Own** (Add Teaching button, header): users can write a teaching by hand or have AI draft one. Custom lessons are merged with the built-in list (sorted on top), get a yellow `Custom` badge + star icon, and have inline Edit / Delete buttons (built-in lessons stay read-only). Storage: `localStorage["wf-custom-teachings"]` via `lib/custom-teachings.ts` — saves dispatch a `wf-custom-teachings-changed` window event so the page rehydrates without polling. `loadCustomTeachings` runs every entry through a strict guard (`isValidCustomTeaching`) that checks the category against the `TEACHING_CATEGORIES` enum and verifies deep field shapes (keyVerse.reference/text strings, points[] non-empty with heading+body, etc.) — invalid rows are silently dropped instead of crashing the page.
-  - **AI generation**: Generate-with-AI block lives inside the same form dialog (`components/teaching-form-dialog.tsx`). Frontend `POST /api/teachings/generate { topic, category }` → server route `artifacts/api-server/src/routes/teachings.ts` calls the Replit AI Integrations OpenAI proxy (`AI_INTEGRATIONS_OPENAI_BASE_URL` / `_API_KEY`) using `gpt-5.4`, `max_completion_tokens: 8192`, `response_format: { type: "json_schema", strict: true }` — schema enforces a complete Teaching object (title, category, theme, KJV keyVerse, summary, 3-5 points, 2-5 questions, activity, prayer, optional memoryVerse). Returns the draft to the form for the user to edit, then save. No DB persistence — generated drafts live in localStorage like any custom teaching. Generation needs internet; reading & presenting saved teachings stays offline.
-- **Bible Games** (`/games`) — Main-menu page (icon: `Gamepad2`) with four offline games. Hub uses `useLocalStorage("wf-active-game")` so the last opened game restores on revisit. Game data lives in `lib/games.ts` (pure local).
-  - **Bible Trivia** (`components/games/trivia.tsx`) — 40 KJV-referenced multi-choice questions across Easy/Medium/Hard. 10 per round; difficulty filter (Easy/Medium/Hard/Mixed); reveal-correct + reference + explanation after each pick; per-round score + per-question review screen.
-  - **Books of the Bible** (`components/games/books-of-bible.tsx`) — Place all 39 OT or 27 NT books in canonical order. Click pool ↔ ordered list. Green/red feedback per slot (with the correct book shown when wrong), Undo, Reset, final accuracy score.
-  - **Who Said It?** (`components/games/who-said-it.tsx`) — 20 famous KJV quotes; pick the speaker from 4 options. 8 rounds per game; reveal + reference; final review.
-  - **Bible Charades** (`components/games/charades.tsx`) — 30-card deck (people, events, parables, miracles, objects). Tap-to-reveal card so only the actor sees, hint is gated by the Show/Hide hint toggle (not displayed automatically), Next reshuffles when deck exhausted.
-- **How To** (`/how-to`) — In-app user guide. Searchable accordion covering every feature (Bible, Songs, Custom Text, Themes, Media & Broadcast, Schedule, Sermon Notes, Daily Inspiration, Teachings, Add Your Own Teachings, Bible Games, Settings, Live Preview Sidebar) with quick-jump tiles at the top, numbered steps, pro tips, and an "Open page" link per section. Open-state persists via `wf-howto-open`.
-- **Settings** — App settings (church name, default font, etc.).
+**Core Features:**
 
-### Live Preview Sidebar (always visible)
+*   **Pages:**
+    *   **Bible:** Integrates with `bible-api.com` for passages, supports multiple public-domain translations, verse-by-verse navigation, word highlighting, phrase search, and side-by-side translation comparison. Includes a "Recently Presented" widget.
+    *   **Songs:** Library management with search, categories, and full CRUD for songs. Lyrics are split into slides, with color-coded section chips (verse, chorus, bridge, pre-chorus).
+    *   **Custom Text:** Free-form text editor with extensive font, size, and alignment controls.
+    *   **Themes:** 12 presets and 8 live animated wallpapers (particle, aurora, matrix, starfield, flame, ocean, geometric, neon).
+    *   **Media & Broadcast:** Supports uploading images/videos (drag-drop, file browser, blob URLs), webcam feed, and URL-based media. Broadcast module includes screen detection, auto-fullscreen, cursor hiding, and video looping.
+    *   **Schedule:** Drag-and-drop service order builder.
+    *   **Sermon Notes:** Rich CRUD editor with search and presentation capabilities.
+    *   **Daily Inspiration:** Displays Verse of the Day, Bible facts, and a Christian liturgical calendar. Content includes screen labelling for context.
+    *   **Teachings:** Offers 42 ready-to-use lessons categorized by audience and topic, with sections like Key Verse, Teaching Points, Discussion Questions, Activity, and Closing Prayer. Supports user-added custom teachings and AI-generated drafts (using Replit AI Integrations OpenAI proxy).
+    *   **Bible Games:** Four offline games: Bible Trivia, Books of the Bible (ordering), Who Said It?, and Bible Charades.
+    *   **How To:** In-app, searchable user guide with quick-jump tiles.
+    *   **Settings:** Application-wide settings for church name, default font, etc.
 
-- 16:9 mini-preview of the current screen state, updates every 2s
-- Black Screen / Clear buttons
-- Broadcast button with multi-display picker (Window Management API)
-- **Stage Controls** (collapsible panel):
-  - **Zoom** slider (40–200%)
-  - **Text Width** slider (30–100%)
-  - **Vertical Position**: top / center / bottom buttons
-  - **Horizontal Position**: left / center / right buttons
-  - **H/V Padding** sliders (0–30%)
-  - Reset to defaults
+*   **Broadcast Window (`/broadcast`):** A dedicated full-screen output window. Reads screen state via `useGetScreenState` with a 500 ms `refetchInterval` AND subscribes to `BroadcastChannel("wf-screen-state")` for instant cross-tab updates from the operator. Both reads now resolve through the IndexedDB local API rather than Express. Renders backgrounds (color, gradient, image, video, camera, live wallpaper) and applies layout settings (textScale, alignment, padding). Includes a hover-reveal control bar (hide cursor, PiP, settings info, fullscreen toggle) and supports ticker bars and animations (fade_in, glow, float). Designed for performance, avoiding heavy DOM updates.
 
-### Broadcast Window (`/broadcast`)
+**Data Flow (offline-first):**
+1.  Operator updates content on any page.
+2.  The page calls `PUT /api/screen` — intercepted by `src/lib/local-api`, written to IndexedDB, and a `BroadcastChannel("wf-screen-state")` message is posted.
+3.  The broadcast window receives the channel message and re-fetches `GET /api/screen` (also IndexedDB-backed) immediately. Its 500 ms poll is the safety net for browsers without `BroadcastChannel`.
+4.  No server round-trip; the operator and broadcast tabs stay in sync entirely inside the browser.
 
-- Full-screen output window polled every 500ms
-- Renders background (color, gradient, image, video, camera, live wallpaper)
-- Applies `layout` from screen state: textScale, verticalAlign, horizontalAlign, paddingX/Y, textWidthPct
-- Hover-reveal control bar: hide cursor, PiP (Document PiP + video fallback), settings info overlay, fullscreen toggle
-- Ticker bar support
-- Animation support: fade_in, glow, float
-- PWA manifest for desktop install
+**Key Architectural Patterns:**
 
-## Architecture
+*   **`safeBase` / `safeFullState`:** Explicit objects with sensible defaults are used before calling `updateScreen` to prevent issues with null or missing fields during Zod validation.
+*   **Partial Updates:** For patching, `{ ...safeFullState(), ...patch }` is used. Explicit empty strings are required to clear text fields.
+*   **Persistent UI State:** Long-lived UI state (e.g., recording, active media tab) is managed using module-level stores (`src/lib/recording.ts`) or `sessionStorage` to survive route changes.
+*   **Broadcast Performance:** The broadcast window is kept lean for performance, running outside the main application layout and avoiding heavy DOM updates.
+*   **Alpha Composition:** Alpha is applied to background colors via `applyAlpha` helper to avoid fading foreground text.
 
-### Data Flow
+## External Dependencies
 
-1. Operator sets content in any page (Bible/Songs/Custom/etc.)
-2. Page calls `PUT /api/screen` with full `ScreenState`
-3. Broadcast window polls `GET /api/screen` every 500ms and re-renders
-
-### ScreenState Schema
-
-```
-{
-  isBlack, isClear, contentType, title, content,
-  textStyle: { fontFamily, fontSize, textColor, accentColor, bold, italic, alignment, animation },
-  background: { type (color|gradient|image|video|camera|live_wallpaper), value, overlay, fit, loop, cameraLayout, cameraShape, cameraPipSize },
-  layout: { textScale, verticalAlign, horizontalAlign, paddingX, paddingY, textWidthPct },
-  tickerEnabled, tickerText, tickerSpeed, tickerDivider, tickerColor, tickerBgColor, tickerFontSize,
-  lowerThird*: enabled, name, title, position, style, nameColor, titleColor, bgColor, accentColor, nameSize, titleSize, autoDismissSec (0=manual; B2.3),
-  clock*: overlayEnabled, position, style, showDate, showSeconds, dateFormat, fontSize, color, bgColor, bgOpacity, bgRadius, bgPadding,
-  logo*: overlayEnabled, url, position, size, opacity, shape (rect|circle|rounded|hex|shield), text, textColor, textSize, textPosition, textWeight,
-  textOverlay*: enabled, content, position, fontSize, color, bg, bold, italic, align, fontFamily, shadow, opacity, padding, radius, letterSpacing, animation (none|fade_in|slide_up|glow|pulse), maxWidth, borderColor, borderWidth, autoDismissSec (0=manual; B2.3 — broadcast schedules setTimeout keyed by enabled+dismissSec to fire on wall-clock time),
-  comparisonMode (B3.5; bool; when true broadcast renders content + secondaryContent side-by-side),
-  secondaryTitle, secondaryContent (B3.5; secondary translation for side-by-side bible compare),
-  timer*: enabled, mode (stopwatch|countdown), startedAt (ISO; "" = paused/cleared), accumulatedMs, durationSec, position, fontSize, color, bgColor, label, warningSec, warningColor, criticalColor,
-  idleWatermark
-}
-```
-
-### Timer convention
-
-- `timerStartedAt = ""` → paused or never started. Detected via `isNaN(Date.parse(s))`.
-- `timerStartedAt = ISO string` → currently running; elapsed = accumulated + (now - parse(startedAt)).
-- Toggling the enable Switch ALWAYS clears `timerStartedAt` and `timerAccumulatedMs` so the badges (RUNNING / PAUSED) stay coherent.
-- Start handler resets `timerAccumulatedMs` to 0 when mode mismatches the draft or when timer was previously disabled (`isFreshStart`); otherwise keeps accumulated for Resume.
-- Live preview readout in `media.tsx` uses `showLive = serverEnabled && serverMode === timerModeDraft`. When false, the readout shows the clean draft duration (so switching modes resets the visible value).
-
-### Key Files
-
-- `lib/api-spec/openapi.yaml` — OpenAPI spec (source of truth for all types)
-- `lib/db/src/schema/screen.ts` — DB schema including Layout interface
-- `artifacts/worshipflow/src/hooks/use-broadcast.ts` — Window Management API hook
-- `artifacts/worshipflow/src/components/live-preview.tsx` — Sidebar with Stage Controls
-- `artifacts/worshipflow/src/pages/broadcast.tsx` — Broadcast output window (no overlays / REC indicator: kept lean for perf)
-- `artifacts/worshipflow/src/lib/recording.ts` — module-level recording manager with `useSyncExternalStore`. State (recording, duration, downloadUrl, includeMic) survives navigation. Mixes display audio + microphone via AudioContext.
-- `artifacts/worshipflow/src/lib/control-appearance.ts` + `src/hooks/use-control-appearance.ts` — operator-facing customization (theme color + app font) for the CONTROL screen only. Stored in localStorage (key `wf-control-appearance`) with resolved CSS values (primaryHsl, fontStack) alongside IDs. Inline FOUC-prevention script in `index.html` reads localStorage and applies CSS vars before React mounts. Both runtime hooks use `useLayoutEffect` + wouter `useLocation()` to clear overrides on `/broadcast` before paint, so the projection screen never inherits the operator's font/accent. UI lives in `pages/settings.tsx` as `ControlAppearanceCard` (10 color swatches, 9-font Select, live preview, Reset button).
-
-### Important Patterns
-
-- `safeBase` / `safeFullState` pattern: always build explicit objects with sensible defaults before calling `updateScreen` — never spread raw DB rows (null fields fail Zod boolean validation, missing fields silently revert on PUT)
-- When PATCHing partial fields, send `{ ...safeFullState(), ...patch }`; an explicit empty string is required to clear text fields (sending `undefined` is dropped by JSON.stringify and the server keeps the prior value)
-- Codegen must be rerun after any OpenAPI spec change: `pnpm --filter @workspace/api-spec run codegen`
-- DB schema changes need: `pnpm --filter @workspace/db run push`
-- Broadcast window is rendered OUTSIDE the Layout in App.tsx (no sidebar/nav)
-- Local media files use `URL.createObjectURL()` — blob URLs are session-scoped (valid within same browser session, accessible from broadcast window since same origin)
-- Long-lived UI state that must survive route changes (e.g. recording, active media tab) lives in module-level stores (`src/lib/recording.ts`) or `sessionStorage`, not React component state
-- Broadcast window must stay free of heavy DOM updates (no animated REC indicator, no recording HUD) — it often runs on a secondary monitor where any extra repaint causes input lag in the operator window
-- Compose alpha into background colors via the `applyAlpha(color, percent)` helper in `broadcast.tsx` rather than wrapping foreground+background in a single `opacity:` style — opacity-on-container fades the foreground text too
-- Always reset the api-server-tracked timer state via the enable Switch (which clears startedAt + accumulated) rather than relying on the user to also click Reset; this prevents stale `timerStartedAt` from a previous session being treated as "running" on the next page load
+*   `bible-api.com`: For fetching Bible passages and translations.
+*   Replit AI Integrations OpenAI proxy (`gpt-5.4`): Used for AI-generated teaching drafts.
+*   PostgreSQL: Primary database for application data.
+*   OpenAPI Specification: Defines the API contract, used by Orval for client-side code generation.
+*   Window Management API: Utilized for multi-display picking in the broadcast feature.
+*   `localStorage`: For storing user preferences, custom teachings, recently presented items, and control appearance.
+*   `IndexedDB` (database `wf-local-api`): Stores all songs, sermon notes, schedules, app settings, and the live screen state. Replaces the PostgreSQL backend for end-user reads/writes — the server is only used as an AI proxy. Persists across browser restarts and works fully offline.
+*   `BroadcastChannel("wf-screen-state")`: Operator → broadcast window cross-tab sync.
+*   Service Worker (`/sw.js`, production-only): Caches the app shell so the site is installable as a PWA and loads with no network connection.
+*   `sessionStorage`: For session-scoped UI state.

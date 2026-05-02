@@ -15,6 +15,7 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { subscribeScreenChanges } from "@/lib/local-api";
 
 export function LivePreview() {
   const queryClient = useQueryClient();
@@ -33,6 +34,11 @@ export function LivePreview() {
   const { mutate: updateScreen } = useUpdateScreenState({
     mutation: { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetScreenStateQueryKey() }) }
   });
+
+  // Cross-tab sync — see broadcast.tsx for rationale.
+  useEffect(() => subscribeScreenChanges(() => {
+    queryClient.invalidateQueries({ queryKey: getGetScreenStateQueryKey() });
+  }), [queryClient]);
 
   const {
     screens, secondaryScreen, permissionState,
