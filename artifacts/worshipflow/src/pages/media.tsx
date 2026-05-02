@@ -561,10 +561,10 @@ export default function MediaPage() {
         contentType: "custom_text" as const,
         background: {
           type: "camera",
-          // For side-by-side, value is the CSS background of the non-camera half so it
-          // matches the theme instead of going pure black. For other layouts it's a
-          // sentinel ("camera") that BackgroundLayer ignores.
-          value: camLayout.startsWith("side-") ? camSideBg : "camera",
+          // For any non-fullscreen layout (PiP or side-by-side), value is the CSS
+          // background that fills the area not covered by the camera. Fullscreen
+          // ignores value (sentinel "camera").
+          value: camLayout !== "fullscreen" ? camSideBg : "camera",
           overlay: overlay[0],
           cameraLayout: camLayout,
           cameraShape: camShape,
@@ -833,22 +833,31 @@ export default function MediaPage() {
                   </div>
                 )}
 
-                {/* Side-by-side: pick the bg for the text-side panel so it matches the theme */}
-                {isSide && (() => {
+                {/* PiP & Side-by-side: pick the backdrop colour/gradient so the
+                    non-camera area uses the theme instead of pure black. */}
+                {(isSide || isPip) && (() => {
                   const presets: { label: string; value: string }[] = [
                     { label: "Indigo",  value: "linear-gradient(135deg,#1e1b4b 0%,#0f0a2e 100%)" },
                     { label: "Slate",   value: "linear-gradient(135deg,#1e293b 0%,#0f172a 100%)" },
                     { label: "Plum",    value: "linear-gradient(135deg,#3b0764 0%,#1e0533 100%)" },
                     { label: "Forest",  value: "linear-gradient(135deg,#064e3b 0%,#022c22 100%)" },
                     { label: "Crimson", value: "linear-gradient(135deg,#7f1d1d 0%,#3b0a0a 100%)" },
+                    { label: "Royal",   value: "linear-gradient(135deg,#1e3a8a 0%,#0c1f57 100%)" },
+                    { label: "Sunset",  value: "linear-gradient(135deg,#c2410c 0%,#7c2d12 100%)" },
+                    { label: "Teal",    value: "linear-gradient(135deg,#115e59 0%,#042f2e 100%)" },
                     { label: "Black",   value: "#000000" },
                     { label: "Charcoal",value: "#0a0a0a" },
+                    { label: "Stone",   value: "#1c1917" },
                     { label: "White",   value: "#ffffff" },
                   ];
                   return (
                     <div className="space-y-2 pt-2 border-t border-border/50">
-                      <label className="text-sm font-medium">Text-Side Background</label>
-                      <p className="text-[11px] text-muted-foreground">Color or gradient shown behind the text panel (the half without the camera).</p>
+                      <label className="text-sm font-medium">Camera Backdrop</label>
+                      <p className="text-[11px] text-muted-foreground">
+                        {isSide
+                          ? "Colour or gradient shown behind the text panel (the half without the camera)."
+                          : "Colour or gradient shown behind your content while the camera floats in a corner."}
+                      </p>
                       <div className="grid grid-cols-4 gap-1.5">
                         {presets.map(p => (
                           <button
@@ -885,8 +894,8 @@ export default function MediaPage() {
                 {(isPip || isSide) && (
                   <p className="text-xs text-muted-foreground bg-muted/30 rounded px-3 py-2">
                     {isSide
-                      ? "Camera occupies half the screen. The other half uses your chosen background and shows content/overlays normally."
-                      : "Camera appears as an overlay in the chosen corner. Content and other overlays show normally beneath it."
+                      ? "Camera occupies half the screen. The other half uses your chosen backdrop and shows content/overlays normally."
+                      : "Camera floats in the chosen corner. The rest of the screen uses your chosen backdrop and shows content/overlays normally."
                     }
                   </p>
                 )}
@@ -1462,6 +1471,91 @@ export default function MediaPage() {
                   </div>
                 </div>
               </div>
+
+              {/* ── Quick Presets: church icons + country flags ── */}
+              {(() => {
+                const ICON_PRESETS: { label: string; url: string }[] = [
+                  { label: "Cross",       url: "https://api.iconify.design/mdi/cross.svg?color=%23ffffff" },
+                  { label: "Church",      url: "https://api.iconify.design/mdi/church.svg?color=%23ffffff" },
+                  { label: "Bible",       url: "https://api.iconify.design/mdi/bible.svg?color=%23ffffff" },
+                  { label: "Praying",     url: "https://api.iconify.design/mdi/hands-pray.svg?color=%23ffffff" },
+                  { label: "Dove",        url: "https://api.iconify.design/game-icons/dove.svg?color=%23ffffff" },
+                  { label: "Crown",       url: "https://api.iconify.design/mdi/crown.svg?color=%23ffd700" },
+                  { label: "Heart",       url: "https://api.iconify.design/mdi/heart.svg?color=%23ef4444" },
+                  { label: "Star",        url: "https://api.iconify.design/mdi/star.svg?color=%23facc15" },
+                  { label: "Flame",       url: "https://api.iconify.design/mdi/fire.svg?color=%23f97316" },
+                  { label: "Cross-Celtic",url: "https://api.iconify.design/game-icons/celtic-cross.svg?color=%23ffffff" },
+                  { label: "Music",       url: "https://api.iconify.design/mdi/music-note.svg?color=%23ffffff" },
+                  { label: "Sun",         url: "https://api.iconify.design/mdi/white-balance-sunny.svg?color=%23facc15" },
+                ];
+                const FLAG_PRESETS: { label: string; code: string }[] = [
+                  { label: "Australia",     code: "au" },
+                  { label: "Zimbabwe",      code: "zw" },
+                  { label: "USA",           code: "us" },
+                  { label: "UK",            code: "gb" },
+                  { label: "Canada",        code: "ca" },
+                  { label: "New Zealand",   code: "nz" },
+                  { label: "South Africa",  code: "za" },
+                  { label: "Kenya",         code: "ke" },
+                  { label: "Nigeria",       code: "ng" },
+                  { label: "Ghana",         code: "gh" },
+                  { label: "Brazil",        code: "br" },
+                  { label: "Mexico",        code: "mx" },
+                  { label: "Germany",       code: "de" },
+                  { label: "France",        code: "fr" },
+                  { label: "India",         code: "in" },
+                  { label: "Philippines",   code: "ph" },
+                ];
+                const flagUrl = (code: string) => `https://flagcdn.com/w160/${code}.png`;
+                return (
+                  <div className="space-y-3 pt-2 border-t border-border/50">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium">Quick Icons</label>
+                        <span className="text-[10px] text-muted-foreground">Click to set as logo</span>
+                      </div>
+                      <div className="grid grid-cols-6 gap-1.5">
+                        {ICON_PRESETS.map(p => (
+                          <button
+                            key={p.label}
+                            type="button"
+                            data-testid={`button-logo-icon-${p.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                            title={p.label}
+                            onClick={() => { setLogoUrlDraft(p.url); setLogoUrlInput(p.url); }}
+                            className={`h-12 rounded border transition-colors flex items-center justify-center bg-muted/40 hover:bg-muted/70 ${logoUrlDraft === p.url ? "border-primary ring-1 ring-primary" : "border-border"}`}
+                          >
+                            <img src={p.url} alt={p.label} className="h-7 w-7 object-contain" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium">Country Flags</label>
+                        <span className="text-[10px] text-muted-foreground">Click to set as logo</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {FLAG_PRESETS.map(p => {
+                          const url = flagUrl(p.code);
+                          return (
+                            <button
+                              key={p.code}
+                              type="button"
+                              data-testid={`button-logo-flag-${p.code}`}
+                              title={p.label}
+                              onClick={() => { setLogoUrlDraft(url); setLogoUrlInput(url); }}
+                              className={`h-12 rounded border overflow-hidden transition-colors flex flex-col items-center justify-center bg-muted/40 hover:bg-muted/70 ${logoUrlDraft === url ? "border-primary ring-1 ring-primary" : "border-border"}`}
+                            >
+                              <img src={url} alt={p.label} className="h-5 w-auto object-contain" loading="lazy" />
+                              <span className="text-[9px] mt-0.5 text-muted-foreground truncate max-w-full px-1">{p.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Position</label>
