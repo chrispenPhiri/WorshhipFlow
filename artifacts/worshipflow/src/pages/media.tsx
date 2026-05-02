@@ -396,7 +396,7 @@ export default function MediaPage() {
     textOverlayBorderWidth: screenState?.textOverlayBorderWidth ?? 0,
     timerEnabled: screenState?.timerEnabled ?? false,
     timerMode: screenState?.timerMode ?? "stopwatch",
-    timerStartedAt: screenState?.timerStartedAt ?? undefined,
+    timerStartedAt: screenState?.timerStartedAt ?? "",
     timerAccumulatedMs: screenState?.timerAccumulatedMs ?? 0,
     timerDurationSec: screenState?.timerDurationSec ?? 300,
     timerPosition: screenState?.timerPosition ?? "top-center",
@@ -1725,10 +1725,19 @@ export default function MediaPage() {
           {(() => {
             const startedAtMs = screenState?.timerStartedAt ? Date.parse(screenState.timerStartedAt) : NaN;
             const isRunning = !isNaN(startedAtMs);
+            const serverEnabled = screenState?.timerEnabled ?? false;
+            const serverMode = screenState?.timerMode ?? "stopwatch";
             const accumulated = screenState?.timerAccumulatedMs ?? 0;
             // re-read timerTick to keep the live preview ticking
             void timerTick;
-            const elapsedMs = accumulated + (isRunning ? Math.max(0, Date.now() - startedAtMs) : 0);
+            // Only show live elapsed when the timer is enabled AND the active mode matches what the user is editing.
+            // Otherwise the preview should reflect the draft duration cleanly (so switching mode resets the readout).
+            const showLive = serverEnabled && serverMode === timerModeDraft;
+            const elapsedMs = showLive
+              ? accumulated + (isRunning ? Math.max(0, Date.now() - startedAtMs) : 0)
+              : 0;
+            // A fresh start clears any stale accumulated time from a previous run/mode.
+            const isFreshStart = !isRunning && (!serverEnabled || serverMode !== timerModeDraft || accumulated === 0);
             const totalDurationSec = (timerDurationMinDraft * 60) + timerDurationSecDraft;
             const previewMs = timerModeDraft === "countdown" ? Math.max(0, totalDurationSec * 1000 - elapsedMs) : elapsedMs;
             const previewSec = Math.floor(previewMs / 1000);
@@ -1744,7 +1753,7 @@ export default function MediaPage() {
                 timerEnabled: true,
                 timerMode: timerModeDraft,
                 timerStartedAt: new Date().toISOString(),
-                timerAccumulatedMs: accumulated,
+                timerAccumulatedMs: isFreshStart ? 0 : accumulated,
                 timerDurationSec: totalDurationSec || 300,
                 timerPosition: timerPositionDraft,
                 timerFontSize: timerFontSizeDraft,
@@ -1757,13 +1766,13 @@ export default function MediaPage() {
             const pause = () => {
               if (!isRunning) return;
               updateOverlay({
-                timerStartedAt: undefined,
+                timerStartedAt: "",
                 timerAccumulatedMs: elapsedMs,
               });
             };
             const reset = () => {
               updateOverlay({
-                timerStartedAt: undefined,
+                timerStartedAt: "",
                 timerAccumulatedMs: 0,
               });
             };
@@ -1789,9 +1798,17 @@ export default function MediaPage() {
                   <div className="flex items-center justify-between gap-3">
                     <CardTitle className="flex items-center gap-2 text-base"><TimerIcon className="w-4 h-4" /> Timer / Stopwatch</CardTitle>
                     <div className="flex items-center gap-2">
-                      {isRunning && <Badge className="text-[10px] py-0 h-4 bg-emerald-600 border-0 animate-pulse">RUNNING</Badge>}
-                      {screenState?.timerEnabled && !isRunning && <Badge className="text-[10px] py-0 h-4 bg-amber-600 border-0">PAUSED</Badge>}
-                      <Switch checked={screenState?.timerEnabled ?? false} onCheckedChange={v => updateOverlay({ timerEnabled: v })} />
+                      {serverEnabled && isRunning && <Badge className="text-[10px] py-0 h-4 bg-emerald-600 border-0 animate-pulse">RUNNING</Badge>}
+                      {serverEnabled && !isRunning && accumulated > 0 && <Badge className="text-[10px] py-0 h-4 bg-amber-600 border-0">PAUSED</Badge>}
+                      <Switch
+                        checked={serverEnabled}
+                        onCheckedChange={v => updateOverlay({
+                          timerEnabled: v,
+                          // Always clear running state when toggling — keeps server coherent.
+                          timerStartedAt: "",
+                          timerAccumulatedMs: 0,
+                        })}
+                      />
                     </div>
                   </div>
                   <CardDescription className="text-xs">Stopwatch counts up. Countdown counts down then turns red.</CardDescription>
@@ -1924,11 +1941,41 @@ export default function MediaPage() {
                     )}
                   </div>
 
+                  {/* Warning + critical color pickers (countdown only) */}
+                  {timerModeDraft === "countdown" && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-medium">Warning Color</label>
+                        <div className="flex gap-1.5 items-center">
+                          <input type="color"
+                            value={(screenState?.timerWarningColor ?? "#fbbf24").startsWith("#") ? (screenState?.timerWarningColor ?? "#fbbf24") : "#fbbf24"}
+                            onChange={e => updateOverlay({ timerWarningColor: e.target.value })}
+                            className="h-8 w-10 rounded border border-input cursor-pointer bg-transparent p-0.5" />
+                          <Input className="h-8 text-xs font-mono"
+                            value={screenState?.timerWarningColor ?? "#fbbf24"}
+                            onChange={e => updateOverlay({ timerWarningColor: e.target.value })} />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-medium">Critical Color</label>
+                        <div className="flex gap-1.5 items-center">
+                          <input type="color"
+                            value={(screenState?.timerCriticalColor ?? "#ef4444").startsWith("#") ? (screenState?.timerCriticalColor ?? "#ef4444") : "#ef4444"}
+                            onChange={e => updateOverlay({ timerCriticalColor: e.target.value })}
+                            className="h-8 w-10 rounded border border-input cursor-pointer bg-transparent p-0.5" />
+                          <Input className="h-8 text-xs font-mono"
+                            value={screenState?.timerCriticalColor ?? "#ef4444"}
+                            onChange={e => updateOverlay({ timerCriticalColor: e.target.value })} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Transport controls */}
                   <div className="flex items-center gap-2 pt-2 border-t border-border/50">
                     {!isRunning ? (
                       <Button className="flex-1 gap-2" onClick={start}>
-                        <Play className="w-4 h-4" /> {accumulated > 0 ? "Resume" : "Start"}
+                        <Play className="w-4 h-4" /> {isFreshStart ? "Start" : "Resume"}
                       </Button>
                     ) : (
                       <Button className="flex-1 gap-2" variant="secondary" onClick={pause}>

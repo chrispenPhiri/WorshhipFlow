@@ -341,7 +341,7 @@ export function LivePreview() {
               <label className="text-xs flex items-center gap-1.5 text-muted-foreground"><ZoomIn className="w-3 h-3" /> Zoom</label>
               <span className="text-xs font-mono text-foreground">{Math.round((layout.textScale ?? 1) * 100)}%</span>
             </div>
-            <Slider value={[Math.round((layout.textScale ?? 1) * 100)]} onValueChange={([v]) => updateLayout({ textScale: v / 100 })} min={40} max={200} step={5} />
+            <Slider value={[Math.round((layout.textScale ?? 1) * 100)]} onValueChange={([v]) => updateLayout({ textScale: v / 100 })} min={40} max={400} step={5} />
           </div>
 
           <div className="space-y-1.5">

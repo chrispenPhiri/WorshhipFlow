@@ -6,12 +6,20 @@ const CHANNEL_NAME = "wf-broadcast-cmd";
 
 const ANIMATION_STYLES = `
 @keyframes wf-fade-in {
-  from { opacity: 0; transform: translateY(16px); }
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes wf-slide-up {
+  from { opacity: 0; transform: translateY(40px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes wf-glow {
-  0%, 100% { text-shadow: 0 0 20px rgba(255,255,255,0.4), 0 0 60px rgba(255,255,255,0.15); }
-  50%       { text-shadow: 0 0 40px rgba(255,255,255,0.9), 0 0 100px rgba(255,255,255,0.4); }
+  0%, 100% { text-shadow: 0 0 14px rgba(255,255,255,0.45), 0 2px 14px rgba(0,0,0,0.95); }
+  50%       { text-shadow: 0 0 30px rgba(255,255,255,0.95), 0 2px 14px rgba(0,0,0,0.95); }
+}
+@keyframes wf-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(1.04); opacity: 0.92; }
 }
 @keyframes wf-float {
   0%, 100% { transform: translateY(0px); }
@@ -25,23 +33,34 @@ const ANIMATION_STYLES = `
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.3; }
 }
-@keyframes wf-fade-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes wf-slide-up {
-  from { opacity: 0; transform: translateY(40px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes wf-glow {
-  0%, 100% { text-shadow: 0 0 12px rgba(255,255,255,0.45), 0 2px 14px rgba(0,0,0,0.95); }
-  50%       { text-shadow: 0 0 26px rgba(255,255,255,0.95), 0 2px 14px rgba(0,0,0,0.95); }
-}
-@keyframes wf-pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50%       { transform: scale(1.04); opacity: 0.92; }
-}
 `;
+
+// Apply an opacity multiplier to a CSS color (handles rgba, rgb, #hex, named).
+// Used so background-only opacity controls don't fade the foreground text.
+function applyAlpha(color: string, alphaPct: number): string {
+  const a = Math.max(0, Math.min(100, alphaPct)) / 100;
+  if (!color || color === "transparent" || color === "none") return "transparent";
+  const rgbaMatch = color.match(/^rgba?\(([^)]+)\)$/i);
+  if (rgbaMatch) {
+    const parts = rgbaMatch[1].split(",").map(p => p.trim());
+    const r = parts[0], g = parts[1], b = parts[2];
+    const baseA = parts[3] !== undefined ? parseFloat(parts[3]) : 1;
+    return `rgba(${r}, ${g}, ${b}, ${(baseA * a).toFixed(3)})`;
+  }
+  const hex = color.match(/^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i);
+  if (hex) {
+    let h = hex[1];
+    // Expand short forms (#rgb, #rgba) to long form (#rrggbb, #rrggbbaa).
+    if (h.length === 3 || h.length === 4) h = h.split("").map(c => c + c).join("");
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    const baseA = h.length === 8 ? parseInt(h.slice(6, 8), 16) / 255 : 1;
+    return `rgba(${r}, ${g}, ${b}, ${(baseA * a).toFixed(3)})`;
+  }
+  // Fallback: leave as-is when alpha is 100%, otherwise wrap in a translucent layer color.
+  return a >= 1 ? color : `color-mix(in srgb, ${color} ${Math.round(a * 100)}%, transparent)`;
+}
 
 function getAnimationStyle(animation: string | undefined): React.CSSProperties {
   if (!animation || animation === "none") return {};
@@ -138,15 +157,15 @@ function ClockOverlay({ time, position, clockStyle, showDate, showSeconds, dateF
     right:  position.endsWith("right")    ? 20 : undefined,
   };
 
-  // Compose background with opacity multiplier
-  const opacity = Math.max(0, Math.min(100, bgOpacity)) / 100;
-  const isTransparent = bgColor === "transparent" || bgColor === "none" || opacity === 0;
+  // Compose background with opacity multiplier baked into the color itself
+  // so the foreground text remains fully opaque regardless of bg opacity.
+  const composedBg = applyAlpha(bgColor, bgOpacity);
+  const isTransparent = composedBg === "transparent";
 
   return (
     <div style={{ position: "absolute", zIndex: 31, pointerEvents: "none", ...pos }}>
       <div style={{
-        background: isTransparent ? "transparent" : bgColor,
-        opacity: isTransparent ? 1 : opacity,
+        background: composedBg,
         borderRadius: `${bgRadius}px`,
         padding: `${Math.round(bgPadding * 0.45)}px ${bgPadding}px`,
         backdropFilter: isTransparent ? undefined : "blur(4px)",
@@ -732,6 +751,20 @@ export default function BroadcastPage() {
   const camLayout = bg?.cameraLayout ?? "fullscreen";
   const showCameraOverlay = bg?.type === "camera" && camLayout !== "fullscreen" && cameraStream;
 
+  // Horizontal centering for top/bottom labels — centers within the content half
+  // (not the viewport) when a side-by-side camera layout is active.
+  const labelHorizontalCenter: React.CSSProperties = (() => {
+    if (showCameraOverlay && camLayout === "side-left") {
+      // Camera occupies LEFT half → labels centered on the right half (75% of viewport).
+      return { left: "75%", transform: "translateX(-50%)" };
+    }
+    if (showCameraOverlay && camLayout === "side-right") {
+      // Camera occupies RIGHT half → labels centered on the left half (25% of viewport).
+      return { left: "25%", transform: "translateX(-50%)" };
+    }
+    return { left: "50%", transform: "translateX(-50%)" };
+  })();
+
   return (
     <div
       ref={containerRef}
@@ -761,8 +794,13 @@ export default function BroadcastPage() {
       {showContent && (
         <div
           key={contentKey}
-          className="absolute inset-0 z-20 flex"
+          className="absolute z-20 flex"
           style={{
+            // Constrain to the non-camera half when using side-by-side camera layout
+            top: 0,
+            bottom: 0,
+            left: showCameraOverlay && camLayout === "side-left" ? "50%" : 0,
+            right: showCameraOverlay && camLayout === "side-right" ? "50%" : 0,
             alignItems: flexJustify,
             justifyContent: flexAlign,
             paddingTop: `${paddingY}%`,
@@ -782,9 +820,9 @@ export default function BroadcastPage() {
         </div>
       )}
 
-      {/* ── Book name — top center ───────────────────────────────────────────── */}
+      {/* ── Book name — top center (centered within content half when side-by-side) ── */}
       {showContent && contentType === "verse" && bookName && (
-        <div className="absolute z-30 pointer-events-none" style={{ top: 20, left: "50%", transform: "translateX(-50%)" }}>
+        <div className="absolute z-30 pointer-events-none" style={{ top: 20, ...labelHorizontalCenter }}>
           <div style={{ background: "rgba(0,0,0,0.52)", borderRadius: "4px", padding: "5px 20px", backdropFilter: "blur(6px)", textAlign: "center", whiteSpace: "nowrap" }}>
             <span style={{ color: "rgba(255,255,255,0.92)", fontSize: "15px", fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase" }}>
               {bookName}
@@ -795,7 +833,7 @@ export default function BroadcastPage() {
 
       {/* ── Scripture reference + translation — bottom center ─────────────────── */}
       {showContent && contentType === "verse" && verseRef && (
-        <div className="absolute z-30 pointer-events-none" style={{ bottom: tickerH + 20, left: "50%", transform: "translateX(-50%)" }}>
+        <div className="absolute z-30 pointer-events-none" style={{ bottom: tickerH + 20, ...labelHorizontalCenter }}>
           <div style={{ background: "rgba(0,0,0,0.55)", borderRadius: "4px", padding: "5px 18px", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", gap: "10px", whiteSpace: "nowrap" }}>
             <span style={{ color: "rgba(255,255,255,0.92)", fontSize: "15px", fontWeight: 500, letterSpacing: "0.04em" }}>{verseRef}</span>
             {translationAbbr && (
@@ -810,7 +848,7 @@ export default function BroadcastPage() {
 
       {/* ── Song name — top center ───────────────────────────────────────────── */}
       {showContent && contentType === "song" && songName && (
-        <div className="absolute z-30 pointer-events-none" style={{ top: 20, left: "50%", transform: "translateX(-50%)" }}>
+        <div className="absolute z-30 pointer-events-none" style={{ top: 20, ...labelHorizontalCenter }}>
           <div style={{ background: "rgba(0,0,0,0.52)", borderRadius: "4px", padding: "5px 20px", backdropFilter: "blur(6px)", textAlign: "center", whiteSpace: "nowrap" }}>
             <span style={{ color: "rgba(255,255,255,0.92)", fontSize: "15px", fontWeight: 600, letterSpacing: "0.06em" }}>
               {songName}
@@ -821,7 +859,7 @@ export default function BroadcastPage() {
 
       {/* ── Song section — bottom center ─────────────────────────────────────── */}
       {showContent && contentType === "song" && sectionLabel && (
-        <div className="absolute z-30 pointer-events-none" style={{ bottom: tickerH + 20, left: "50%", transform: "translateX(-50%)" }}>
+        <div className="absolute z-30 pointer-events-none" style={{ bottom: tickerH + 20, ...labelHorizontalCenter }}>
           <div style={{ background: "rgba(0,0,0,0.55)", borderRadius: "4px", padding: "5px 18px", backdropFilter: "blur(4px)", whiteSpace: "nowrap" }}>
             <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "12px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>
               {sectionLabel}

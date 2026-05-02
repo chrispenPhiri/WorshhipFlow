@@ -146,6 +146,9 @@ export default function NotesPage() {
   const [editNote, setEditNote] = useState<any | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [presentNote, setPresentNote] = useState<any | null>(null);
+  const [presentFontSize, setPresentFontSize] = useState<number>(48);
+  const [presentAlign, setPresentAlign] = useState<"left" | "center" | "right">("left");
+  const [presentFont, setPresentFont] = useState<string>("Georgia");
   const [saving, setSaving] = useState(false);
 
   const { data: notes = [], isLoading } = useListNotes({ query: { queryKey: getListNotesQueryKey() } });
@@ -181,7 +184,8 @@ export default function NotesPage() {
     updateNote({ id: editNote.id, data });
   };
 
-  const handlePresent = (note: any) => {
+  const handlePresent = (note: any, opts?: { fontSize?: number; alignment?: "left" | "center" | "right"; fontFamily?: string }) => {
+    const baseStyle = screenState?.textStyle ?? { fontFamily: "Georgia", fontSize: 48, textColor: "#ffffff", alignment: "left" as const, animation: "fade_in" as const };
     updateScreen({
       data: {
         isBlack: screenState?.isBlack ?? false,
@@ -189,7 +193,12 @@ export default function NotesPage() {
         contentType: "custom_text",
         title: note.title,
         content: note.content,
-        textStyle: screenState?.textStyle ?? { fontFamily: "Georgia", fontSize: 48, textColor: "#ffffff", alignment: "left" as const, animation: "fade_in" as const },
+        textStyle: {
+          ...baseStyle,
+          fontSize: opts?.fontSize ?? baseStyle.fontSize ?? 48,
+          alignment: opts?.alignment ?? baseStyle.alignment ?? "left",
+          fontFamily: opts?.fontFamily ?? baseStyle.fontFamily ?? "Georgia",
+        },
         background: screenState?.background ?? { type: "color", value: "#000000" },
         tickerEnabled: screenState?.tickerEnabled ?? false,
       },
@@ -332,11 +341,75 @@ export default function NotesPage() {
               <p className="text-xs font-medium text-primary mb-1">{presentNote?.title}</p>
               <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{presentNote?.content}</p>
             </div>
-            <p className="text-xs text-muted-foreground">Tip: Use Stage Controls in the sidebar to adjust text size and position.</p>
+
+            {/* Styling controls */}
+            <div className="space-y-2 border-t pt-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Style on screen</p>
+
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Text size</label>
+                <div className="grid grid-cols-4 gap-1">
+                  {([
+                    { label: "S", v: 32 },
+                    { label: "M", v: 48 },
+                    { label: "L", v: 64 },
+                    { label: "XL", v: 88 },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.v}
+                      data-testid={`button-notes-size-${opt.label.toLowerCase()}`}
+                      onClick={() => setPresentFontSize(opt.v)}
+                      className={`py-1.5 rounded-md text-xs border transition-colors ${presentFontSize === opt.v ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/60"}`}
+                    >
+                      {opt.label} <span className="opacity-60">({opt.v})</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Alignment</label>
+                <div className="grid grid-cols-3 gap-1">
+                  {(["left", "center", "right"] as const).map(a => (
+                    <button
+                      key={a}
+                      data-testid={`button-notes-align-${a}`}
+                      onClick={() => setPresentAlign(a)}
+                      className={`py-1.5 rounded-md text-xs border transition-colors capitalize ${presentAlign === a ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/60"}`}
+                    >
+                      {a}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground">Font</label>
+                <div className="grid grid-cols-3 gap-1">
+                  {(["Georgia", "Inter", "Playfair Display"] as const).map(f => (
+                    <button
+                      key={f}
+                      data-testid={`button-notes-font-${f.toLowerCase().replace(/\s+/g, "-")}`}
+                      onClick={() => setPresentFont(f)}
+                      className={`py-1.5 rounded-md text-xs border transition-colors truncate ${presentFont === f ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/60"}`}
+                      style={{ fontFamily: f }}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground">Tip: Use Stage Controls in the sidebar to fine-tune zoom and position after sending.</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPresentNote(null)}>Cancel</Button>
-            <Button onClick={() => handlePresent(presentNote)} className="gap-2">
+            <Button
+              data-testid="button-notes-send-to-screen"
+              onClick={() => handlePresent(presentNote, { fontSize: presentFontSize, alignment: presentAlign, fontFamily: presentFont })}
+              className="gap-2"
+            >
               <Send className="w-4 h-4" /> Send to screen
             </Button>
           </DialogFooter>
