@@ -209,10 +209,20 @@ export const BackgroundType = {
   live_wallpaper: "live_wallpaper",
 } as const;
 
+export type BackgroundFit = (typeof BackgroundFit)[keyof typeof BackgroundFit];
+
+export const BackgroundFit = {
+  cover: "cover",
+  contain: "contain",
+  fill: "fill",
+} as const;
+
 export interface Background {
   type: BackgroundType;
   value: string;
   overlay?: number;
+  fit?: BackgroundFit;
+  loop?: boolean;
 }
 
 export type LayoutVerticalAlign =

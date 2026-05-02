@@ -506,6 +506,8 @@ export const GetScreenStateResponse = zod.object({
       ]),
       value: zod.string(),
       overlay: zod.number().optional(),
+      fit: zod.enum(["cover", "contain", "fill"]).optional(),
+      loop: zod.boolean().optional(),
     })
     .optional(),
   layout: zod
@@ -602,6 +604,8 @@ export const UpdateScreenStateBody = zod.object({
       ]),
       value: zod.string(),
       overlay: zod.number().optional(),
+      fit: zod.enum(["cover", "contain", "fill"]).optional(),
+      loop: zod.boolean().optional(),
     })
     .optional(),
   layout: zod
@@ -695,6 +699,8 @@ export const UpdateScreenStateResponse = zod.object({
       ]),
       value: zod.string(),
       overlay: zod.number().optional(),
+      fit: zod.enum(["cover", "contain", "fill"]).optional(),
+      loop: zod.boolean().optional(),
     })
     .optional(),
   layout: zod

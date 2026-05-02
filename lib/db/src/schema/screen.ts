@@ -17,6 +17,8 @@ export interface Background {
   type: "color" | "gradient" | "image" | "video" | "camera" | "live_wallpaper";
   value: string;
   overlay?: number;
+  fit?: "cover" | "contain" | "fill";
+  loop?: boolean;
 }
 
 export interface Layout {

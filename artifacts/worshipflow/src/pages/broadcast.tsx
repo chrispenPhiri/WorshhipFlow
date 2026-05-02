@@ -225,21 +225,25 @@ function BackgroundLayer({ background, cameraStream }: {
   if (background.type === "gradient")
     return <div className="absolute inset-0" style={{ background: background.value || "linear-gradient(135deg,#1e1b4b,#000)" }} />;
 
-  if (background.type === "image" && background.value)
+  if (background.type === "image" && background.value) {
+    const fitClass = background.fit === "contain" ? "object-contain" : background.fit === "fill" ? "object-fill" : "object-cover";
     return (
-      <div className="absolute inset-0">
-        <img src={background.value} alt="" className="w-full h-full object-cover" />
+      <div className="absolute inset-0 bg-black">
+        <img src={background.value} alt="" className={`w-full h-full ${fitClass}`} />
         {overlayStyle && <div className="absolute inset-0" style={overlayStyle} />}
       </div>
     );
+  }
 
-  if (background.type === "video" && background.value)
+  if (background.type === "video" && background.value) {
+    const fitClass = background.fit === "contain" ? "object-contain" : background.fit === "fill" ? "object-fill" : "object-cover";
     return (
-      <div className="absolute inset-0">
-        <video ref={videoRef} className="w-full h-full object-cover" autoPlay loop muted playsInline />
+      <div className="absolute inset-0 bg-black">
+        <video ref={videoRef} className={`w-full h-full ${fitClass}`} autoPlay loop={background.loop !== false} muted playsInline />
         {overlayStyle && <div className="absolute inset-0" style={overlayStyle} />}
       </div>
     );
+  }
 
   if (background.type === "camera")
     return (

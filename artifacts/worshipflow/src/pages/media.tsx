@@ -24,6 +24,8 @@ interface UploadedFile {
   url: string;
   type: "image" | "video";
   size: string;
+  fit: "cover" | "contain" | "fill";
+  loop: boolean;
 }
 
 function formatBytes(bytes: number) {
@@ -176,14 +178,34 @@ export default function MediaPage() {
   const updateOverlay = (patch: Partial<ReturnType<typeof safeFullState>>) =>
     updateScreen({ data: { ...safeFullState(), ...patch } });
 
-  const handleLogoFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
+  /** Compress a logo image to ≤400px PNG (preserves transparency). */
+  const compressLogoImage = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const blobUrl = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 400;
+        const scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
+        const w = Math.round(img.naturalWidth * scale);
+        const h = Math.round(img.naturalHeight * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(blobUrl);
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = () => { URL.revokeObjectURL(blobUrl); reject(); };
+      img.src = blobUrl;
+    });
+
+  const handleLogoFile = async (file: File) => {
+    try {
+      const dataUrl = await compressLogoImage(file);
       setLogoUrlDraft(dataUrl);
       setLogoUrlInput("");
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      toast({ title: "Failed to load logo image", variant: "destructive" });
+    }
   };
 
   useEffect(() => {
@@ -212,14 +234,17 @@ export default function MediaPage() {
 
   const sendCameraToScreen = () => updateScreen({ data: { ...safeFullState(), isBlack: false, isClear: false, contentType: "custom_text" as const, background: { type: "camera", value: "camera", overlay: overlay[0] } } });
 
-  const sendImageToScreen = async (url: string) => {
+  const sendImageToScreen = async (url: string, fit: "cover" | "contain" | "fill" = "cover") => {
     if (!url) return;
     // Convert blob URLs to data URLs so they work in the broadcast window
     const resolved = url.startsWith("blob:") ? await blobToDataUrl(url).catch(() => url) : url;
-    updateScreen({ data: { ...safeFullState(), isBlack: false, isClear: false, contentType: "image" as const, background: { type: "image", value: resolved, overlay: overlay[0] } } });
+    updateScreen({ data: { ...safeFullState(), isBlack: false, isClear: false, contentType: "image" as const, background: { type: "image", value: resolved, overlay: overlay[0], fit } } });
   };
 
-  const sendVideoToScreen = (url: string) => { if (!url) return; updateScreen({ data: { ...safeFullState(), isBlack: false, isClear: false, contentType: "video" as const, background: { type: "video", value: url, overlay: overlay[0] } } }); };
+  const sendVideoToScreen = (url: string, fit: "cover" | "contain" | "fill" = "cover", loop = true) => {
+    if (!url) return;
+    updateScreen({ data: { ...safeFullState(), isBlack: false, isClear: false, contentType: "video" as const, background: { type: "video", value: url, overlay: overlay[0], fit, loop } } });
+  };
 
   const handleFileUpload = useCallback((files: FileList | null) => {
     if (!files) return;
@@ -238,9 +263,14 @@ export default function MediaPage() {
         url,
         type: isImage ? "image" : "video",
         size: formatBytes(file.size),
+        fit: "cover",
+        loop: true,
       }]);
     });
   }, [toast]);
+
+  const updateFile = (id: string, patch: Partial<UploadedFile>) =>
+    setUploadedFiles(prev => prev.map(f => f.id === id ? { ...f, ...patch } : f));
 
   const removeFile = (id: string) => {
     setUploadedFiles(prev => {
@@ -346,9 +376,9 @@ export default function MediaPage() {
                 <Card key={f.id} className="overflow-hidden">
                   <div className="relative aspect-video bg-black">
                     {f.type === "image" ? (
-                      <img src={f.url} alt={f.name} className="w-full h-full object-cover" />
+                      <img src={f.url} alt={f.name} className={`w-full h-full ${f.fit === "contain" ? "object-contain" : f.fit === "fill" ? "object-fill" : "object-cover"}`} />
                     ) : (
-                      <video src={f.url} className="w-full h-full object-cover" muted playsInline />
+                      <video src={f.url} className={`w-full h-full ${f.fit === "contain" ? "object-contain" : f.fit === "fill" ? "object-fill" : "object-cover"}`} muted playsInline />
                     )}
                     <button
                       onClick={() => removeFile(f.id)}
@@ -360,13 +390,41 @@ export default function MediaPage() {
                       {f.type}
                     </Badge>
                   </div>
-                  <CardContent className="p-2 space-y-1.5">
+                  <CardContent className="p-2 space-y-2">
                     <p className="text-xs font-medium truncate" title={f.name}>{f.name}</p>
-                    <p className="text-xs text-muted-foreground">{f.size}</p>
+
+                    {/* Fit mode */}
+                    <div className="flex gap-1">
+                      {(["cover", "contain", "fill"] as const).map(mode => (
+                        <button
+                          key={mode}
+                          onClick={() => updateFile(f.id, { fit: mode })}
+                          className={`flex-1 py-0.5 rounded text-[10px] border transition-colors capitalize ${f.fit === mode ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}
+                        >
+                          {mode}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Loop toggle for videos */}
+                    {f.type === "video" && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground">Loop video</span>
+                        <Switch
+                          checked={f.loop}
+                          onCheckedChange={v => updateFile(f.id, { loop: v })}
+                          className="scale-75 origin-right"
+                        />
+                      </div>
+                    )}
+
                     <Button
                       size="sm"
                       className="w-full gap-1.5 h-7 text-xs"
-                      onClick={() => f.type === "image" ? sendImageToScreen(f.url) : sendVideoToScreen(f.url)}
+                      onClick={() => f.type === "image"
+                        ? sendImageToScreen(f.url, f.fit)
+                        : sendVideoToScreen(f.url, f.fit, f.loop)
+                      }
                     >
                       <Cast className="w-3 h-3" /> Send to Screen
                     </Button>
