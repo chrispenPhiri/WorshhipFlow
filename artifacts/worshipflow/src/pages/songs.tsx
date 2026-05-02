@@ -36,8 +36,8 @@ function parseSections(lyrics: string): string[] {
     .filter(Boolean);
 }
 
-/** Detect a section header like [Verse 1], [Chorus], CHORUS:, etc. */
-function getSectionInfo(text: string, slideNum: number): { label: string; content: string } {
+/** Try to detect an explicit section header like [Verse 1], [Chorus], CHORUS: — returns null when none. */
+function parseExplicitLabel(text: string): { label: string; content: string } | null {
   const lines = text.split("\n");
   const first = lines[0].trim();
   const rest = lines.slice(1).join("\n").trim();
@@ -48,7 +48,7 @@ function getSectionInfo(text: string, slideNum: number): { label: string; conten
     return { label: capitalize(bracketMatch[1].trim()), content: rest };
   }
   // Colon label: "Chorus:", "Verse 1:", "Bridge:", etc.
-  const colonMatch = first.match(/^(verse\s*\d*|chorus|bridge|pre[\s-]?chorus|refrain|tag|intro|outro|interlude)\s*:?\s*$/i);
+  const colonMatch = first.match(/^(verse\s*\d*|chorus\s*\d*|bridge\s*\d*|pre[\s-]?chorus|refrain|tag|intro|outro|interlude)\s*:?\s*$/i);
   if (colonMatch && rest) {
     return { label: capitalize(colonMatch[1].trim()), content: rest };
   }
@@ -56,7 +56,23 @@ function getSectionInfo(text: string, slideNum: number): { label: string; conten
   if (first.length < 20 && /^[A-Z][A-Z\s0-9]*$/.test(first) && rest) {
     return { label: capitalize(first), content: rest };
   }
-  return { label: `Slide ${slideNum}`, content: text };
+  return null;
+}
+
+/** Label every section, auto-numbering unlabeled stanzas as Verse 1, Verse 2, … */
+function labelAllSections(sections: string[]): { label: string; content: string }[] {
+  let verseCounter = 0;
+  return sections.map(text => {
+    const explicit = parseExplicitLabel(text);
+    if (explicit) return explicit;
+    verseCounter++;
+    return { label: `Verse ${verseCounter}`, content: text };
+  });
+}
+
+/** Single-section labeling used by Send-All (whole lyrics block). Falls back to "Verse 1". */
+function getSectionInfo(text: string, slideNum: number): { label: string; content: string } {
+  return parseExplicitLabel(text) ?? { label: `Verse ${slideNum}`, content: text };
 }
 
 function capitalize(s: string) {
@@ -82,7 +98,7 @@ function getSectionType(label: string): SongSectionType {
   return "slide";
 }
 
-/** Tailwind palette per section type (B3.2). */
+/** Tailwind palette per section type (B3.2). The "slide" entry is a legacy fallback — auto-labeled stanzas now classify as "verse". */
 const SECTION_TYPE_STYLES: Record<SongSectionType, { active: string; idle: string; abbr: string; ring: string }> = {
   verse:        { active: "bg-blue-500   text-white",   idle: "bg-blue-500/15   text-blue-300   hover:bg-blue-500/25",   abbr: "V", ring: "ring-blue-400/50"   },
   chorus:       { active: "bg-amber-500  text-black",   idle: "bg-amber-500/15  text-amber-300  hover:bg-amber-500/25",  abbr: "C", ring: "ring-amber-400/50"  },
@@ -172,8 +188,10 @@ export default function SongsPage() {
     comparisonMode: false,
   };
 
-  const sendSection = (song: any, text: string, slideNum: number) => {
-    const { label, content } = getSectionInfo(text, slideNum);
+  const sendSection = (song: any, text: string, slideNum: number, labelOverride?: string) => {
+    const computed = getSectionInfo(text, slideNum);
+    const label = labelOverride ?? computed.label;
+    const content = computed.content;
     const screenData = {
       ...safeBase,
       // Encode section label after § so the broadcast screen can parse it
@@ -265,12 +283,57 @@ export default function SongsPage() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Lyrics *</label>
-                <p className="text-xs text-muted-foreground">Separate verses/choruses with a blank line — each section becomes a slide</p>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <label className="text-sm font-medium">Lyrics *</label>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className="text-[10px] text-muted-foreground mr-1">Quick add:</span>
+                    {(() => {
+                      const insertSection = (header: string, autoNumber: boolean) => {
+                        let label = header;
+                        if (autoNumber) {
+                          const re = new RegExp(`\\[${header}\\s*(\\d+)\\]`, "gi");
+                          let max = 0; let m;
+                          while ((m = re.exec(newLyrics)) !== null) {
+                            const n = parseInt(m[1], 10);
+                            if (!isNaN(n) && n > max) max = n;
+                          }
+                          label = `${header} ${max + 1}`;
+                        }
+                        const sep = newLyrics.trim().length === 0 ? "" : (newLyrics.endsWith("\n\n") ? "" : (newLyrics.endsWith("\n") ? "\n" : "\n\n"));
+                        setNewLyrics(prev => `${prev}${sep}[${label}]\n`);
+                      };
+                      return (
+                        <>
+                          <Button type="button" variant="outline" size="sm" className="h-6 px-2 text-[11px] gap-1 border-blue-500/40 text-blue-300 hover:bg-blue-500/15"
+                            data-testid="button-insert-verse"
+                            onClick={() => insertSection("Verse", true)}>
+                            <Plus className="w-3 h-3" /> Verse
+                          </Button>
+                          <Button type="button" variant="outline" size="sm" className="h-6 px-2 text-[11px] gap-1 border-amber-500/40 text-amber-300 hover:bg-amber-500/15"
+                            data-testid="button-insert-chorus"
+                            onClick={() => insertSection("Chorus", false)}>
+                            <Plus className="w-3 h-3" /> Chorus
+                          </Button>
+                          <Button type="button" variant="outline" size="sm" className="h-6 px-2 text-[11px] gap-1 border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/15"
+                            data-testid="button-insert-pre-chorus"
+                            onClick={() => insertSection("Pre-Chorus", false)}>
+                            <Plus className="w-3 h-3" /> Pre-Chorus
+                          </Button>
+                          <Button type="button" variant="outline" size="sm" className="h-6 px-2 text-[11px] gap-1 border-purple-500/40 text-purple-300 hover:bg-purple-500/15"
+                            data-testid="button-insert-bridge"
+                            onClick={() => insertSection("Bridge", false)}>
+                            <Plus className="w-3 h-3" /> Bridge
+                          </Button>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">Use the buttons above to add labelled sections, or just separate verses & choruses with a blank line — unlabelled stanzas auto-number as Verse 1, Verse 2, …</p>
                 <Textarea
                   value={newLyrics}
                   onChange={e => setNewLyrics(e.target.value)}
-                  placeholder={"Amazing grace, how sweet the sound\nThat saved a wretch like me\n\nI once was lost but now am found\nWas blind but now I see"}
+                  placeholder={"[Verse 1]\nAmazing grace, how sweet the sound\nThat saved a wretch like me\n\n[Chorus]\nMy chains are gone, I've been set free\n\n[Verse 2]\nI once was lost but now am found\nWas blind but now I see"}
                   className="min-h-48 font-mono text-sm"
                 />
               </div>
@@ -389,7 +452,8 @@ export default function SongsPage() {
               <CardContent className="space-y-3">
                 {/* Active section label badge (B3.2) */}
                 {(() => {
-                  const info = getSectionInfo(currentSection, sectionIdx + 1);
+                  const labeled = labelAllSections(sections);
+                  const info = labeled[sectionIdx] ?? { label: "Verse 1", content: currentSection };
                   const t = getSectionType(info.label);
                   const s = SECTION_TYPE_STYLES[t];
                   return (
@@ -410,21 +474,18 @@ export default function SongsPage() {
                 {/* Section display */}
                 <div className="bg-muted/50 rounded-lg p-3 min-h-28 text-sm font-serif whitespace-pre-wrap">
                   {(() => {
-                    const info = getSectionInfo(currentSection, sectionIdx + 1);
-                    return info.content;
+                    const labeled = labelAllSections(sections);
+                    return labeled[sectionIdx]?.content ?? currentSection;
                   })()}
                 </div>
 
                 {/* Section navigation — color-coded by type (B3.2) */}
                 <div className="flex gap-1.5 flex-wrap justify-center" data-testid="nav-section-list">
-                  {sections.map((sec, i) => {
-                    const info = getSectionInfo(sec, i + 1);
+                  {labelAllSections(sections).map((info, i) => {
                     const t = getSectionType(info.label);
                     const styles = SECTION_TYPE_STYLES[t];
                     const num = getSectionNumber(info.label);
-                    const display =
-                      t === "slide" ? `${i + 1}` :
-                      num ? `${styles.abbr}${num}` : styles.abbr;
+                    const display = num ? `${styles.abbr}${num}` : styles.abbr;
                     return (
                       <button
                         key={i}
@@ -463,20 +524,28 @@ export default function SongsPage() {
                   </Button>
                 </div>
 
-                {/* Send */}
-                <Button
-                  className="w-full gap-2"
-                  onClick={() => sendSection(activeSong, currentSection, sectionIdx + 1)}
-                >
-                  <Cast className="w-4 h-4" /> Send slide {sectionIdx + 1}
-                </Button>
+                {/* Send — labels with the actual section name (e.g. "Send Chorus", "Send Verse 1") */}
+                {(() => {
+                  const labeled = labelAllSections(sections);
+                  const active = labeled[sectionIdx];
+                  const activeLabel = active?.label ?? `Verse ${sectionIdx + 1}`;
+                  return (
+                    <Button
+                      className="w-full gap-2"
+                      data-testid="button-send-section"
+                      onClick={() => sendSection(activeSong, active?.content ?? currentSection, sectionIdx + 1, activeLabel)}
+                    >
+                      <Cast className="w-4 h-4" /> Send {activeLabel}
+                    </Button>
+                  );
+                })()}
               </CardContent>
             </Card>
           ) : (
             <Card className="border-dashed">
               <CardContent className="py-8 text-center text-muted-foreground text-sm">
                 <Music className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                Click a song to navigate its slides
+                Click a song to navigate its verses & choruses
               </CardContent>
             </Card>
           )}
