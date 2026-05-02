@@ -518,29 +518,47 @@ export default function BroadcastPage() {
         </div>
       )}
 
-      {/* ── Song name + section overlay (bottom-left) ──────────────────────── */}
+      {/* ── Song name — top center ───────────────────────────────────────────── */}
       {showContent && contentType === "song" && songName && (
         <div
           className="absolute z-30 pointer-events-none"
-          style={{ bottom: tickerH + 20, left: 28 }}
+          style={{ top: 20, left: "50%", transform: "translateX(-50%)" }}
+        >
+          <div
+            style={{
+              background: "rgba(0,0,0,0.52)",
+              borderRadius: "4px",
+              padding: "5px 20px",
+              backdropFilter: "blur(6px)",
+              textAlign: "center",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <span style={{ color: "rgba(255,255,255,0.92)", fontSize: "15px", fontWeight: 600, letterSpacing: "0.06em" }}>
+              {songName}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Song section — bottom center ─────────────────────────────────────── */}
+      {showContent && contentType === "song" && sectionLabel && (
+        <div
+          className="absolute z-30 pointer-events-none"
+          style={{ bottom: tickerH + 20, left: "50%", transform: "translateX(-50%)" }}
         >
           <div
             style={{
               background: "rgba(0,0,0,0.55)",
-              borderRight: "3px solid rgba(255,255,255,0.4)",
-              borderRadius: "3px",
-              padding: "6px 14px 6px 12px",
+              borderRadius: "4px",
+              padding: "5px 18px",
               backdropFilter: "blur(4px)",
+              whiteSpace: "nowrap",
             }}
           >
-            <div style={{ color: "rgba(255,255,255,0.95)", fontSize: "15px", fontWeight: 600, letterSpacing: "0.02em", lineHeight: 1.2 }}>
-              {songName}
-            </div>
-            {sectionLabel && (
-              <div style={{ color: "rgba(255,255,255,0.55)", fontSize: "12px", fontWeight: 400, letterSpacing: "0.06em", marginTop: "2px" }}>
-                {sectionLabel.toUpperCase()}
-              </div>
-            )}
+            <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "12px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+              {sectionLabel}
+            </span>
           </div>
         </div>
       )}

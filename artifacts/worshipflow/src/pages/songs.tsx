@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 import {
   useListSongs,
   useGetSongStats,
@@ -62,7 +63,7 @@ function capitalize(s: string) {
 }
 
 export default function SongsPage() {
-  const [category, setCategory] = useState<string>("all");
+  const [category, setCategory] = useLocalStorage<string>("wf-songs-category", "all");
   const [search, setSearch] = useState("");
   const [activeSongId, setActiveSongId] = useState<number | null>(null);
   const [sectionIdx, setSectionIdx] = useState(0);

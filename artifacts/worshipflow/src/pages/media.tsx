@@ -110,7 +110,7 @@ export default function MediaPage() {
     setCameraError(null);
     try {
       const constraints: MediaStreamConstraints = {
-        video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: "user" },
+        video: deviceId ? { deviceId: { exact: deviceId } } : true,
         audio: false,
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -210,16 +210,16 @@ export default function MediaPage() {
       img.src = blobUrl;
     });
 
-  const sendCameraToScreen = () => updateScreen({ data: { ...base, isBlack: false, isClear: false, contentType: "custom_text" as const, background: { type: "camera", value: "camera", overlay: overlay[0] } } });
+  const sendCameraToScreen = () => updateScreen({ data: { ...safeFullState(), isBlack: false, isClear: false, contentType: "custom_text" as const, background: { type: "camera", value: "camera", overlay: overlay[0] } } });
 
   const sendImageToScreen = async (url: string) => {
     if (!url) return;
     // Convert blob URLs to data URLs so they work in the broadcast window
     const resolved = url.startsWith("blob:") ? await blobToDataUrl(url).catch(() => url) : url;
-    updateScreen({ data: { ...base, isBlack: false, isClear: false, contentType: "image" as const, background: { type: "image", value: resolved, overlay: overlay[0] } } });
+    updateScreen({ data: { ...safeFullState(), isBlack: false, isClear: false, contentType: "image" as const, background: { type: "image", value: resolved, overlay: overlay[0] } } });
   };
 
-  const sendVideoToScreen = (url: string) => { if (!url) return; updateScreen({ data: { ...base, isBlack: false, isClear: false, contentType: "video" as const, background: { type: "video", value: url, overlay: overlay[0] } } }); };
+  const sendVideoToScreen = (url: string) => { if (!url) return; updateScreen({ data: { ...safeFullState(), isBlack: false, isClear: false, contentType: "video" as const, background: { type: "video", value: url, overlay: overlay[0] } } }); };
 
   const handleFileUpload = useCallback((files: FileList | null) => {
     if (!files) return;
