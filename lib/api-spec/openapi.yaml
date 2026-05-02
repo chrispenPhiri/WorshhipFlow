@@ -3,20 +3,30 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: WorshipFlow API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: songs
+    description: Song library management
+  - name: schedules
+    description: Service schedules
+  - name: notes
+    description: Sermon notes
+  - name: settings
+    description: App settings
+  - name: screens
+    description: Live screen state
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +34,350 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /songs:
+    get:
+      operationId: listSongs
+      tags: [songs]
+      summary: List all songs
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of songs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Song"
+    post:
+      operationId: createSong
+      tags: [songs]
+      summary: Create a song
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSongBody"
+      responses:
+        "201":
+          description: Created song
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Song"
+
+  /songs/{id}:
+    get:
+      operationId: getSong
+      tags: [songs]
+      summary: Get a song
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Song
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Song"
+    put:
+      operationId: updateSong
+      tags: [songs]
+      summary: Update a song
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSongBody"
+      responses:
+        "200":
+          description: Updated song
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Song"
+    delete:
+      operationId: deleteSong
+      tags: [songs]
+      summary: Delete a song
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /songs/stats:
+    get:
+      operationId: getSongStats
+      tags: [songs]
+      summary: Get song library stats
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SongStats"
+
+  /schedules:
+    get:
+      operationId: listSchedules
+      tags: [schedules]
+      summary: List all schedules
+      responses:
+        "200":
+          description: List of schedules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Schedule"
+    post:
+      operationId: createSchedule
+      tags: [schedules]
+      summary: Create a schedule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateScheduleBody"
+      responses:
+        "201":
+          description: Created schedule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Schedule"
+
+  /schedules/{id}:
+    get:
+      operationId: getSchedule
+      tags: [schedules]
+      summary: Get a schedule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Schedule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Schedule"
+    put:
+      operationId: updateSchedule
+      tags: [schedules]
+      summary: Update a schedule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateScheduleBody"
+      responses:
+        "200":
+          description: Updated schedule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Schedule"
+    delete:
+      operationId: deleteSchedule
+      tags: [schedules]
+      summary: Delete a schedule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /notes:
+    get:
+      operationId: listNotes
+      tags: [notes]
+      summary: List all sermon notes
+      responses:
+        "200":
+          description: List of notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Note"
+    post:
+      operationId: createNote
+      tags: [notes]
+      summary: Create sermon notes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNoteBody"
+      responses:
+        "201":
+          description: Created note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+
+  /notes/{id}:
+    get:
+      operationId: getNote
+      tags: [notes]
+      summary: Get sermon notes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+    put:
+      operationId: updateNote
+      tags: [notes]
+      summary: Update sermon notes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNoteBody"
+      responses:
+        "200":
+          description: Updated note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+    delete:
+      operationId: deleteNote
+      tags: [notes]
+      summary: Delete sermon notes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get app settings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+    put:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update app settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Settings"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+
+  /screen:
+    get:
+      operationId: getScreenState
+      tags: [screens]
+      summary: Get current live screen state
+      responses:
+        "200":
+          description: Screen state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScreenState"
+    put:
+      operationId: updateScreenState
+      tags: [screens]
+      summary: Update live screen state
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScreenState"
+      responses:
+        "200":
+          description: Updated screen state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScreenState"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +388,307 @@ components:
       required:
         - status
 
+    Song:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        author:
+          type: string
+        category:
+          type: string
+          enum: [hymn, worship, gospel, contemporary, christmas, shona, ndebele, other]
+        lyrics:
+          type: string
+        key:
+          type: string
+        tempo:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - author
+        - category
+        - lyrics
+        - createdAt
+        - updatedAt
+
+    CreateSongBody:
+      type: object
+      properties:
+        title:
+          type: string
+        author:
+          type: string
+        category:
+          type: string
+          enum: [hymn, worship, gospel, contemporary, christmas, shona, ndebele, other]
+        lyrics:
+          type: string
+        key:
+          type: string
+        tempo:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+      required:
+        - title
+        - author
+        - category
+        - lyrics
+
+    SongStats:
+      type: object
+      properties:
+        total:
+          type: integer
+        byCategory:
+          type: object
+          additionalProperties:
+            type: integer
+      required:
+        - total
+        - byCategory
+
+    ScheduleItem:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [song, verse, custom_text, prayer, announcement, sermon]
+        title:
+          type: string
+        content:
+          type: string
+        songId:
+          type: integer
+        notes:
+          type: string
+      required:
+        - type
+        - title
+
+    Schedule:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        serviceType:
+          type: string
+          enum: [sunday_morning, sunday_evening, wednesday, special, other]
+        date:
+          type: string
+          format: date
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduleItem"
+        notes:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - serviceType
+        - date
+        - items
+        - createdAt
+        - updatedAt
+
+    CreateScheduleBody:
+      type: object
+      properties:
+        title:
+          type: string
+        serviceType:
+          type: string
+          enum: [sunday_morning, sunday_evening, wednesday, special, other]
+        date:
+          type: string
+          format: date
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduleItem"
+        notes:
+          type: string
+      required:
+        - title
+        - serviceType
+        - date
+        - items
+
+    Note:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        speaker:
+          type: string
+        date:
+          type: string
+          format: date
+        content:
+          type: string
+        scriptures:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - speaker
+        - date
+        - content
+        - createdAt
+        - updatedAt
+
+    CreateNoteBody:
+      type: object
+      properties:
+        title:
+          type: string
+        speaker:
+          type: string
+        date:
+          type: string
+          format: date
+        content:
+          type: string
+        scriptures:
+          type: array
+          items:
+            type: string
+      required:
+        - title
+        - speaker
+        - date
+        - content
+
+    Settings:
+      type: object
+      properties:
+        defaultBibleVersion:
+          type: string
+        defaultFont:
+          type: string
+        defaultFontSize:
+          type: integer
+        defaultTextColor:
+          type: string
+        defaultAccentColor:
+          type: string
+        theme:
+          type: string
+          enum: [dark, light]
+        tickerEnabled:
+          type: boolean
+        tickerText:
+          type: string
+        tickerSpeed:
+          type: integer
+        churchName:
+          type: string
+        logoUrl:
+          type: string
+      required:
+        - defaultBibleVersion
+        - theme
+
+    TextStyle:
+      type: object
+      properties:
+        fontFamily:
+          type: string
+        fontSize:
+          type: integer
+        textColor:
+          type: string
+        accentColor:
+          type: string
+        bold:
+          type: boolean
+        italic:
+          type: boolean
+        alignment:
+          type: string
+          enum: [left, center, right]
+        animation:
+          type: string
+          enum: [none, fade_in, glow, float]
+      required:
+        - fontFamily
+        - fontSize
+        - textColor
+        - alignment
+        - animation
+
+    Background:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [color, gradient, image, video]
+        value:
+          type: string
+        overlay:
+          type: number
+      required:
+        - type
+        - value
+
+    ScreenState:
+      type: object
+      properties:
+        isBlack:
+          type: boolean
+        isClear:
+          type: boolean
+        contentType:
+          type: string
+          enum: [none, verse, song, custom_text, image, video]
+        title:
+          type: string
+        content:
+          type: string
+        textStyle:
+          $ref: "#/components/schemas/TextStyle"
+        background:
+          $ref: "#/components/schemas/Background"
+        tickerEnabled:
+          type: boolean
+        tickerText:
+          type: string
+      required:
+        - isBlack
+        - isClear
+        - contentType
