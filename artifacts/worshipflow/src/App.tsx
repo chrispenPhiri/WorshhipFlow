@@ -16,6 +16,7 @@ import MediaPage from "@/pages/media";
 import BroadcastPage from "@/pages/broadcast";
 import ThemesPage from "@/pages/themes";
 import InspirationPage from "@/pages/inspiration";
+import SundaySchoolPage from "@/pages/sunday-school";
 import HowToPage from "@/pages/how-to";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ function Router() {
             <Route path="/schedule" component={SchedulePage} />
             <Route path="/notes" component={NotesPage} />
             <Route path="/inspiration" component={InspirationPage} />
+            <Route path="/sunday-school" component={SundaySchoolPage} />
             <Route path="/how-to" component={HowToPage} />
             <Route path="/settings" component={SettingsPage} />
             <Route component={NotFound} />
