@@ -588,15 +588,53 @@ export default function MediaPage() {
   const stopRecording = () => recStop();
   const setRecIncludeMic = (v: boolean) => setIncludeMic(v);
 
+  /**
+   * Save the current screen background to prevBackgroundRef so a later "Cut Media" can restore it.
+   * Skipped when the current background is already image/video — that means an earlier media is on
+   * screen and we want to keep the ORIGINAL theme as the rollback target, not the previous photo.
+   */
+  const captureBackgroundForRollback = () => {
+    const currentType = screenState?.background?.type;
+    if (currentType !== "image" && currentType !== "video") {
+      prevBackgroundRef.current = screenState?.background ?? null;
+    }
+  };
+
   const sendImageToScreen = async (url: string, fit: "cover" | "contain" | "fill" = "cover") => {
     if (!url) return;
+    captureBackgroundForRollback();
     const resolved = url.startsWith("blob:") ? await blobToDataUrl(url).catch(() => url) : url;
     updateScreen({ data: { ...safeFullState(), isBlack: false, isClear: false, contentType: "image" as const, background: { type: "image", value: resolved, overlay: overlay[0], fit } } });
   };
 
   const sendVideoToScreen = (url: string, fit: "cover" | "contain" | "fill" = "cover", loop = true) => {
     if (!url) return;
+    captureBackgroundForRollback();
     updateScreen({ data: { ...safeFullState(), isBlack: false, isClear: false, contentType: "video" as const, background: { type: "video", value: url, overlay: overlay[0], fit, loop } } });
+  };
+
+  /**
+   * Stop the currently-presented uploaded media and restore the previous theme/background.
+   * Falls back to a black screen if no previous background was captured (e.g. media was already
+   * on screen before this tab session started).
+   */
+  const isMediaLive =
+    screenState?.background?.type === "image" || screenState?.background?.type === "video";
+
+  const cutMedia = () => {
+    if (!isMediaLive) {
+      toast({ title: "Nothing to cut", description: "No image or video is currently on the presentation screen." });
+      return;
+    }
+    const prevBg = prevBackgroundRef.current;
+    if (prevBg) {
+      updateScreen({ data: { ...safeFullState(), isBlack: false, isClear: false, background: prevBg as Background } });
+      prevBackgroundRef.current = null;
+      toast({ title: "Media cut", description: "Presentation restored to the previous theme." });
+    } else {
+      updateScreen({ data: { ...safeFullState(), isBlack: true, isClear: false } });
+      toast({ title: "Media cut", description: "No previous theme to restore — screen blacked out." });
+    }
   };
 
   const handleFileUpload = useCallback((files: FileList | null) => {
@@ -689,6 +727,35 @@ export default function MediaPage() {
 
           <div className="text-xs text-muted-foreground bg-amber-500/10 border border-amber-500/20 rounded-md px-3 py-2">
             Uploaded files are available for this browser session. Re-upload after refreshing the page.
+          </div>
+
+          {/* Cut Media — stops the current image/video on screen and restores the previous theme */}
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card/50 px-3 py-2.5" data-testid="cut-media-bar">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium">
+                {isMediaLive
+                  ? <>Currently presenting <span className="text-primary capitalize">{screenState?.background?.type}</span></>
+                  : "No media on screen"}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {isMediaLive
+                  ? prevBackgroundRef.current
+                    ? "Cut to restore the previous theme."
+                    : "No previous theme captured — Cut will black the screen."
+                  : "Send an uploaded image or video, then Cut to roll back."}
+              </p>
+            </div>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={cutMedia}
+              disabled={!isMediaLive}
+              className="gap-1.5 shrink-0"
+              title="Stop the current media and restore the previous theme"
+              data-testid="button-cut-media"
+            >
+              <Scissors className="w-3.5 h-3.5" /> Cut Media
+            </Button>
           </div>
 
           {uploadedFiles.length > 0 && (
