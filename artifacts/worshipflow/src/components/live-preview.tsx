@@ -9,7 +9,7 @@ import {
   Maximize2, Minimize2, EyeOff, Eye, RotateCcw, CheckCircle2, Tv2, PictureInPicture2,
   MonitorOff
 } from "lucide-react";
-import { useBroadcast } from "@/hooks/use-broadcast";
+import { useBroadcast, CHANNEL_NAME } from "@/hooks/use-broadcast";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -47,6 +47,30 @@ export function LivePreview() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isWindowManagementSupported]);
+
+  // Subscribe to broadcast-window status messages so our toggle reflects the real fullscreen state.
+  // Also send a one-shot 'get_fullscreen_state' query so we hydrate even if the broadcast was already
+  // open and fullscreen before this controller mounted (BroadcastChannel doesn't replay history).
+  useEffect(() => {
+    const ch = new BroadcastChannel(CHANNEL_NAME);
+    ch.onmessage = (e) => {
+      const m = e.data;
+      if (!m?.type) return;
+      if (m.type === "fullscreen_state") setIsFullscreen(!!m.value);
+      else if (m.type === "fullscreen_blocked") {
+        setIsFullscreen(false);
+        toast({
+          title: "Couldn't enter fullscreen automatically",
+          description: "The browser blocks fullscreen without a click in the broadcast window. Click on it, or press F.",
+          variant: "destructive",
+        });
+      }
+    };
+    // Ask for current state on mount (handles late-mounting / reload after broadcast is already fullscreen)
+    try { ch.postMessage({ type: "get_fullscreen_state" }); } catch {}
+    return () => ch.close();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (isLoading) return <div className="animate-pulse h-48 bg-muted rounded-md" />;
   if (error) return <div className="text-destructive flex items-center gap-2"><AlertCircle className="w-4 h-4" /> Error loading preview</div>;
@@ -105,12 +129,20 @@ export function LivePreview() {
 
   // ── Remote control helpers ──
   const remoteFullscreen = () => {
+    // Bring the broadcast window to the front so the user can give it a gesture if needed.
+    try { broadcastWin?.focus(); } catch {}
     sendCommand({ type: "fullscreen" });
-    setIsFullscreen(true);
-    toast({ title: "Presentation → Fullscreen" });
+    // NOTE: do NOT optimistically set isFullscreen here — the broadcast window will report back via
+    // the 'fullscreen_state' status message once requestFullscreen() actually succeeds. If it was
+    // blocked (no user gesture), 'fullscreen_blocked' will fire instead.
+    toast({
+      title: "Sent to broadcast window",
+      description: "If it doesn't go fullscreen, click on the broadcast window or press F.",
+    });
   };
   const remoteExitFullscreen = () => {
     sendCommand({ type: "exit_fullscreen" });
+    // exitFullscreen doesn't need a gesture, so it always works — optimistic update is safe here.
     setIsFullscreen(false);
     toast({ title: "Presentation → Windowed" });
   };

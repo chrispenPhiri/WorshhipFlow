@@ -21,13 +21,21 @@ export interface BroadcastSettings {
 export type BroadcastCommand =
   | { type: "fullscreen" }
   | { type: "exit_fullscreen" }
+  | { type: "toggle_fullscreen" }
   | { type: "hide_cursor" }
   | { type: "show_cursor" }
+  | { type: "toggle_cursor" }
   | { type: "reload" }
   | { type: "pip_open" }
-  | { type: "pip_close" };
+  | { type: "pip_close" }
+  | { type: "get_fullscreen_state" };
 
-const CHANNEL_NAME = "wf-broadcast-cmd";
+/** Status events posted BY the broadcast window back to controllers. */
+export type BroadcastStatus =
+  | { type: "fullscreen_state"; value: boolean }
+  | { type: "fullscreen_blocked" };
+
+export const CHANNEL_NAME = "wf-broadcast-cmd";
 
 const DEFAULT_SETTINGS: BroadcastSettings = {
   autoFullscreen: true,

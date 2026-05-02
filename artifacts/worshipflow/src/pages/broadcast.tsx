@@ -666,13 +666,62 @@ export default function BroadcastPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toKey]);
 
-  // Apply URL params set by the launcher
+  // True fullscreen state (mirrors document.fullscreenElement). Used to render the CTA overlay.
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  // Set when a fullscreen request was made but the browser blocked it (no user gesture in this window).
+  const [fullscreenBlocked, setFullscreenBlocked] = useState<boolean>(false);
+  const ctrlChannelRef = useRef<BroadcastChannel | null>(null);
+
+  /** Try to enter fullscreen; on failure, post 'fullscreen_blocked' so controllers can hint the user. */
+  const tryEnterFullscreen = () => {
+    const p = document.documentElement.requestFullscreen?.();
+    if (!p) { ctrlChannelRef.current?.postMessage({ type: "fullscreen_blocked" }); setFullscreenBlocked(true); return; }
+    p.then(() => { setFullscreenBlocked(false); })
+     .catch(() => { ctrlChannelRef.current?.postMessage({ type: "fullscreen_blocked" }); setFullscreenBlocked(true); });
+  };
+
+  // Apply URL params set by the launcher (best-effort — auto-fullscreen will likely be blocked without user gesture)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("fullscreen") === "1") {
-      document.documentElement.requestFullscreen?.().catch(() => {});
-    }
+    if (params.get("fullscreen") === "1") tryEnterFullscreen();
     if (params.get("hidecursor") === "1") setHideCursor(true);
+  }, []);
+
+  // Track real fullscreen state and broadcast it back to controllers
+  useEffect(() => {
+    const ch = new BroadcastChannel(CHANNEL_NAME);
+    ctrlChannelRef.current = ch;
+    const sync = () => {
+      const fs = !!document.fullscreenElement;
+      setIsFullscreen(fs);
+      if (fs) setFullscreenBlocked(false);
+      ch.postMessage({ type: "fullscreen_state", value: fs });
+    };
+    document.addEventListener("fullscreenchange", sync);
+    // Send initial state so controllers can hydrate
+    sync();
+    return () => { document.removeEventListener("fullscreenchange", sync); ch.close(); ctrlChannelRef.current = null; };
+  }, []);
+
+  // F key — quick toggle fullscreen (works because keyboard input is a user gesture)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const tag = t?.tagName;
+      const isEditable =
+        tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" ||
+        t?.isContentEditable === true ||
+        t?.getAttribute?.("role") === "textbox";
+      if (isEditable) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "f" || e.key === "F") {
+        e.preventDefault();
+        if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+        else tryEnterFullscreen();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   // Listen for remote commands from the control screen
@@ -683,14 +732,19 @@ export default function BroadcastPage() {
       if (!cmd?.type) return;
       switch (cmd.type) {
         case "fullscreen":
-          document.documentElement.requestFullscreen?.().catch(() => {});
+          tryEnterFullscreen();
           break;
         case "exit_fullscreen":
+          setFullscreenBlocked(false);
           if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
           break;
         case "toggle_fullscreen":
           if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
-          else document.documentElement.requestFullscreen?.().catch(() => {});
+          else tryEnterFullscreen();
+          break;
+        case "get_fullscreen_state":
+          // Late-mounting controllers ask for current state on subscribe — reply immediately.
+          ch.postMessage({ type: "fullscreen_state", value: !!document.fullscreenElement });
           break;
         case "hide_cursor":
           setHideCursor(true);
@@ -747,11 +801,11 @@ export default function BroadcastPage() {
     }
   }, [screenState?.background?.type]);
 
-  // Click anywhere to request fullscreen (user gesture)
+  // Click anywhere to request fullscreen (user gesture).
+  // Only auto-fullscreens when the controller explicitly requested it (fullscreenBlocked) so we don't
+  // hijack incidental clicks once the user has chosen to stay windowed.
   const handleClick = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen?.().catch(() => {});
-    }
+    if (!document.fullscreenElement && fullscreenBlocked) tryEnterFullscreen();
   };
 
   const textStyle = screenState?.textStyle;
@@ -886,6 +940,26 @@ export default function BroadcastPage() {
 
       {/* Black screen overlay */}
       {screenState?.isBlack && <div className="absolute inset-0 bg-black z-40" />}
+
+      {/* Fullscreen CTA — shown when controller requested fullscreen but the browser blocked it (no user gesture in this window). */}
+      {fullscreenBlocked && !isFullscreen && (
+        <div
+          className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-black/85 backdrop-blur-sm border border-white/20 rounded-lg px-4 py-2.5 text-white text-sm shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2"
+          data-testid="overlay-fullscreen-cta"
+        >
+          <span className="text-lg">⛶</span>
+          <span>Click anywhere or press <kbd className="px-1.5 py-0.5 bg-white/15 border border-white/30 rounded text-xs font-mono">F</kbd> to enter fullscreen</span>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setFullscreenBlocked(false); }}
+            className="ml-2 text-white/60 hover:text-white text-xs"
+            data-testid="button-dismiss-fs-cta"
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Content */}
       {showContent && (() => {
