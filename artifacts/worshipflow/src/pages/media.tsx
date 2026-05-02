@@ -14,7 +14,8 @@ import {
   PictureInPicture2, Maximize2, EyeOff, RotateCcw, ChevronRight,
   Upload, X, FileImage, FileVideo, User, Clock, Scissors, RefreshCw, Layers3,
   Bold, Italic, AlignLeft, AlignCenter, AlignRight,
-  Circle, StopCircle, Download, Radio
+  Circle, StopCircle, Download, Radio,
+  Timer as TimerIcon, Pause, RotateCw, Hexagon, Shield, Type, Sparkles
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -111,7 +112,26 @@ export default function MediaPage() {
   const [logoPosDraft, setLogoPosDraft] = useState<"top-left" | "top-right" | "bottom-left" | "bottom-right" | "center">("top-right");
   const [logoSizeDraft, setLogoSizeDraft] = useState(20);
   const [logoOpacityDraft, setLogoOpacityDraft] = useState(100);
+  const [logoShapeDraft, setLogoShapeDraft] = useState<"rect" | "circle" | "rounded" | "hex" | "shield">("rect");
+  const [logoTextDraft, setLogoTextDraft] = useState("");
+  const [logoTextColorDraft, setLogoTextColorDraft] = useState("#ffffff");
+  const [logoTextSizeDraft, setLogoTextSizeDraft] = useState(14);
+  const [logoTextPositionDraft, setLogoTextPositionDraft] = useState<"right" | "left" | "below" | "above">("right");
+  const [logoTextWeightDraft, setLogoTextWeightDraft] = useState<"400" | "500" | "600" | "700">("600");
   const [logoInitialized, setLogoInitialized] = useState(false);
+
+  // Timer / stopwatch draft state
+  const [timerModeDraft, setTimerModeDraft] = useState<"stopwatch" | "countdown">("stopwatch");
+  const [timerDurationMinDraft, setTimerDurationMinDraft] = useState(5);
+  const [timerDurationSecDraft, setTimerDurationSecDraft] = useState(0);
+  const [timerPositionDraft, setTimerPositionDraft] = useState<"top-left" | "top-center" | "top-right" | "center" | "bottom-left" | "bottom-center" | "bottom-right">("top-center");
+  const [timerFontSizeDraft, setTimerFontSizeDraft] = useState(48);
+  const [timerColorDraft, setTimerColorDraft] = useState("#ffffff");
+  const [timerBgColorDraft, setTimerBgColorDraft] = useState("rgba(0,0,0,0.6)");
+  const [timerLabelDraft, setTimerLabelDraft] = useState("");
+  const [timerWarningSecDraft, setTimerWarningSecDraft] = useState(60);
+  const [timerInitialized, setTimerInitialized] = useState(false);
+  const [timerTick, setTimerTick] = useState(0);
 
   // Ticker draft state
   const [tickerTextDraft, setTickerTextDraft] = useState("");
@@ -133,6 +153,15 @@ export default function MediaPage() {
   const [toAlign, setToAlign] = useState<"left" | "center" | "right">("left");
   const [toFontFamily, setToFontFamily] = useState("inherit");
   const [toShadow, setToShadow] = useState(false);
+  const [toOpacity, setToOpacity] = useState(100);
+  const [toPadding, setToPadding] = useState(8);
+  const [toRadius, setToRadius] = useState(4);
+  const [toLetterSpacing, setToLetterSpacing] = useState(0);
+  const [toAnimation, setToAnimation] = useState<"none" | "fade_in" | "slide_up" | "glow" | "pulse">("none");
+  const [toMaxWidth, setToMaxWidth] = useState(80);
+  const [toBorderColor, setToBorderColor] = useState("#ffffff");
+  const [toBorderWidth, setToBorderWidth] = useState(0);
+  const [toInitialized, setToInitialized] = useState(false);
 
   const { toast } = useToast();
 
@@ -189,9 +218,65 @@ export default function MediaPage() {
       if (screenState.logoPosition) setLogoPosDraft(screenState.logoPosition as typeof logoPosDraft);
       if (screenState.logoSize)     setLogoSizeDraft(screenState.logoSize);
       if (screenState.logoOpacity)  setLogoOpacityDraft(screenState.logoOpacity);
+      if (screenState.logoShape)         setLogoShapeDraft(screenState.logoShape as typeof logoShapeDraft);
+      if (screenState.logoText)          setLogoTextDraft(screenState.logoText);
+      if (screenState.logoTextColor)     setLogoTextColorDraft(screenState.logoTextColor);
+      if (screenState.logoTextSize)      setLogoTextSizeDraft(screenState.logoTextSize);
+      if (screenState.logoTextPosition)  setLogoTextPositionDraft(screenState.logoTextPosition as typeof logoTextPositionDraft);
+      if (screenState.logoTextWeight)    setLogoTextWeightDraft(screenState.logoTextWeight as typeof logoTextWeightDraft);
       setLogoInitialized(true);
     }
   }, [screenState, logoInitialized]);
+
+  // Sync text overlay draft from server state on first load only
+  useEffect(() => {
+    if (!toInitialized && screenState) {
+      if (screenState.textOverlayContent)        setToContent(screenState.textOverlayContent);
+      if (screenState.textOverlayPosition)       setToPosition(screenState.textOverlayPosition as typeof toPosition);
+      if (screenState.textOverlayFontSize)       setToFontSize(screenState.textOverlayFontSize);
+      if (screenState.textOverlayColor)          setToColor(screenState.textOverlayColor);
+      if (screenState.textOverlayBg)             setToBg(screenState.textOverlayBg);
+      setToBold(screenState.textOverlayBold ?? false);
+      setToItalic(screenState.textOverlayItalic ?? false);
+      if (screenState.textOverlayAlign)          setToAlign(screenState.textOverlayAlign as typeof toAlign);
+      if (screenState.textOverlayFontFamily)     setToFontFamily(screenState.textOverlayFontFamily);
+      setToShadow(screenState.textOverlayShadow ?? false);
+      if (typeof screenState.textOverlayOpacity === "number")        setToOpacity(screenState.textOverlayOpacity);
+      if (typeof screenState.textOverlayPadding === "number")        setToPadding(screenState.textOverlayPadding);
+      if (typeof screenState.textOverlayRadius === "number")         setToRadius(screenState.textOverlayRadius);
+      if (typeof screenState.textOverlayLetterSpacing === "number")  setToLetterSpacing(screenState.textOverlayLetterSpacing);
+      if (screenState.textOverlayAnimation)                          setToAnimation(screenState.textOverlayAnimation as typeof toAnimation);
+      if (typeof screenState.textOverlayMaxWidth === "number")       setToMaxWidth(screenState.textOverlayMaxWidth);
+      if (screenState.textOverlayBorderColor)                        setToBorderColor(screenState.textOverlayBorderColor);
+      if (typeof screenState.textOverlayBorderWidth === "number")    setToBorderWidth(screenState.textOverlayBorderWidth);
+      setToInitialized(true);
+    }
+  }, [screenState, toInitialized]);
+
+  // Live tick for the Timer card display in Overlays tab
+  useEffect(() => {
+    if (!screenState?.timerEnabled || !screenState.timerStartedAt) return;
+    const id = setInterval(() => setTimerTick(t => t + 1), 250);
+    return () => clearInterval(id);
+  }, [screenState?.timerEnabled, screenState?.timerStartedAt]);
+
+  // Sync timer draft from server state on first load only
+  useEffect(() => {
+    if (!timerInitialized && screenState) {
+      if (screenState.timerMode)        setTimerModeDraft(screenState.timerMode as typeof timerModeDraft);
+      if (typeof screenState.timerDurationSec === "number") {
+        setTimerDurationMinDraft(Math.floor(screenState.timerDurationSec / 60));
+        setTimerDurationSecDraft(screenState.timerDurationSec % 60);
+      }
+      if (screenState.timerPosition)    setTimerPositionDraft(screenState.timerPosition as typeof timerPositionDraft);
+      if (screenState.timerFontSize)    setTimerFontSizeDraft(screenState.timerFontSize);
+      if (screenState.timerColor)       setTimerColorDraft(screenState.timerColor);
+      if (screenState.timerBgColor)     setTimerBgColorDraft(screenState.timerBgColor);
+      if (screenState.timerLabel)       setTimerLabelDraft(screenState.timerLabel);
+      if (screenState.timerWarningSec)  setTimerWarningSecDraft(screenState.timerWarningSec);
+      setTimerInitialized(true);
+    }
+  }, [screenState, timerInitialized]);
 
   const setUploadedFiles = (updater: UploadedFile[] | ((prev: UploadedFile[]) => UploadedFile[])) => {
     setUploadedFilesState(prev => {
@@ -290,6 +375,38 @@ export default function MediaPage() {
     lowerThirdAccentColor: screenState?.lowerThirdAccentColor ?? "rgba(255,255,255,0.75)",
     lowerThirdNameSize: screenState?.lowerThirdNameSize ?? 22,
     lowerThirdTitleSize: screenState?.lowerThirdTitleSize ?? 13,
+    clockShowSeconds: screenState?.clockShowSeconds ?? true,
+    clockBgColor: screenState?.clockBgColor ?? "rgba(0,0,0,0.52)",
+    clockBgOpacity: screenState?.clockBgOpacity ?? 100,
+    clockBgRadius: screenState?.clockBgRadius ?? 6,
+    clockBgPadding: screenState?.clockBgPadding ?? 13,
+    logoShape: screenState?.logoShape ?? "rect",
+    logoText: screenState?.logoText ?? undefined,
+    logoTextColor: screenState?.logoTextColor ?? "#ffffff",
+    logoTextSize: screenState?.logoTextSize ?? 14,
+    logoTextPosition: screenState?.logoTextPosition ?? "right",
+    logoTextWeight: screenState?.logoTextWeight ?? "600",
+    textOverlayOpacity: screenState?.textOverlayOpacity ?? 100,
+    textOverlayPadding: screenState?.textOverlayPadding ?? 8,
+    textOverlayRadius: screenState?.textOverlayRadius ?? 4,
+    textOverlayLetterSpacing: screenState?.textOverlayLetterSpacing ?? 0,
+    textOverlayAnimation: screenState?.textOverlayAnimation ?? "none",
+    textOverlayMaxWidth: screenState?.textOverlayMaxWidth ?? 80,
+    textOverlayBorderColor: screenState?.textOverlayBorderColor ?? "transparent",
+    textOverlayBorderWidth: screenState?.textOverlayBorderWidth ?? 0,
+    timerEnabled: screenState?.timerEnabled ?? false,
+    timerMode: screenState?.timerMode ?? "stopwatch",
+    timerStartedAt: screenState?.timerStartedAt ?? undefined,
+    timerAccumulatedMs: screenState?.timerAccumulatedMs ?? 0,
+    timerDurationSec: screenState?.timerDurationSec ?? 300,
+    timerPosition: screenState?.timerPosition ?? "top-center",
+    timerFontSize: screenState?.timerFontSize ?? 48,
+    timerColor: screenState?.timerColor ?? "#ffffff",
+    timerBgColor: screenState?.timerBgColor ?? "rgba(0,0,0,0.6)",
+    timerLabel: screenState?.timerLabel ?? undefined,
+    timerWarningSec: screenState?.timerWarningSec ?? 60,
+    timerWarningColor: screenState?.timerWarningColor ?? "#fbbf24",
+    timerCriticalColor: screenState?.timerCriticalColor ?? "#ef4444",
     clockOverlayEnabled: screenState?.clockOverlayEnabled ?? false,
     clockPosition: (screenState?.clockPosition ?? "top-right") as "top-left" | "top-right" | "bottom-left" | "bottom-right",
     clockStyle: (screenState?.clockStyle ?? "digital") as "digital" | "clean",
@@ -1069,6 +1186,15 @@ export default function MediaPage() {
                 )}
               </div>
 
+              {/* Show seconds toggle (only relevant for digital) */}
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Show Seconds</label>
+                <Switch
+                  checked={screenState?.clockShowSeconds ?? true}
+                  onCheckedChange={v => updateOverlay({ clockShowSeconds: v })}
+                />
+              </div>
+
               {/* Font size + color */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -1080,7 +1206,7 @@ export default function MediaPage() {
                     onValueChange={([v]) => updateOverlay({ clockFontSize: v })} />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Color</label>
+                  <label className="text-sm font-medium">Text Color</label>
                   <div className="flex gap-1.5 items-center">
                     <input type="color" value="#ffffff"
                       onChange={e => updateOverlay({ clockColor: e.target.value })}
@@ -1088,6 +1214,66 @@ export default function MediaPage() {
                     <Input className="h-8 text-xs font-mono"
                       value={screenState?.clockColor ?? "rgba(255,255,255,0.92)"}
                       onChange={e => updateOverlay({ clockColor: e.target.value })} />
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Background customization ── */}
+              <div className="pt-2 border-t border-border/50 space-y-3">
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Background</label>
+
+                {/* Bg color preset + custom */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Color</label>
+                  <div className="grid grid-cols-6 gap-1.5">
+                    {[
+                      { v: "transparent",       label: "None",   swatch: "transparent" },
+                      { v: "rgba(0,0,0,0.32)",  label: "Dark",   swatch: "rgba(0,0,0,0.32)" },
+                      { v: "rgba(0,0,0,0.52)",  label: "Dark+",  swatch: "rgba(0,0,0,0.52)" },
+                      { v: "rgba(0,0,0,0.85)",  label: "Solid",  swatch: "rgba(0,0,0,0.85)" },
+                      { v: "rgba(255,255,255,0.18)", label: "Light",  swatch: "rgba(255,255,255,0.4)" },
+                      { v: "rgba(180,30,30,0.7)",    label: "Accent", swatch: "rgba(180,30,30,0.85)" },
+                    ].map(p => (
+                      <button key={p.v} onClick={() => updateOverlay({ clockBgColor: p.v })}
+                        className={`h-8 rounded border transition-colors flex flex-col items-center justify-center gap-0.5 ${(screenState?.clockBgColor ?? "rgba(0,0,0,0.52)") === p.v ? "border-primary ring-1 ring-primary" : "border-border hover:bg-muted/40"}`}
+                        style={{ background: p.swatch === "transparent" ? "repeating-conic-gradient(#666 0% 25%, #999 0% 50%) 50% / 8px 8px" : p.swatch }}>
+                        <span className="text-[9px]" style={{ color: p.v.includes("255,255,255") || p.swatch === "transparent" ? "#000" : "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>{p.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <Input className="h-7 text-[11px] font-mono"
+                    value={screenState?.clockBgColor ?? "rgba(0,0,0,0.52)"}
+                    onChange={e => updateOverlay({ clockBgColor: e.target.value })}
+                    placeholder="rgba(0,0,0,0.52)" />
+                </div>
+
+                {/* Bg opacity */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between">
+                    <label className="text-sm font-medium">Opacity</label>
+                    <span className="text-xs text-muted-foreground">{screenState?.clockBgOpacity ?? 100}%</span>
+                  </div>
+                  <Slider min={0} max={100} step={5} value={[screenState?.clockBgOpacity ?? 100]}
+                    onValueChange={([v]) => updateOverlay({ clockBgOpacity: v })} />
+                </div>
+
+                {/* Radius + padding */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between">
+                      <label className="text-sm font-medium">Corner Radius</label>
+                      <span className="text-xs text-muted-foreground">{screenState?.clockBgRadius ?? 6}px</span>
+                    </div>
+                    <Slider min={0} max={32} step={1} value={[screenState?.clockBgRadius ?? 6]}
+                      onValueChange={([v]) => updateOverlay({ clockBgRadius: v })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between">
+                      <label className="text-sm font-medium">Padding</label>
+                      <span className="text-xs text-muted-foreground">{screenState?.clockBgPadding ?? 13}px</span>
+                    </div>
+                    <Slider min={2} max={32} step={1} value={[screenState?.clockBgPadding ?? 13]}
+                      onValueChange={([v]) => updateOverlay({ clockBgPadding: v })} />
                   </div>
                 </div>
               </div>
@@ -1169,6 +1355,95 @@ export default function MediaPage() {
                 </div>
               </div>
 
+              {/* ── Shape selector ── */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Shape</label>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {([
+                    { v: "rect" as const,    label: "Square",  Icon: Square },
+                    { v: "rounded" as const, label: "Rounded", Icon: Square },
+                    { v: "circle" as const,  label: "Circle",  Icon: Circle },
+                    { v: "hex" as const,     label: "Hex",     Icon: Hexagon },
+                    { v: "shield" as const,  label: "Shield",  Icon: Shield },
+                  ]).map(s => (
+                    <button key={s.v} onClick={() => setLogoShapeDraft(s.v)}
+                      className={`flex flex-col items-center gap-1 py-2 rounded text-[10px] border transition-colors ${logoShapeDraft === s.v ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                      <s.Icon className={`w-4 h-4 ${s.v === "rounded" ? "rounded-md" : ""}`} />
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-muted-foreground">Circle/hex/shield crop the image to that shape.</p>
+              </div>
+
+              {/* ── Companion text ── */}
+              <div className="pt-2 border-t border-border/50 space-y-3">
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Type className="w-3.5 h-3.5" /> Companion Text (Optional)
+                </label>
+                <Input className="h-8 text-xs"
+                  placeholder="e.g. Phiri Worship Centre"
+                  value={logoTextDraft}
+                  onChange={e => setLogoTextDraft(e.target.value)} />
+
+                {logoTextDraft && (
+                  <>
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium">Text Position</label>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {([
+                          { v: "right" as const, label: "Right" },
+                          { v: "left"  as const, label: "Left"  },
+                          { v: "below" as const, label: "Below" },
+                          { v: "above" as const, label: "Above" },
+                        ]).map(p => (
+                          <button key={p.v} onClick={() => setLogoTextPositionDraft(p.v)}
+                            className={`py-1.5 rounded text-[11px] border transition-colors ${logoTextPositionDraft === p.v ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                            {p.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between">
+                          <label className="text-sm font-medium">Text Size</label>
+                          <span className="text-xs text-muted-foreground">{logoTextSizeDraft}px</span>
+                        </div>
+                        <Slider min={8} max={48} step={1} value={[logoTextSizeDraft]} onValueChange={([v]) => setLogoTextSizeDraft(v)} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-medium">Text Color</label>
+                        <div className="flex gap-1.5 items-center">
+                          <input type="color" value={logoTextColorDraft.startsWith("#") ? logoTextColorDraft : "#ffffff"}
+                            onChange={e => setLogoTextColorDraft(e.target.value)}
+                            className="h-8 w-10 rounded border border-input cursor-pointer bg-transparent p-0.5" />
+                          <Input className="h-8 text-xs font-mono" value={logoTextColorDraft} onChange={e => setLogoTextColorDraft(e.target.value)} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium">Font Weight</label>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {([
+                          { v: "400" as const, label: "Regular" },
+                          { v: "500" as const, label: "Medium" },
+                          { v: "600" as const, label: "Semibold" },
+                          { v: "700" as const, label: "Bold" },
+                        ]).map(w => (
+                          <button key={w.v} onClick={() => setLogoTextWeightDraft(w.v)}
+                            className={`py-1.5 rounded text-[10px] border transition-colors ${logoTextWeightDraft === w.v ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                            {w.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
               <div className="flex gap-2">
                 <Button className="flex-1 gap-2"
                   onClick={() => updateOverlay({
@@ -1177,6 +1452,12 @@ export default function MediaPage() {
                     logoPosition: logoPosDraft,
                     logoSize: logoSizeDraft,
                     logoOpacity: logoOpacityDraft,
+                    logoShape: logoShapeDraft,
+                    logoText: logoTextDraft || undefined,
+                    logoTextColor: logoTextColorDraft,
+                    logoTextSize: logoTextSizeDraft,
+                    logoTextPosition: logoTextPositionDraft,
+                    logoTextWeight: logoTextWeightDraft,
                   })}
                   disabled={!logoUrlDraft}
                 >
@@ -1314,6 +1595,95 @@ export default function MediaPage() {
                 </div>
               </div>
 
+              {/* ── Advanced styling ── */}
+              <div className="pt-2 border-t border-border/50 space-y-3">
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" /> Advanced
+                </label>
+
+                {/* Animation */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Animation</label>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {([
+                      { v: "none"     as const, label: "None"  },
+                      { v: "fade_in"  as const, label: "Fade"  },
+                      { v: "slide_up" as const, label: "Slide" },
+                      { v: "glow"     as const, label: "Glow"  },
+                      { v: "pulse"    as const, label: "Pulse" },
+                    ]).map(a => (
+                      <button key={a.v} onClick={() => setToAnimation(a.v)}
+                        className={`py-1.5 rounded text-[10px] border transition-colors ${toAnimation === a.v ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                        {a.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Opacity + max width */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between">
+                      <label className="text-sm font-medium">Opacity</label>
+                      <span className="text-xs text-muted-foreground">{toOpacity}%</span>
+                    </div>
+                    <Slider min={20} max={100} step={5} value={[toOpacity]} onValueChange={([v]) => setToOpacity(v)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between">
+                      <label className="text-sm font-medium">Max Width</label>
+                      <span className="text-xs text-muted-foreground">{toMaxWidth}%</span>
+                    </div>
+                    <Slider min={20} max={95} step={5} value={[toMaxWidth]} onValueChange={([v]) => setToMaxWidth(v)} />
+                  </div>
+                </div>
+
+                {/* Padding + radius */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between">
+                      <label className="text-sm font-medium">Padding</label>
+                      <span className="text-xs text-muted-foreground">{toPadding}px</span>
+                    </div>
+                    <Slider min={0} max={40} step={1} value={[toPadding]} onValueChange={([v]) => setToPadding(v)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between">
+                      <label className="text-sm font-medium">Corner Radius</label>
+                      <span className="text-xs text-muted-foreground">{toRadius}px</span>
+                    </div>
+                    <Slider min={0} max={40} step={1} value={[toRadius]} onValueChange={([v]) => setToRadius(v)} />
+                  </div>
+                </div>
+
+                {/* Letter spacing */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between">
+                    <label className="text-sm font-medium">Letter Spacing</label>
+                    <span className="text-xs text-muted-foreground">{(toLetterSpacing / 100).toFixed(2)}em</span>
+                  </div>
+                  <Slider min={-5} max={30} step={1} value={[toLetterSpacing]} onValueChange={([v]) => setToLetterSpacing(v)} />
+                </div>
+
+                {/* Border */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between">
+                      <label className="text-sm font-medium">Border Width</label>
+                      <span className="text-xs text-muted-foreground">{toBorderWidth}px</span>
+                    </div>
+                    <Slider min={0} max={8} step={1} value={[toBorderWidth]} onValueChange={([v]) => setToBorderWidth(v)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Border Color</label>
+                    <div className="flex gap-1.5 items-center">
+                      <input type="color" value={toBorderColor.startsWith("#") ? toBorderColor : "#ffffff"} onChange={e => setToBorderColor(e.target.value)} className="h-8 w-10 rounded border border-input cursor-pointer bg-transparent p-0.5" />
+                      <Input className="h-8 text-xs font-mono" value={toBorderColor} onChange={e => setToBorderColor(e.target.value)} disabled={toBorderWidth === 0} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Actions */}
               <div className="flex gap-2">
                 <Button className="flex-1 gap-2"
@@ -1329,6 +1699,14 @@ export default function MediaPage() {
                     textOverlayAlign: toAlign,
                     textOverlayFontFamily: toFontFamily,
                     textOverlayShadow: toShadow,
+                    textOverlayOpacity: toOpacity,
+                    textOverlayPadding: toPadding,
+                    textOverlayRadius: toRadius,
+                    textOverlayLetterSpacing: toLetterSpacing,
+                    textOverlayAnimation: toAnimation,
+                    textOverlayMaxWidth: toMaxWidth,
+                    textOverlayBorderColor: toBorderColor,
+                    textOverlayBorderWidth: toBorderWidth,
                   })}
                   disabled={!toContent}
                 >
@@ -1342,6 +1720,232 @@ export default function MediaPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* ── Stopwatch / Countdown Timer ── */}
+          {(() => {
+            const startedAtMs = screenState?.timerStartedAt ? Date.parse(screenState.timerStartedAt) : NaN;
+            const isRunning = !isNaN(startedAtMs);
+            const accumulated = screenState?.timerAccumulatedMs ?? 0;
+            // re-read timerTick to keep the live preview ticking
+            void timerTick;
+            const elapsedMs = accumulated + (isRunning ? Math.max(0, Date.now() - startedAtMs) : 0);
+            const totalDurationSec = (timerDurationMinDraft * 60) + timerDurationSecDraft;
+            const previewMs = timerModeDraft === "countdown" ? Math.max(0, totalDurationSec * 1000 - elapsedMs) : elapsedMs;
+            const previewSec = Math.floor(previewMs / 1000);
+            const ph = Math.floor(previewSec / 3600);
+            const pm = Math.floor((previewSec % 3600) / 60);
+            const ps = previewSec % 60;
+            const previewStr = ph > 0
+              ? `${ph}:${String(pm).padStart(2, "0")}:${String(ps).padStart(2, "0")}`
+              : `${String(pm).padStart(2, "0")}:${String(ps).padStart(2, "0")}`;
+
+            const start = () => {
+              updateOverlay({
+                timerEnabled: true,
+                timerMode: timerModeDraft,
+                timerStartedAt: new Date().toISOString(),
+                timerAccumulatedMs: accumulated,
+                timerDurationSec: totalDurationSec || 300,
+                timerPosition: timerPositionDraft,
+                timerFontSize: timerFontSizeDraft,
+                timerColor: timerColorDraft,
+                timerBgColor: timerBgColorDraft,
+                timerLabel: timerLabelDraft || undefined,
+                timerWarningSec: timerWarningSecDraft,
+              });
+            };
+            const pause = () => {
+              if (!isRunning) return;
+              updateOverlay({
+                timerStartedAt: undefined,
+                timerAccumulatedMs: elapsedMs,
+              });
+            };
+            const reset = () => {
+              updateOverlay({
+                timerStartedAt: undefined,
+                timerAccumulatedMs: 0,
+              });
+            };
+            const restartFresh = () => {
+              updateOverlay({
+                timerEnabled: true,
+                timerMode: timerModeDraft,
+                timerStartedAt: new Date().toISOString(),
+                timerAccumulatedMs: 0,
+                timerDurationSec: totalDurationSec || 300,
+                timerPosition: timerPositionDraft,
+                timerFontSize: timerFontSizeDraft,
+                timerColor: timerColorDraft,
+                timerBgColor: timerBgColorDraft,
+                timerLabel: timerLabelDraft || undefined,
+                timerWarningSec: timerWarningSecDraft,
+              });
+            };
+
+            return (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between gap-3">
+                    <CardTitle className="flex items-center gap-2 text-base"><TimerIcon className="w-4 h-4" /> Timer / Stopwatch</CardTitle>
+                    <div className="flex items-center gap-2">
+                      {isRunning && <Badge className="text-[10px] py-0 h-4 bg-emerald-600 border-0 animate-pulse">RUNNING</Badge>}
+                      {screenState?.timerEnabled && !isRunning && <Badge className="text-[10px] py-0 h-4 bg-amber-600 border-0">PAUSED</Badge>}
+                      <Switch checked={screenState?.timerEnabled ?? false} onCheckedChange={v => updateOverlay({ timerEnabled: v })} />
+                    </div>
+                  </div>
+                  <CardDescription className="text-xs">Stopwatch counts up. Countdown counts down then turns red.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Live preview readout */}
+                  <div className="flex items-center justify-center py-3 rounded-md border border-border bg-muted/30">
+                    <div className="text-3xl font-mono font-bold tabular-nums tracking-wider"
+                      style={{ color: previewMs < 10000 && timerModeDraft === "countdown" ? "#ef4444" : previewMs < timerWarningSecDraft * 1000 && timerModeDraft === "countdown" ? "#f59e0b" : undefined }}>
+                      {previewStr}
+                    </div>
+                  </div>
+
+                  {/* Mode */}
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Mode</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {([
+                        { v: "stopwatch" as const, label: "Stopwatch" },
+                        { v: "countdown" as const, label: "Countdown" },
+                      ]).map(m => (
+                        <button key={m.v} onClick={() => setTimerModeDraft(m.v)}
+                          className={`py-2 rounded text-xs transition-colors border ${timerModeDraft === m.v ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Duration (countdown only) */}
+                  {timerModeDraft === "countdown" && (
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium">Duration</label>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <Input type="number" min={0} max={180} value={timerDurationMinDraft}
+                            onChange={e => setTimerDurationMinDraft(Math.max(0, Math.min(180, parseInt(e.target.value || "0", 10))))}
+                            className="h-8 text-sm text-center" />
+                          <div className="text-[10px] text-center text-muted-foreground mt-0.5">min</div>
+                        </div>
+                        <div className="flex-1">
+                          <Input type="number" min={0} max={59} value={timerDurationSecDraft}
+                            onChange={e => setTimerDurationSecDraft(Math.max(0, Math.min(59, parseInt(e.target.value || "0", 10))))}
+                            className="h-8 text-sm text-center" />
+                          <div className="text-[10px] text-center text-muted-foreground mt-0.5">sec</div>
+                        </div>
+                        <div className="flex flex-col gap-1 pl-2">
+                          {[1, 5, 10, 15, 30].map(min => (
+                            <button key={min} onClick={() => { setTimerDurationMinDraft(min); setTimerDurationSecDraft(0); }}
+                              className="px-2 py-0.5 rounded text-[10px] border border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors">
+                              {min}m
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Position */}
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Position</label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {(["top-left","top-center","top-right","bottom-left","center","bottom-right","bottom-center"] as const).filter(p => p !== "bottom-center" || true).slice(0, 7).map(pos => (
+                        pos === "center" ? (
+                          <button key={pos} onClick={() => setTimerPositionDraft(pos)}
+                            className={`py-1 rounded text-[10px] leading-tight transition-colors border ${timerPositionDraft === pos ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                            Center
+                          </button>
+                        ) : (
+                          <button key={pos} onClick={() => setTimerPositionDraft(pos)}
+                            className={`py-1 rounded text-[10px] leading-tight transition-colors border ${timerPositionDraft === pos ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                            {pos.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                          </button>
+                        )
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Label */}
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Label (optional)</label>
+                    <Input className="h-8 text-xs" placeholder="e.g. Worship Set, Sermon" value={timerLabelDraft}
+                      onChange={e => setTimerLabelDraft(e.target.value)} />
+                  </div>
+
+                  {/* Font size + color */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between">
+                        <label className="text-sm font-medium">Size</label>
+                        <span className="text-xs text-muted-foreground">{timerFontSizeDraft}px</span>
+                      </div>
+                      <Slider min={24} max={140} step={2} value={[timerFontSizeDraft]} onValueChange={([v]) => setTimerFontSizeDraft(v)} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium">Text Color</label>
+                      <div className="flex gap-1.5 items-center">
+                        <input type="color" value={timerColorDraft.startsWith("#") ? timerColorDraft : "#ffffff"}
+                          onChange={e => setTimerColorDraft(e.target.value)}
+                          className="h-8 w-10 rounded border border-input cursor-pointer bg-transparent p-0.5" />
+                        <Input className="h-8 text-xs font-mono" value={timerColorDraft}
+                          onChange={e => setTimerColorDraft(e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Background + warning seconds (countdown only) */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium">Background</label>
+                      <Select value={timerBgColorDraft} onValueChange={setTimerBgColorDraft}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="transparent" className="text-xs">None</SelectItem>
+                          <SelectItem value="rgba(0,0,0,0.4)" className="text-xs">Dark 40%</SelectItem>
+                          <SelectItem value="rgba(0,0,0,0.6)" className="text-xs">Dark 60%</SelectItem>
+                          <SelectItem value="rgba(0,0,0,0.85)" className="text-xs">Solid Dark</SelectItem>
+                          <SelectItem value="rgba(255,255,255,0.15)" className="text-xs">Light 15%</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {timerModeDraft === "countdown" && (
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between">
+                          <label className="text-sm font-medium">Warn at</label>
+                          <span className="text-xs text-muted-foreground">{timerWarningSecDraft}s</span>
+                        </div>
+                        <Slider min={5} max={300} step={5} value={[timerWarningSecDraft]} onValueChange={([v]) => setTimerWarningSecDraft(v)} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Transport controls */}
+                  <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                    {!isRunning ? (
+                      <Button className="flex-1 gap-2" onClick={start}>
+                        <Play className="w-4 h-4" /> {accumulated > 0 ? "Resume" : "Start"}
+                      </Button>
+                    ) : (
+                      <Button className="flex-1 gap-2" variant="secondary" onClick={pause}>
+                        <Pause className="w-4 h-4" /> Pause
+                      </Button>
+                    )}
+                    <Button variant="outline" className="gap-2" onClick={reset} disabled={!isRunning && accumulated === 0}>
+                      <RotateCcw className="w-4 h-4" /> Reset
+                    </Button>
+                    <Button variant="outline" className="gap-2" onClick={restartFresh}>
+                      <RotateCw className="w-4 h-4" /> Restart
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* Scrolling Ticker */}
           <Card>

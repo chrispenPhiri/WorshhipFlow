@@ -25,6 +25,22 @@ const ANIMATION_STYLES = `
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.3; }
 }
+@keyframes wf-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes wf-slide-up {
+  from { opacity: 0; transform: translateY(40px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes wf-glow {
+  0%, 100% { text-shadow: 0 0 12px rgba(255,255,255,0.45), 0 2px 14px rgba(0,0,0,0.95); }
+  50%       { text-shadow: 0 0 26px rgba(255,255,255,0.95), 0 2px 14px rgba(0,0,0,0.95); }
+}
+@keyframes wf-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(1.04); opacity: 0.92; }
+}
 `;
 
 function getAnimationStyle(animation: string | undefined): React.CSSProperties {
@@ -94,14 +110,15 @@ function LowerThirdOverlay({ name, title, position, style, tickerH, nameColor, t
 }
 
 // ── Clock overlay ─────────────────────────────────────────────────────────────
-function ClockOverlay({ time, position, clockStyle, showDate, dateFormat, fontSize, color }: {
+function ClockOverlay({ time, position, clockStyle, showDate, showSeconds, dateFormat, fontSize, color, bgColor, bgOpacity, bgRadius, bgPadding }: {
   time: Date; position: string; clockStyle: string;
-  showDate: boolean; dateFormat: string; fontSize: number; color: string;
+  showDate: boolean; showSeconds: boolean; dateFormat: string; fontSize: number; color: string;
+  bgColor: string; bgOpacity: number; bgRadius: number; bgPadding: number;
 }) {
   const h = time.getHours().toString().padStart(2, "0");
   const m = time.getMinutes().toString().padStart(2, "0");
   const s = time.getSeconds().toString().padStart(2, "0");
-  const timeStr = clockStyle === "digital" ? `${h}:${m}:${s}` : `${h}:${m}`;
+  const timeStr = clockStyle === "digital" && showSeconds ? `${h}:${m}:${s}` : `${h}:${m}`;
 
   let dateStr = "";
   if (showDate) {
@@ -120,17 +137,27 @@ function ClockOverlay({ time, position, clockStyle, showDate, dateFormat, fontSi
     left:   position.endsWith("left")     ? 20 : undefined,
     right:  position.endsWith("right")    ? 20 : undefined,
   };
+
+  // Compose background with opacity multiplier
+  const opacity = Math.max(0, Math.min(100, bgOpacity)) / 100;
+  const isTransparent = bgColor === "transparent" || bgColor === "none" || opacity === 0;
+
   return (
     <div style={{ position: "absolute", zIndex: 31, pointerEvents: "none", ...pos }}>
       <div style={{
-        background: "rgba(0,0,0,0.52)", borderRadius: "6px", padding: showDate ? "6px 13px 5px" : "4px 13px",
-        backdropFilter: "blur(4px)", textAlign: "center",
+        background: isTransparent ? "transparent" : bgColor,
+        opacity: isTransparent ? 1 : opacity,
+        borderRadius: `${bgRadius}px`,
+        padding: `${Math.round(bgPadding * 0.45)}px ${bgPadding}px`,
+        backdropFilter: isTransparent ? undefined : "blur(4px)",
+        textAlign: "center",
       }}>
         <div style={{
           color, fontFamily: clockStyle === "digital" ? "monospace" : "inherit",
           fontSize: `${fontSize}px`, fontWeight: clockStyle === "digital" ? 400 : 300,
           letterSpacing: clockStyle === "digital" ? "0.1em" : "0.04em",
           lineHeight: 1.2,
+          textShadow: isTransparent ? "0 2px 14px rgba(0,0,0,0.95),0 0 40px rgba(0,0,0,0.7)" : "none",
         }}>
           {timeStr}
         </div>
@@ -145,8 +172,10 @@ function ClockOverlay({ time, position, clockStyle, showDate, dateFormat, fontSi
 }
 
 // ── Logo overlay ─────────────────────────────────────────────────────────────
-function LogoOverlay({ url, position, size, opacity, tickerH }: {
-  url: string; position: string; size: number; opacity: number; tickerH: number;
+function LogoOverlay({ url, position, size, opacity, shape, text, textColor, textSize, textPosition, textWeight, tickerH }: {
+  url: string; position: string; size: number; opacity: number;
+  shape: string; text: string | null | undefined; textColor: string; textSize: number; textPosition: string; textWeight: string;
+  tickerH: number;
 }) {
   const isBottom = position.startsWith("bottom");
   const isCenterPos = position === "center";
@@ -158,8 +187,39 @@ function LogoOverlay({ url, position, size, opacity, tickerH }: {
         left:   position.endsWith("left")   ? 16 : undefined,
         right:  position.endsWith("right")  ? 16 : undefined,
       };
+
+  // Shape clipping for the logo image
+  const shapeStyle: React.CSSProperties = (() => {
+    if (shape === "circle") {
+      return { borderRadius: "50%", aspectRatio: "1 / 1", objectFit: "cover" };
+    }
+    if (shape === "rounded") {
+      return { borderRadius: "16px" };
+    }
+    if (shape === "hex") {
+      return { clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)", aspectRatio: "1 / 1", objectFit: "cover" };
+    }
+    if (shape === "shield") {
+      return { clipPath: "polygon(50% 0%, 100% 25%, 100% 60%, 50% 100%, 0% 60%, 0% 25%)", aspectRatio: "1 / 1.15", objectFit: "cover" };
+    }
+    return { borderRadius: 0 };
+  })();
+
+  const flexDir: React.CSSProperties["flexDirection"] =
+    textPosition === "below" ? "column" :
+    textPosition === "above" ? "column-reverse" :
+    textPosition === "left"  ? "row-reverse" : "row";
+
+  const alignItems = (textPosition === "below" || textPosition === "above") ? "center" : "center";
+
+  const hasText = !!(text && text.trim());
+
   return (
-    <div style={{ position: "absolute", zIndex: 33, pointerEvents: "none", ...pos }}>
+    <div style={{
+      position: "absolute", zIndex: 33, pointerEvents: "none",
+      display: "flex", flexDirection: flexDir, alignItems, gap: "10px",
+      ...pos,
+    }}>
       <img
         src={url}
         alt=""
@@ -168,18 +228,34 @@ function LogoOverlay({ url, position, size, opacity, tickerH }: {
           maxWidth: "40vw",
           opacity: opacity / 100,
           display: "block",
-          objectFit: "contain",
           filter: "drop-shadow(0 2px 10px rgba(0,0,0,0.6))",
+          ...shapeStyle,
         }}
       />
+      {hasText && (
+        <div style={{
+          color: textColor,
+          fontSize: `${textSize}px`,
+          fontWeight: textWeight as unknown as number,
+          letterSpacing: "0.02em",
+          opacity: opacity / 100,
+          textShadow: "0 2px 10px rgba(0,0,0,0.7)",
+          whiteSpace: "nowrap",
+          textAlign: "center",
+        }}>
+          {text}
+        </div>
+      )}
     </div>
   );
 }
 
 // ── Standalone text overlay ───────────────────────────────────────────────────
-function TextOverlayLayer({ content, position, fontSize, color, bg, bold, italic, align, fontFamily, shadow, tickerH }: {
+function TextOverlayLayer({ content, position, fontSize, color, bg, bold, italic, align, fontFamily, shadow, opacity, padding, radius, letterSpacing, animation, maxWidth, borderColor, borderWidth, tickerH }: {
   content: string; position: string; fontSize: number; color: string; bg: string;
-  bold: boolean; italic: boolean; align: string; fontFamily: string; shadow: boolean; tickerH: number;
+  bold: boolean; italic: boolean; align: string; fontFamily: string; shadow: boolean;
+  opacity: number; padding: number; radius: number; letterSpacing: number; animation: string;
+  maxWidth: number; borderColor: string; borderWidth: number; tickerH: number;
 }) {
   const isCenterPos  = position === "center";
   const isBottom     = position.startsWith("bottom");
@@ -209,17 +285,34 @@ function TextOverlayLayer({ content, position, fontSize, color, bg, bold, italic
     };
   })();
 
-  const hasBackground = bg && bg !== "none";
+  const hasBackground = bg && bg !== "none" && bg !== "transparent";
   const textShadowVal = shadow
     ? "0 2px 14px rgba(0,0,0,0.95),0 0 40px rgba(0,0,0,0.7)"
     : hasBackground ? "none" : "0 2px 14px rgba(0,0,0,0.95),0 0 40px rgba(0,0,0,0.7)";
 
+  const animMap: Record<string, string> = {
+    fade_in:   "wf-fade-in 0.7s ease-out",
+    slide_up:  "wf-slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
+    glow:      "wf-glow 2.4s ease-in-out infinite",
+    pulse:     "wf-pulse 1.8s ease-in-out infinite",
+  };
+  const animValue = animMap[animation] || undefined;
+
+  const hasBorder = borderWidth > 0 && borderColor && borderColor !== "transparent";
+
   return (
-    <div style={{ position: "absolute", zIndex: 34, pointerEvents: "none", maxWidth: "80vw", ...pos }}>
+    <div style={{
+      position: "absolute", zIndex: 34, pointerEvents: "none",
+      maxWidth: `${maxWidth}vw`,
+      opacity: opacity / 100,
+      animation: animValue,
+      ...pos,
+    }}>
       <div style={{
         background: hasBackground ? bg : "transparent",
-        borderRadius: hasBackground ? "4px" : 0,
-        padding: hasBackground ? "8px 18px" : 0,
+        borderRadius: hasBackground || hasBorder ? `${radius}px` : 0,
+        padding: hasBackground || hasBorder ? `${padding}px ${Math.round(padding * 2)}px` : 0,
+        border: hasBorder ? `${borderWidth}px solid ${borderColor}` : undefined,
         color,
         fontSize: `${fontSize}px`,
         fontWeight: bold ? 700 : 400,
@@ -227,11 +320,111 @@ function TextOverlayLayer({ content, position, fontSize, color, bg, bold, italic
         fontFamily: fontFamily && fontFamily !== "inherit" ? fontFamily : undefined,
         textAlign: (align as "left" | "center" | "right") || "left",
         lineHeight: 1.4,
+        letterSpacing: `${letterSpacing / 100}em`,
         textShadow: textShadowVal,
         whiteSpace: "pre-wrap",
         backdropFilter: hasBackground ? "blur(6px)" : undefined,
       }}>
         {content}
+      </div>
+    </div>
+  );
+}
+
+// ── Stopwatch / Countdown timer overlay ──────────────────────────────────────
+function TimerOverlay({ mode, startedAt, accumulatedMs, durationSec, position, fontSize, color, bgColor, label, warningSec, warningColor, criticalColor, tickerH }: {
+  mode: string; startedAt: string | null | undefined; accumulatedMs: number; durationSec: number;
+  position: string; fontSize: number; color: string; bgColor: string; label: string | null | undefined;
+  warningSec: number; warningColor: string; criticalColor: string; tickerH: number;
+}) {
+  const [, force] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => force(t => t + 1), 100);
+    return () => clearInterval(id);
+  }, []);
+
+  const startedAtMs = startedAt ? Date.parse(startedAt) : NaN;
+  const isRunning = !isNaN(startedAtMs);
+  const elapsedMs = accumulatedMs + (isRunning ? Math.max(0, Date.now() - startedAtMs) : 0);
+
+  const totalMs = mode === "countdown" ? Math.max(0, durationSec * 1000 - elapsedMs) : elapsedMs;
+  const totalSecAbs = Math.floor(totalMs / 1000);
+  const negative = mode === "countdown" && elapsedMs > durationSec * 1000;
+  const displaySec = negative ? Math.floor((elapsedMs - durationSec * 1000) / 1000) : totalSecAbs;
+
+  const hours = Math.floor(displaySec / 3600);
+  const minutes = Math.floor((displaySec % 3600) / 60);
+  const seconds = displaySec % 60;
+  const timeStr = hours > 0
+    ? `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+    : `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+
+  // Color escalation for countdown
+  let displayColor = color;
+  if (mode === "countdown") {
+    const remainingSec = Math.max(0, Math.ceil(totalMs / 1000));
+    if (negative) {
+      displayColor = criticalColor;
+    } else if (remainingSec <= 10) {
+      displayColor = criticalColor;
+    } else if (remainingSec <= warningSec) {
+      displayColor = warningColor;
+    }
+  }
+
+  // Position
+  const isCenterH = position.endsWith("-center");
+  const pos: React.CSSProperties = (() => {
+    if (position === "center") return { top: "50%", left: "50%", transform: "translate(-50%,-50%)" };
+    if (isCenterH) {
+      if (position.startsWith("top"))    return { top: 16, left: "50%", transform: "translateX(-50%)" };
+      if (position.startsWith("bottom")) return { bottom: tickerH + 16, left: "50%", transform: "translateX(-50%)" };
+    }
+    return {
+      top:    position.startsWith("top")    ? 16 : undefined,
+      bottom: position.startsWith("bottom") ? tickerH + 16 : undefined,
+      left:   position.endsWith("left")     ? 16 : undefined,
+      right:  position.endsWith("right")    ? 16 : undefined,
+    };
+  })();
+
+  const hasBg = bgColor && bgColor !== "none" && bgColor !== "transparent";
+
+  // Pulse when in critical
+  const isPulsing = mode === "countdown" && (totalMs <= 10000 || negative);
+
+  return (
+    <div style={{ position: "absolute", zIndex: 32, pointerEvents: "none", textAlign: "center", ...pos }}>
+      <div style={{
+        background: hasBg ? bgColor : "transparent",
+        borderRadius: hasBg ? "10px" : 0,
+        padding: hasBg ? "10px 20px" : 0,
+        backdropFilter: hasBg ? "blur(6px)" : undefined,
+        animation: isPulsing ? "wf-pulse 1s ease-in-out infinite" : undefined,
+      }}>
+        {label && (
+          <div style={{
+            color: displayColor, opacity: 0.65,
+            fontSize: `${Math.max(11, fontSize * 0.32)}px`,
+            letterSpacing: "0.18em", textTransform: "uppercase",
+            marginBottom: "2px", fontWeight: 500,
+            textShadow: hasBg ? "none" : "0 2px 8px rgba(0,0,0,0.8)",
+          }}>
+            {label}
+          </div>
+        )}
+        <div style={{
+          color: displayColor,
+          fontSize: `${fontSize}px`,
+          fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+          fontWeight: 700,
+          fontVariantNumeric: "tabular-nums",
+          letterSpacing: "0.04em",
+          lineHeight: 1,
+          textShadow: hasBg ? "none" : "0 2px 14px rgba(0,0,0,0.95),0 0 40px rgba(0,0,0,0.7)",
+        }}>
+          {negative && <span style={{ marginRight: "0.1em" }}>+</span>}{timeStr}
+        </div>
       </div>
     </div>
   );
@@ -661,9 +854,14 @@ export default function BroadcastPage() {
           position={screenState.clockPosition ?? "top-right"}
           clockStyle={screenState.clockStyle ?? "digital"}
           showDate={screenState.clockShowDate ?? false}
+          showSeconds={screenState.clockShowSeconds ?? true}
           dateFormat={screenState.clockDateFormat ?? "long"}
           fontSize={screenState.clockFontSize ?? 16}
           color={screenState.clockColor ?? "rgba(255,255,255,0.92)"}
+          bgColor={screenState.clockBgColor ?? "rgba(0,0,0,0.52)"}
+          bgOpacity={screenState.clockBgOpacity ?? 100}
+          bgRadius={screenState.clockBgRadius ?? 6}
+          bgPadding={screenState.clockBgPadding ?? 13}
         />
       )}
 
@@ -674,6 +872,12 @@ export default function BroadcastPage() {
           position={screenState.logoPosition ?? "top-right"}
           size={screenState.logoSize ?? 20}
           opacity={screenState.logoOpacity ?? 100}
+          shape={screenState.logoShape ?? "rect"}
+          text={screenState.logoText}
+          textColor={screenState.logoTextColor ?? "#ffffff"}
+          textSize={screenState.logoTextSize ?? 14}
+          textPosition={screenState.logoTextPosition ?? "right"}
+          textWeight={screenState.logoTextWeight ?? "600"}
           tickerH={tickerH}
         />
       )}
@@ -691,6 +895,33 @@ export default function BroadcastPage() {
           align={screenState.textOverlayAlign ?? "left"}
           fontFamily={screenState.textOverlayFontFamily ?? "inherit"}
           shadow={screenState.textOverlayShadow ?? false}
+          opacity={screenState.textOverlayOpacity ?? 100}
+          padding={screenState.textOverlayPadding ?? 8}
+          radius={screenState.textOverlayRadius ?? 4}
+          letterSpacing={screenState.textOverlayLetterSpacing ?? 0}
+          animation={screenState.textOverlayAnimation ?? "none"}
+          maxWidth={screenState.textOverlayMaxWidth ?? 80}
+          borderColor={screenState.textOverlayBorderColor ?? "transparent"}
+          borderWidth={screenState.textOverlayBorderWidth ?? 0}
+          tickerH={tickerH}
+        />
+      )}
+
+      {/* ── Stopwatch / Countdown timer ── */}
+      {screenState?.timerEnabled && !screenState.isBlack && (
+        <TimerOverlay
+          mode={screenState.timerMode ?? "stopwatch"}
+          startedAt={screenState.timerStartedAt}
+          accumulatedMs={screenState.timerAccumulatedMs ?? 0}
+          durationSec={screenState.timerDurationSec ?? 300}
+          position={screenState.timerPosition ?? "top-center"}
+          fontSize={screenState.timerFontSize ?? 48}
+          color={screenState.timerColor ?? "#ffffff"}
+          bgColor={screenState.timerBgColor ?? "rgba(0,0,0,0.6)"}
+          label={screenState.timerLabel}
+          warningSec={screenState.timerWarningSec ?? 60}
+          warningColor={screenState.timerWarningColor ?? "#fbbf24"}
+          criticalColor={screenState.timerCriticalColor ?? "#ef4444"}
           tickerH={tickerH}
         />
       )}

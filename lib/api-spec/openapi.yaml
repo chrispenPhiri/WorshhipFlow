@@ -767,6 +767,75 @@ components:
           enum: [digital, clean]
         clockShowDate:
           type: boolean
+        clockShowSeconds:
+          type: boolean
+        clockBgColor:
+          type: string
+        clockBgOpacity:
+          type: integer
+        clockBgRadius:
+          type: integer
+        clockBgPadding:
+          type: integer
+        logoShape:
+          type: string
+          enum: [rect, circle, rounded, hex, shield]
+        logoText:
+          type: string
+        logoTextColor:
+          type: string
+        logoTextSize:
+          type: integer
+        logoTextPosition:
+          type: string
+          enum: [right, left, below, above]
+        logoTextWeight:
+          type: string
+        textOverlayOpacity:
+          type: integer
+        textOverlayPadding:
+          type: integer
+        textOverlayRadius:
+          type: integer
+        textOverlayLetterSpacing:
+          type: integer
+        textOverlayAnimation:
+          type: string
+          enum: [none, fade_in, slide_up, glow, pulse]
+        textOverlayMaxWidth:
+          type: integer
+        textOverlayBorderColor:
+          type: string
+        textOverlayBorderWidth:
+          type: integer
+        timerEnabled:
+          type: boolean
+        timerMode:
+          type: string
+          enum: [stopwatch, countdown]
+        timerStartedAt:
+          type: string
+        timerAccumulatedMs:
+          type: integer
+        timerDurationSec:
+          type: integer
+        timerPosition:
+          type: string
+          enum: [top-left, top-center, top-right, center, bottom-left, bottom-center, bottom-right]
+        timerFontSize:
+          type: integer
+        timerColor:
+          type: string
+        timerBgColor:
+          type: string
+        timerLabel:
+          type: string
+        timerWarningSec:
+          type: integer
+        timerWarningColor:
+          type: string
+        timerCriticalColor:
+          type: string
         clockDateFormat:
           type: string
           enum: [short, long, numeric]

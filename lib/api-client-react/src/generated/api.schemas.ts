@@ -326,6 +326,59 @@ export const ScreenStateClockStyle = {
   clean: "clean",
 } as const;
 
+export type ScreenStateLogoShape =
+  (typeof ScreenStateLogoShape)[keyof typeof ScreenStateLogoShape];
+
+export const ScreenStateLogoShape = {
+  rect: "rect",
+  circle: "circle",
+  rounded: "rounded",
+  hex: "hex",
+  shield: "shield",
+} as const;
+
+export type ScreenStateLogoTextPosition =
+  (typeof ScreenStateLogoTextPosition)[keyof typeof ScreenStateLogoTextPosition];
+
+export const ScreenStateLogoTextPosition = {
+  right: "right",
+  left: "left",
+  below: "below",
+  above: "above",
+} as const;
+
+export type ScreenStateTextOverlayAnimation =
+  (typeof ScreenStateTextOverlayAnimation)[keyof typeof ScreenStateTextOverlayAnimation];
+
+export const ScreenStateTextOverlayAnimation = {
+  none: "none",
+  fade_in: "fade_in",
+  slide_up: "slide_up",
+  glow: "glow",
+  pulse: "pulse",
+} as const;
+
+export type ScreenStateTimerMode =
+  (typeof ScreenStateTimerMode)[keyof typeof ScreenStateTimerMode];
+
+export const ScreenStateTimerMode = {
+  stopwatch: "stopwatch",
+  countdown: "countdown",
+} as const;
+
+export type ScreenStateTimerPosition =
+  (typeof ScreenStateTimerPosition)[keyof typeof ScreenStateTimerPosition];
+
+export const ScreenStateTimerPosition = {
+  "top-left": "top-left",
+  "top-center": "top-center",
+  "top-right": "top-right",
+  center: "center",
+  "bottom-left": "bottom-left",
+  "bottom-center": "bottom-center",
+  "bottom-right": "bottom-right",
+} as const;
+
 export type ScreenStateClockDateFormat =
   (typeof ScreenStateClockDateFormat)[keyof typeof ScreenStateClockDateFormat];
 
@@ -402,6 +455,38 @@ export interface ScreenState {
   clockPosition?: ScreenStateClockPosition;
   clockStyle?: ScreenStateClockStyle;
   clockShowDate?: boolean;
+  clockShowSeconds?: boolean;
+  clockBgColor?: string;
+  clockBgOpacity?: number;
+  clockBgRadius?: number;
+  clockBgPadding?: number;
+  logoShape?: ScreenStateLogoShape;
+  logoText?: string;
+  logoTextColor?: string;
+  logoTextSize?: number;
+  logoTextPosition?: ScreenStateLogoTextPosition;
+  logoTextWeight?: string;
+  textOverlayOpacity?: number;
+  textOverlayPadding?: number;
+  textOverlayRadius?: number;
+  textOverlayLetterSpacing?: number;
+  textOverlayAnimation?: ScreenStateTextOverlayAnimation;
+  textOverlayMaxWidth?: number;
+  textOverlayBorderColor?: string;
+  textOverlayBorderWidth?: number;
+  timerEnabled?: boolean;
+  timerMode?: ScreenStateTimerMode;
+  timerStartedAt?: string;
+  timerAccumulatedMs?: number;
+  timerDurationSec?: number;
+  timerPosition?: ScreenStateTimerPosition;
+  timerFontSize?: number;
+  timerColor?: string;
+  timerBgColor?: string;
+  timerLabel?: string;
+  timerWarningSec?: number;
+  timerWarningColor?: string;
+  timerCriticalColor?: string;
   clockDateFormat?: ScreenStateClockDateFormat;
   clockFontSize?: number;
   clockColor?: string;
