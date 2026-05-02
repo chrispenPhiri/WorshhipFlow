@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 import { BIBLE_BOOKS, BIBLE_TRANSLATIONS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,17 +18,20 @@ interface BibleVerse { verse: number; text: string; }
 interface BibleResult { reference: string; verses: BibleVerse[]; }
 
 export default function BiblePage() {
-  const [translationValue, setTranslationValue] = useState("kjv");
-  const [book, setBook] = useState("John");
-  const [chapter, setChapter] = useState("3");
-  const [fromVerse, setFromVerse] = useState("16");
-  const [toVerse, setToVerse] = useState("17");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<BibleResult | null>(null);
-  const [currentVerseIdx, setCurrentVerseIdx] = useState(0);
-  const [showNumbers, setShowNumbers] = useState(true);
-  const [sendMode, setSendMode] = useState<"all" | "one">("one");
-  const [highlighted, setHighlighted] = useState<Set<number>>(new Set());
+  // Persisted selections — remembered across page reloads
+  const [translationValue, setTranslationValue] = useLocalStorage("wf-bible-translation", "kjv");
+  const [book, setBook]                         = useLocalStorage("wf-bible-book", "John");
+  const [chapter, setChapter]                   = useLocalStorage("wf-bible-chapter", "3");
+  const [fromVerse, setFromVerse]               = useLocalStorage("wf-bible-from", "16");
+  const [toVerse, setToVerse]                   = useLocalStorage("wf-bible-to", "17");
+  const [showNumbers, setShowNumbers]           = useLocalStorage("wf-bible-show-numbers", true);
+  const [sendMode, setSendMode]                 = useLocalStorage<"all" | "one">("wf-bible-send-mode", "one");
+
+  // Transient state — not persisted
+  const [loading, setLoading]                   = useState(false);
+  const [result, setResult]                     = useState<BibleResult | null>(null);
+  const [currentVerseIdx, setCurrentVerseIdx]   = useState(0);
+  const [highlighted, setHighlighted]           = useState<Set<number>>(new Set());
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
