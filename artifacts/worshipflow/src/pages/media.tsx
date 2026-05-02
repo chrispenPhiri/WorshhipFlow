@@ -99,6 +99,9 @@ export default function MediaPage() {
   const [camLayout, setCamLayout] = useState<"fullscreen" | "pip-topright" | "pip-topleft" | "pip-bottomright" | "pip-bottomleft" | "side-left" | "side-right">("fullscreen");
   const [camShape, setCamShape] = useState<"rect" | "circle" | "rounded">("rect");
   const [camPipSize, setCamPipSize] = useState(30);
+  // Side-by-side: CSS background applied to the OTHER (text) half so it isn't pure black.
+  // Stored on background.value when type=camera + side layout.
+  const [camSideBg, setCamSideBg] = useState<string>("linear-gradient(135deg,#1e1b4b 0%,#0f0a2e 100%)");
 
   // Previous background — saved before camera goes live so Cut/Stop can roll back
   const prevBackgroundRef = useRef<{ type: string; value: string; overlay?: number; fit?: "cover" | "contain" | "fill"; loop?: boolean; cameraLayout?: string; cameraShape?: string; cameraPipSize?: number } | null>(null);
@@ -556,7 +559,17 @@ export default function MediaPage() {
         isBlack: false,
         isClear: false,
         contentType: "custom_text" as const,
-        background: { type: "camera", value: "camera", overlay: overlay[0], cameraLayout: camLayout, cameraShape: camShape, cameraPipSize: camPipSize },
+        background: {
+          type: "camera",
+          // For side-by-side, value is the CSS background of the non-camera half so it
+          // matches the theme instead of going pure black. For other layouts it's a
+          // sentinel ("camera") that BackgroundLayer ignores.
+          value: camLayout.startsWith("side-") ? camSideBg : "camera",
+          overlay: overlay[0],
+          cameraLayout: camLayout,
+          cameraShape: camShape,
+          cameraPipSize: camPipSize,
+        },
       }
     });
   };
@@ -820,10 +833,59 @@ export default function MediaPage() {
                   </div>
                 )}
 
+                {/* Side-by-side: pick the bg for the text-side panel so it matches the theme */}
+                {isSide && (() => {
+                  const presets: { label: string; value: string }[] = [
+                    { label: "Indigo",  value: "linear-gradient(135deg,#1e1b4b 0%,#0f0a2e 100%)" },
+                    { label: "Slate",   value: "linear-gradient(135deg,#1e293b 0%,#0f172a 100%)" },
+                    { label: "Plum",    value: "linear-gradient(135deg,#3b0764 0%,#1e0533 100%)" },
+                    { label: "Forest",  value: "linear-gradient(135deg,#064e3b 0%,#022c22 100%)" },
+                    { label: "Crimson", value: "linear-gradient(135deg,#7f1d1d 0%,#3b0a0a 100%)" },
+                    { label: "Black",   value: "#000000" },
+                    { label: "Charcoal",value: "#0a0a0a" },
+                    { label: "White",   value: "#ffffff" },
+                  ];
+                  return (
+                    <div className="space-y-2 pt-2 border-t border-border/50">
+                      <label className="text-sm font-medium">Text-Side Background</label>
+                      <p className="text-[11px] text-muted-foreground">Color or gradient shown behind the text panel (the half without the camera).</p>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {presets.map(p => (
+                          <button
+                            key={p.label}
+                            type="button"
+                            data-testid={`button-cam-side-bg-${p.label.toLowerCase()}`}
+                            onClick={() => setCamSideBg(p.value)}
+                            className={`h-9 rounded border transition-colors flex items-center justify-center ${camSideBg === p.value ? "border-primary ring-1 ring-primary" : "border-border hover:bg-muted/40"}`}
+                            style={{ background: p.value }}
+                          >
+                            <span className="text-[10px] font-medium" style={{ color: p.value === "#ffffff" ? "#000" : "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>{p.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="color"
+                          value={camSideBg.startsWith("#") ? camSideBg : "#1e1b4b"}
+                          onChange={e => setCamSideBg(e.target.value)}
+                          className="h-8 w-10 rounded border border-input cursor-pointer bg-transparent p-0.5 shrink-0"
+                        />
+                        <Input
+                          className="h-8 text-[11px] font-mono"
+                          value={camSideBg}
+                          onChange={e => setCamSideBg(e.target.value)}
+                          placeholder="#000 or linear-gradient(...)"
+                          data-testid="input-cam-side-bg"
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {(isPip || isSide) && (
                   <p className="text-xs text-muted-foreground bg-muted/30 rounded px-3 py-2">
                     {isSide
-                      ? "Camera occupies half the screen. Use the other half for content or leave as solid background."
+                      ? "Camera occupies half the screen. The other half uses your chosen background and shows content/overlays normally."
                       : "Camera appears as an overlay in the chosen corner. Content and other overlays show normally beneath it."
                     }
                   </p>

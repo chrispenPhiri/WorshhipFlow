@@ -560,10 +560,17 @@ function BackgroundLayer({ background, cameraStream }: {
 
   if (background.type === "camera") {
     const camLayout = background.cameraLayout ?? "fullscreen";
-    // PiP and side-by-side: show a solid/color background underneath, camera is rendered by CameraOverlay
+    // PiP and side-by-side: the camera is rendered by CameraOverlay; we just paint the
+    // backdrop here. For side-by-side this is what shows behind the text on the
+    // non-camera half — pull from background.value if it's a real CSS color/gradient
+    // (set by /media's "Text-Side Background" picker). The legacy "camera" sentinel
+    // falls back to plain black so old saved states don't change behavior.
     if (camLayout !== "fullscreen") {
+      const v = background.value;
+      const isCss = !!v && v !== "camera";
+      const bgStyle: React.CSSProperties = isCss ? { background: v } : { background: "#000000" };
       return (
-        <div className="absolute inset-0 bg-black">
+        <div className="absolute inset-0" style={bgStyle}>
           {overlayStyle && <div className="absolute inset-0" style={overlayStyle} />}
         </div>
       );
