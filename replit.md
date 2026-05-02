@@ -37,7 +37,9 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - **Themes** — 12 presets + 8 live animated wallpapers (particle, aurora, matrix, starfield, flame, ocean, geometric, neon). Apply with toast feedback.
 - **Media & Broadcast** — Upload tab (drag-drop or file browser for images/videos from local PC, blob URLs, session-scoped), Camera tab (webcam live feed), URL tab (image/video by URL), Broadcast tab (screen detection, auto-fullscreen, cursor hide, video loop toggles).
 - **Schedule** — Drag-and-drop service order builder.
-- **Sermon Notes** — Rich CRUD notes editor.
+- **Sermon Notes & Inspiration** — Two tabs (persisted via `wf-notes-tab`):
+  - *Sermon Notes*: Rich CRUD notes editor with search and present-to-screen.
+  - *Daily Inspiration*: Verse of the Day (60 KJV verses), "Did you know?" Bible/Jesus/God facts (36 items), Christian liturgical calendar with computed Easter (Meeus algorithm) and derived movable feasts (Ash Wed, Palm Sun, Maundy Thu, Good Fri, Easter, Ascension, Pentecost, Trinity Sun, Advent), plus fixed feasts (New Year, Epiphany, Reformation, All Saints, Christmas Eve/Day, Watch Night). Each item has Send-to-screen + Next rotation. Content lives in `lib/inspiration.ts` (pure local, offline-friendly).
 - **Settings** — App settings (church name, default font, etc.).
 
 ### Live Preview Sidebar (always visible)
