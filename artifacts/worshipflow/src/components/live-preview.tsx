@@ -1,7 +1,17 @@
+import { useState } from "react";
 import { useGetScreenState, useUpdateScreenState, getGetScreenStateQueryKey } from "@workspace/api-client-react";
 import { Button } from "./ui/button";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, ExternalLink } from "lucide-react";
+import { AlertCircle, ExternalLink, Monitor, MonitorSpeaker, ChevronDown, Loader2 } from "lucide-react";
+import { useBroadcast } from "@/hooks/use-broadcast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function LivePreview() {
   const queryClient = useQueryClient();
@@ -20,25 +30,21 @@ export function LivePreview() {
     }
   });
 
-  if (isLoading) return <div className="animate-pulse h-48 bg-muted rounded-md" />;
-  
-  if (error) return <div className="text-destructive flex items-center gap-2"><AlertCircle className="w-4 h-4"/> Error loading preview</div>;
+  const { screens, permissionState, detectScreens, openBroadcast, isWindowManagementSupported } = useBroadcast();
+  const [pickerOpen, setPickerOpen] = useState(false);
 
+  if (isLoading) return <div className="animate-pulse h-48 bg-muted rounded-md" />;
+  if (error) return <div className="text-destructive flex items-center gap-2"><AlertCircle className="w-4 h-4"/> Error loading preview</div>;
   if (!screenState) return null;
 
-  const handleClear = () => {
-    updateScreen({ data: { ...screenState, isClear: true } });
-  };
-
-  const handleBlackScreen = () => {
-    updateScreen({ data: { ...screenState, isBlack: !screenState.isBlack } });
-  };
+  const handleClear = () => updateScreen({ data: { ...screenState, isClear: true } });
+  const handleBlackScreen = () => updateScreen({ data: { ...screenState, isBlack: !screenState.isBlack } });
 
   const getStyle = () => {
     if (!screenState.textStyle) return {};
     return {
       fontFamily: screenState.textStyle.fontFamily,
-      fontSize: `${screenState.textStyle.fontSize / 3}px`, // Scale down for preview
+      fontSize: `${screenState.textStyle.fontSize / 3}px`,
       color: screenState.textStyle.textColor,
       fontWeight: screenState.textStyle.bold ? "bold" : "normal",
       fontStyle: screenState.textStyle.italic ? "italic" : "normal",
@@ -46,16 +52,25 @@ export function LivePreview() {
     };
   };
 
-  const openBroadcast = () => {
-    window.open(window.location.origin + import.meta.env.BASE_URL + "broadcast", "_blank", "noopener,noreferrer");
+  const handleOpenDropdown = async () => {
+    if (isWindowManagementSupported && screens.length === 0) {
+      await detectScreens();
+    }
+    setPickerOpen(true);
+  };
+
+  const handleOpenOnScreen = async (screenIndex?: number) => {
+    const target = screenIndex !== undefined ? screens[screenIndex] : undefined;
+    await openBroadcast(target);
+    setPickerOpen(false);
   };
 
   return (
     <div className="flex flex-col gap-4 h-full">
       <div className="flex justify-between items-center flex-wrap gap-2">
         <div className="flex gap-2">
-          <Button 
-            variant={screenState.isBlack ? "default" : "outline"} 
+          <Button
+            variant={screenState.isBlack ? "default" : "outline"}
             size="sm"
             onClick={handleBlackScreen}
             className={screenState.isBlack ? "bg-accent text-accent-foreground hover:bg-accent/90" : ""}
@@ -64,10 +79,66 @@ export function LivePreview() {
           </Button>
           <Button variant="outline" size="sm" onClick={handleClear}>Clear</Button>
         </div>
-        <Button variant="outline" size="sm" onClick={openBroadcast} className="gap-1.5 text-primary border-primary/40 hover:bg-primary/10">
-          <ExternalLink className="w-3.5 h-3.5" />
-          Broadcast
-        </Button>
+
+        {isWindowManagementSupported ? (
+          <DropdownMenu open={pickerOpen} onOpenChange={setPickerOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-primary border-primary/40 hover:bg-primary/10"
+                onClick={handleOpenDropdown}
+              >
+                {permissionState === "requesting" ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <MonitorSpeaker className="w-3.5 h-3.5" />
+                )}
+                Broadcast
+                <ChevronDown className="w-3 h-3 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+                Choose display
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+
+              {screens.length === 0 && permissionState !== "requesting" && (
+                <DropdownMenuItem onClick={() => handleOpenOnScreen(undefined)}>
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Open in new tab
+                </DropdownMenuItem>
+              )}
+
+              {screens.map((s, i) => (
+                <DropdownMenuItem key={i} onClick={() => handleOpenOnScreen(i)}>
+                  <Monitor className="w-4 h-4 mr-2 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="truncate">{s.label}</div>
+                    <div className="text-xs text-muted-foreground">{s.width}×{s.height}{s.isPrimary ? " · Primary" : ""}</div>
+                  </div>
+                </DropdownMenuItem>
+              ))}
+
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleOpenOnScreen(undefined)}>
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Open in new tab
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => openBroadcast()}
+            className="gap-1.5 text-primary border-primary/40 hover:bg-primary/10"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            Broadcast
+          </Button>
+        )}
       </div>
 
       {/* Screen Preview Container (16:9) */}
@@ -93,11 +164,14 @@ export function LivePreview() {
         )}
       </div>
 
-      <div className="text-xs text-muted-foreground mt-2">
+      <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
         <p>Current: <span className="font-medium text-foreground">{screenState.title || "None"}</span></p>
         <p>Type: {screenState.contentType}</p>
+        {isWindowManagementSupported && screens.length > 1 && (
+          <p className="text-primary/70">{screens.length} displays detected</p>
+        )}
       </div>
-      
+
       <style dangerouslySetInnerHTML={{__html:`
         @keyframes marquee {
           0% { transform: translateX(100%); }
