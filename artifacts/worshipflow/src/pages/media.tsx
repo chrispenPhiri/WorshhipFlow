@@ -78,6 +78,7 @@ export default function MediaPage() {
   const [logoPosDraft, setLogoPosDraft] = useState<"top-left" | "top-right" | "bottom-left" | "bottom-right" | "center">("top-right");
   const [logoSizeDraft, setLogoSizeDraft] = useState(20);
   const [logoOpacityDraft, setLogoOpacityDraft] = useState(100);
+  const [logoInitialized, setLogoInitialized] = useState(false);
 
   // Text overlay draft state
   const [toContent, setToContent] = useState("");
@@ -96,6 +97,7 @@ export default function MediaPage() {
   const { mutate: updateScreen } = useUpdateScreenState({
     mutation: {
       onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetScreenStateQueryKey() }),
+      onError: () => toast({ title: "Failed to update screen", description: "Could not save changes. Please try again.", variant: "destructive" }),
     },
   });
 
@@ -114,6 +116,17 @@ export default function MediaPage() {
       setLtInitialized(true);
     }
   }, [screenState, ltInitialized]);
+
+  // Sync logo draft from server state on first load only
+  useEffect(() => {
+    if (!logoInitialized && screenState) {
+      if (screenState.logoUrl)      setLogoUrlDraft(screenState.logoUrl);
+      if (screenState.logoPosition) setLogoPosDraft(screenState.logoPosition as typeof logoPosDraft);
+      if (screenState.logoSize)     setLogoSizeDraft(screenState.logoSize);
+      if (screenState.logoOpacity)  setLogoOpacityDraft(screenState.logoOpacity);
+      setLogoInitialized(true);
+    }
+  }, [screenState, logoInitialized]);
 
   // Only revoke blob URLs that are truly being removed (not just unmounting)
   // Files in _fileStore must stay valid across route changes
@@ -200,21 +213,33 @@ export default function MediaPage() {
   /** Compress a logo image to ≤400px PNG (preserves transparency). */
   const compressLogoImage = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
-      const blobUrl = URL.createObjectURL(file);
-      const img = new Image();
-      img.onload = () => {
-        const MAX = 400;
-        const scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
-        const w = Math.round(img.naturalWidth * scale);
-        const h = Math.round(img.naturalHeight * scale);
-        const canvas = document.createElement("canvas");
-        canvas.width = w; canvas.height = h;
-        canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
-        URL.revokeObjectURL(blobUrl);
-        resolve(canvas.toDataURL("image/png"));
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("FileReader failed"));
+      reader.onload = (evt) => {
+        const raw = evt.target?.result as string | undefined;
+        if (!raw) { reject(new Error("Empty result")); return; }
+        const img = new Image();
+        img.onerror = () => reject(new Error("Image decode failed"));
+        img.onload = () => {
+          try {
+            const MAX = 400;
+            const longest = Math.max(img.naturalWidth, img.naturalHeight) || 1;
+            const scale = Math.min(1, MAX / longest);
+            const w = Math.max(1, Math.round(img.naturalWidth * scale));
+            const h = Math.max(1, Math.round(img.naturalHeight * scale));
+            const canvas = document.createElement("canvas");
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) { resolve(raw); return; }
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL("image/png"));
+          } catch {
+            resolve(raw);
+          }
+        };
+        img.src = raw;
       };
-      img.onerror = () => { URL.revokeObjectURL(blobUrl); reject(); };
-      img.src = blobUrl;
+      reader.readAsDataURL(file);
     });
 
   const handleLogoFile = async (file: File) => {
@@ -222,8 +247,8 @@ export default function MediaPage() {
       const dataUrl = await compressLogoImage(file);
       setLogoUrlDraft(dataUrl);
       setLogoUrlInput("");
-    } catch {
-      toast({ title: "Failed to load logo image", variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Failed to load logo image", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
     }
   };
 
