@@ -54,7 +54,8 @@ export interface ControlAppearance {
   fontId: string;
 }
 
-const STORAGE_KEY = "wf-control-appearance";
+/** localStorage key — kept in sync with the inline FOUC-prevention script in index.html. */
+export const STORAGE_KEY = "wf-control-appearance";
 
 export const DEFAULT_APPEARANCE: ControlAppearance = {
   colorId: DEFAULT_COLOR_ID,
@@ -76,7 +77,14 @@ export function loadAppearance(): ControlAppearance {
 }
 
 export function saveAppearance(a: ControlAppearance): void {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(a)); } catch {}
+  try {
+    // Store the resolved CSS values alongside the IDs so the inline FOUC-prevention script in
+    // index.html can apply them without needing to know preset definitions.
+    const color = findColor(a.colorId);
+    const font = findFont(a.fontId);
+    const payload = { colorId: a.colorId, fontId: a.fontId, primaryHsl: color.primaryHsl, fontStack: font.stack };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch {}
 }
 
 export function findColor(id: string): ColorPreset {
@@ -87,19 +95,35 @@ export function findFont(id: string): { id: string; name: string; stack: string 
   return APP_FONTS.find(f => f.id === id) ?? APP_FONTS[0];
 }
 
+/** True when the current document is rendering the broadcast/projection page. */
+export function isBroadcastPath(pathname: string = window.location.pathname): boolean {
+  return /\/broadcast(?:\/|$)/.test(pathname);
+}
+
+/**
+ * The set of CSS custom properties the operator appearance overrides.
+ * Centralised so apply / clear paths stay in sync with the inline FOUC-prevention script.
+ */
+const PRIMARY_PROPS = ["--primary", "--ring", "--sidebar-primary", "--sidebar-ring"] as const;
+const FONT_PROP = "--app-font-sans";
+
 /**
  * Apply the appearance to the current document by writing CSS custom properties on :root.
- * These override the defaults declared in index.css.
+ * No-op on the broadcast route — the projection screen must keep its own defaults so the operator's
+ * UI font / accent never leaks onto what the congregation sees.
  */
 export function applyAppearance(a: ControlAppearance): void {
+  if (isBroadcastPath()) { clearAppearance(); return; }
   const color = findColor(a.colorId);
   const font = findFont(a.fontId);
   const root = document.documentElement;
-  // Primary palette — used by buttons, focus rings, sidebar highlights, etc.
-  root.style.setProperty("--primary", color.primaryHsl);
-  root.style.setProperty("--ring", color.primaryHsl);
-  root.style.setProperty("--sidebar-primary", color.primaryHsl);
-  root.style.setProperty("--sidebar-ring", color.primaryHsl);
-  // Body / app font
-  root.style.setProperty("--app-font-sans", font.stack);
+  for (const p of PRIMARY_PROPS) root.style.setProperty(p, color.primaryHsl);
+  root.style.setProperty(FONT_PROP, font.stack);
+}
+
+/** Remove any inline overrides so the page falls back to the defaults declared in index.css. */
+export function clearAppearance(): void {
+  const root = document.documentElement;
+  for (const p of PRIMARY_PROPS) root.style.removeProperty(p);
+  root.style.removeProperty(FONT_PROP);
 }

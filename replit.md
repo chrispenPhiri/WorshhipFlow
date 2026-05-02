@@ -107,6 +107,7 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - `artifacts/worshipflow/src/components/live-preview.tsx` — Sidebar with Stage Controls
 - `artifacts/worshipflow/src/pages/broadcast.tsx` — Broadcast output window (no overlays / REC indicator: kept lean for perf)
 - `artifacts/worshipflow/src/lib/recording.ts` — module-level recording manager with `useSyncExternalStore`. State (recording, duration, downloadUrl, includeMic) survives navigation. Mixes display audio + microphone via AudioContext.
+- `artifacts/worshipflow/src/lib/control-appearance.ts` + `src/hooks/use-control-appearance.ts` — operator-facing customization (theme color + app font) for the CONTROL screen only. Stored in localStorage (key `wf-control-appearance`) with resolved CSS values (primaryHsl, fontStack) alongside IDs. Inline FOUC-prevention script in `index.html` reads localStorage and applies CSS vars before React mounts. Both runtime hooks use `useLayoutEffect` + wouter `useLocation()` to clear overrides on `/broadcast` before paint, so the projection screen never inherits the operator's font/accent. UI lives in `pages/settings.tsx` as `ControlAppearanceCard` (10 color swatches, 9-font Select, live preview, Reset button).
 
 ### Important Patterns
 

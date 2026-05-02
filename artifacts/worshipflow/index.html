@@ -24,6 +24,33 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;1,400&family=Montserrat:wght@400;500;600;700&family=Nunito:wght@400;600;700&family=Open+Sans:wght@400;600&family=Oswald:wght@400;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Poppins:wght@400;500;600;700&family=Raleway:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!--
+      FOUC-prevention: apply the operator's saved control-screen appearance BEFORE React mounts.
+      Skipped on /broadcast so the projection screen keeps its own defaults.
+      Reads the resolved CSS values written by lib/control-appearance.ts (saveAppearance) — no need
+      to keep preset definitions in sync here.
+    -->
+    <script>
+      (function () {
+        try {
+          if (/\/broadcast(?:\/|$)/.test(location.pathname)) return;
+          var raw = localStorage.getItem('wf-control-appearance');
+          if (!raw) return;
+          var p = JSON.parse(raw);
+          var s = document.documentElement.style;
+          if (typeof p.primaryHsl === 'string') {
+            s.setProperty('--primary', p.primaryHsl);
+            s.setProperty('--ring', p.primaryHsl);
+            s.setProperty('--sidebar-primary', p.primaryHsl);
+            s.setProperty('--sidebar-ring', p.primaryHsl);
+          }
+          if (typeof p.fontStack === 'string') {
+            s.setProperty('--app-font-sans', p.fontStack);
+          }
+        } catch (e) { /* ignore corrupt storage */ }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

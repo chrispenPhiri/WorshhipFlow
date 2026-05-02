@@ -21,7 +21,11 @@ const queryClient = new QueryClient();
 function Router() {
   return (
     <Switch>
-      {/* Broadcast intentionally bypasses the operator theme — it has its own per-content theming */}
+      {/*
+        Broadcast bypasses the operator theme — useApplyControlAppearance() detects the route and
+        clears any inline overrides so the projection screen always renders with the index.css
+        defaults. The inline FOUC script in index.html also skips this path.
+      */}
       <Route path="/broadcast" component={BroadcastPage} />
       <Route>
         <Layout>
