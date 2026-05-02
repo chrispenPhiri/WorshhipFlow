@@ -84,6 +84,8 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
   clock*: overlayEnabled, position, style, showDate, showSeconds, dateFormat, fontSize, color, bgColor, bgOpacity, bgRadius, bgPadding,
   logo*: overlayEnabled, url, position, size, opacity, shape (rect|circle|rounded|hex|shield), text, textColor, textSize, textPosition, textWeight,
   textOverlay*: enabled, content, position, fontSize, color, bg, bold, italic, align, fontFamily, shadow, opacity, padding, radius, letterSpacing, animation (none|fade_in|slide_up|glow|pulse), maxWidth, borderColor, borderWidth, autoDismissSec (0=manual; B2.3),
+  comparisonMode (B3.5; bool; when true broadcast renders content + secondaryContent side-by-side),
+  secondaryTitle, secondaryContent (B3.5; secondary translation for side-by-side bible compare),
   timer*: enabled, mode (stopwatch|countdown), startedAt (ISO; "" = paused/cleared), accumulatedMs, durationSec, position, fontSize, color, bgColor, label, warningSec, warningColor, criticalColor,
   idleWatermark
 }

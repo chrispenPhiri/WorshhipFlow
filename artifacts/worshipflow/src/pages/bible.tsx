@@ -19,19 +19,19 @@ import { useToast } from "@/hooks/use-toast";
 interface BibleVerse { verse: number; text: string; }
 interface BibleResult { reference: string; verses: BibleVerse[]; }
 
-/** Wrap each highlight term in markers «...» that the broadcast renderer detects (B3.3). */
+/** Wrap each highlight term in markers «...» that the broadcast renderer detects (B3.3).
+ * Single-pass replacement so substring overlaps (e.g. "He" + "Heart") never double-wrap. */
 function applyWordHighlights(text: string, terms: string[]): string {
-  if (!terms.length) return text;
-  // longest first so we don't double-wrap shorter substrings
-  const sorted = [...terms].sort((a, b) => b.length - a.length).filter(Boolean);
-  let out = text;
-  for (const term of sorted) {
-    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    // word-aware: match the term as a whole token where possible
-    const re = new RegExp(`(${escaped})`, "gi");
-    out = out.replace(re, "«$1»");
-  }
-  return out;
+  const cleaned = terms.map(s => s.trim()).filter(Boolean);
+  if (!cleaned.length) return text;
+  // Longest-first ordering means the regex alternation prefers longer matches
+  // (regex engines try alternatives left-to-right within each position).
+  const sorted = [...cleaned].sort((a, b) => b.length - a.length);
+  const escaped = sorted.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  // Strip any pre-existing « » markers from input first to avoid nesting on re-runs.
+  const stripped = text.replace(/[«»]/g, "");
+  const re = new RegExp(`(${escaped.join("|")})`, "gi");
+  return stripped.replace(re, "«$1»");
 }
 
 export default function BiblePage() {
