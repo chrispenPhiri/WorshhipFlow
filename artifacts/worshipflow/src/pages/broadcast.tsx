@@ -378,11 +378,22 @@ export default function BroadcastPage() {
 
   const showContent = screenState && !screenState.isBlack && !screenState.isClear && screenState.content;
 
-  // ── Song title § section parsing ──────────────────────────────────────────
+  // ── Title parsing ─────────────────────────────────────────────────────────
+  // Song titles:  "Amazing Grace§Verse 1"  → songName + sectionLabel
+  // Verse titles: "John 3:16|KJV"          → verseRef + translationAbbr
   const rawTitle = screenState?.title ?? "";
-  const sepIdx = rawTitle.indexOf("§");
-  const songName   = sepIdx !== -1 ? rawTitle.slice(0, sepIdx)  : rawTitle;
-  const sectionLabel = sepIdx !== -1 ? rawTitle.slice(sepIdx + 1) : "";
+
+  // Song: split on §
+  const secIdx = rawTitle.indexOf("§");
+  const songName     = secIdx !== -1 ? rawTitle.slice(0, secIdx) : (contentType !== "verse" ? rawTitle : "");
+  const sectionLabel = secIdx !== -1 ? rawTitle.slice(secIdx + 1) : "";
+
+  // Verse: split on |
+  const pipeIdx        = rawTitle.indexOf("|");
+  const verseRef       = contentType === "verse" ? (pipeIdx !== -1 ? rawTitle.slice(0, pipeIdx) : rawTitle) : "";
+  const translationAbbr = pipeIdx !== -1 ? rawTitle.slice(pipeIdx + 1) : "";
+  // Book name = everything in ref before the chapter number
+  const bookName = verseRef ? verseRef.replace(/\s+\d+:.*$/, "").trim() : "";
 
   // ── Verse content renderer with superscript numbers ───────────────────────
   function renderVerseContent(text: string) {
@@ -451,24 +462,58 @@ export default function BroadcastPage() {
         </div>
       )}
 
-      {/* ── Bible reference overlay (bottom-right) ─────────────────────────── */}
-      {showContent && contentType === "verse" && songName && (
+      {/* ── Book name — top center ───────────────────────────────────────────── */}
+      {showContent && contentType === "verse" && bookName && (
         <div
           className="absolute z-30 pointer-events-none"
-          style={{ bottom: tickerH + 20, right: 28 }}
+          style={{ top: 20, left: "50%", transform: "translateX(-50%)" }}
+        >
+          <div
+            style={{
+              background: "rgba(0,0,0,0.52)",
+              borderRadius: "4px",
+              padding: "5px 20px",
+              backdropFilter: "blur(6px)",
+              textAlign: "center",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <span style={{ color: "rgba(255,255,255,0.92)", fontSize: "15px", fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase" }}>
+              {bookName}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Scripture reference + translation — bottom center ─────────────────── */}
+      {showContent && contentType === "verse" && verseRef && (
+        <div
+          className="absolute z-30 pointer-events-none"
+          style={{ bottom: tickerH + 20, left: "50%", transform: "translateX(-50%)" }}
         >
           <div
             style={{
               background: "rgba(0,0,0,0.55)",
-              borderLeft: "3px solid rgba(255,255,255,0.4)",
-              borderRadius: "3px",
-              padding: "5px 12px 5px 10px",
+              borderRadius: "4px",
+              padding: "5px 18px",
               backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              whiteSpace: "nowrap",
             }}
           >
-            <span style={{ color: "rgba(255,255,255,0.9)", fontSize: "15px", fontWeight: 500, letterSpacing: "0.04em" }}>
-              {songName}
+            <span style={{ color: "rgba(255,255,255,0.92)", fontSize: "15px", fontWeight: 500, letterSpacing: "0.04em" }}>
+              {verseRef}
             </span>
+            {translationAbbr && (
+              <>
+                <span style={{ color: "rgba(255,255,255,0.3)", fontSize: "12px" }}>•</span>
+                <span style={{ color: "rgba(255,255,255,0.55)", fontSize: "12px", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                  {translationAbbr}
+                </span>
+              </>
+            )}
           </div>
         </div>
       )}

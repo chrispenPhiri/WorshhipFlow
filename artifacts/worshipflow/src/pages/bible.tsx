@@ -58,9 +58,11 @@ export default function BiblePage() {
     return `${baseRef.split(":")[0]}:${verses[0].verse}–${verses[verses.length - 1].verse}`;
   };
 
-  const sendVerses = (verses: BibleVerse[], title: string) => {
-    updateScreen({ data: { ...safeBase, title, content: buildText(verses) } });
-    toast({ title: "Sent to screen", description: title });
+  const sendVerses = (verses: BibleVerse[], ref: string) => {
+    // Encode translation abbr after pipe so broadcast can display it
+    const titleWithTranslation = `${ref}|${translationAbbr}`;
+    updateScreen({ data: { ...safeBase, title: titleWithTranslation, content: buildText(verses) } });
+    toast({ title: "Sent to screen", description: `${ref} (${translationAbbr})` });
   };
 
   const handleFetch = async () => {
@@ -103,7 +105,9 @@ export default function BiblePage() {
   const highlightedVerses = result?.verses.filter(v => highlighted.has(v.verse)) ?? [];
   const currentVerse = result?.verses[currentVerseIdx];
   const total = result?.verses.length ?? 0;
-  const translationLabel = BIBLE_TRANSLATIONS.find(t => t.value === translationValue)?.label.split("—")[0].trim() ?? translationValue.toUpperCase();
+  const translationMeta  = BIBLE_TRANSLATIONS.find(t => t.value === translationValue);
+  const translationLabel = translationMeta?.label.split("—")[0].trim() ?? translationValue.toUpperCase();
+  const translationAbbr  = translationMeta?.abbr ?? translationValue.toUpperCase();
 
   return (
     <div className="space-y-6 max-w-4xl">

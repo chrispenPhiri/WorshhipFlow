@@ -4,18 +4,32 @@ export const BIBLE_BOOKS = [
 ];
 
 /**
- * Translations supported by bible-api.com (free / open-licensed).
+ * Translations served by bible-api.com (free / open-licensed, public domain).
  * NIV, ESV, NKJV, NLT, NASB are copyright-protected and unavailable via this API.
+ *
+ * value = the code passed to bible-api.com ?translation=
+ * abbr  = short badge shown on the broadcast screen
  */
-export const BIBLE_TRANSLATIONS: { label: string; value: string }[] = [
-  { label: "KJV — King James Version",           value: "kjv"     },
-  { label: "WEB — World English Bible",           value: "web"     },
-  { label: "BBE — Bible in Basic English",        value: "bbe"     },
-  { label: "DARBY — Darby Translation",           value: "darby"   },
-  { label: "WEBBE — WEB British Edition",         value: "webbe"   },
-  { label: "RV1960 — Reina Valera (Spanish)",     value: "rv1960"  },
-  { label: "LSG — Louis Segond (French)",         value: "lsg"     },
-  { label: "ALMEIDA — Ferreira de Almeida (PT)",  value: "almeida" },
+export const BIBLE_TRANSLATIONS: { label: string; value: string; abbr: string }[] = [
+  // ── English ───────────────────────────────────────────────────────────────
+  { label: "KJV — King James Version (1769)",           value: "kjv",        abbr: "KJV"    },
+  { label: "AKJV — Authorized KJV (modernised spelling)", value: "akjv",     abbr: "AKJV"   },
+  { label: "ASV — American Standard Version (1901)",    value: "asv",        abbr: "ASV"    },
+  { label: "YLT — Young's Literal Translation (1898)",  value: "ylt",        abbr: "YLT"    },
+  { label: "WEB — World English Bible",                 value: "web",        abbr: "WEB"    },
+  { label: "WEBBE — WEB British Edition",               value: "webbe",      abbr: "WEBBE"  },
+  { label: "WMB — World Messianic Bible",               value: "wmb",        abbr: "WMB"    },
+  { label: "WMBBE — World Messianic Bible (British)",   value: "wmbbe",      abbr: "WMBBE"  },
+  { label: "BBE — Bible in Basic English",              value: "bbe",        abbr: "BBE"    },
+  { label: "DARBY — Darby Translation",                 value: "darby",      abbr: "DARBY"  },
+  { label: "OEB-US — Open English Bible (US spelling)", value: "oeb-us",     abbr: "OEB"    },
+  { label: "OEB-CW — Open English Bible (Commonwealth)", value: "oeb-cw",   abbr: "OEB-CW" },
+  // ── Other languages ───────────────────────────────────────────────────────
+  { label: "RV1960 — Reina Valera (Spanish)",           value: "rv1960",     abbr: "RV1960" },
+  { label: "LSG — Louis Segond (French)",               value: "lsg",        abbr: "LSG"    },
+  { label: "ALMEIDA — Ferreira de Almeida (Portuguese)", value: "almeida",   abbr: "ARA"    },
+  { label: "CLEMENTINE — Biblia Sacra (Latin)",         value: "clementine", abbr: "VUL"    },
+  { label: "TR — Textus Receptus (Greek NT)",           value: "tr",         abbr: "TR"     },
 ];
 
 export const FONTS = [
