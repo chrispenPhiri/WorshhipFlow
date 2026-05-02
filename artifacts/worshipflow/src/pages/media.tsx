@@ -34,6 +34,9 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** Module-level store — persists uploaded files across route changes (cleared on page refresh). */
+const _fileStore: { files: UploadedFile[] } = { files: [] };
+
 export default function MediaPage() {
   const queryClient = useQueryClient();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -48,14 +51,25 @@ export default function MediaPage() {
   const [overlay, setOverlay] = useState([0]);
   const [imageUrl, setImageUrl] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  // Initialise from module-level store so files survive tab navigation
+  const [uploadedFiles, setUploadedFilesState] = useState<UploadedFile[]>(_fileStore.files);
   const [draggingOver, setDraggingOver] = useState(false);
+
+  /** Wrapper that keeps the module store in sync with React state. */
+  const setUploadedFiles = (updater: UploadedFile[] | ((prev: UploadedFile[]) => UploadedFile[])) => {
+    setUploadedFilesState(prev => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      _fileStore.files = next;
+      return next;
+    });
+  };
 
   // Lower-third state (local draft before sending)
   const [ltName, setLtName] = useState("");
   const [ltTitleText, setLtTitleText] = useState("");
   const [ltPosition, setLtPosition] = useState<"bottom-left" | "bottom-center" | "bottom-right">("bottom-left");
   const [ltStyle, setLtStyle] = useState<"modern" | "classic" | "gradient" | "minimal">("modern");
+  const [ltInitialized, setLtInitialized] = useState(false);
 
   // Logo overlay draft state
   const logoFileInputRef = useRef<HTMLInputElement>(null);
@@ -90,14 +104,19 @@ export default function MediaPage() {
     detectScreens, openBroadcast, isWindowManagementSupported,
   } = useBroadcast();
 
-  // Clean up blob URLs on unmount
+  // Sync lower-third draft from server state on first load only
   useEffect(() => {
-    return () => {
-      uploadedFiles.forEach(f => {
-        if (f.url.startsWith("blob:")) URL.revokeObjectURL(f.url);
-      });
-    };
-  }, [uploadedFiles]);
+    if (!ltInitialized && screenState) {
+      if (screenState.lowerThirdName)     setLtName(screenState.lowerThirdName);
+      if (screenState.lowerThirdTitle)    setLtTitleText(screenState.lowerThirdTitle);
+      if (screenState.lowerThirdPosition) setLtPosition(screenState.lowerThirdPosition as typeof ltPosition);
+      if (screenState.lowerThirdStyle)    setLtStyle(screenState.lowerThirdStyle as typeof ltStyle);
+      setLtInitialized(true);
+    }
+  }, [screenState, ltInitialized]);
+
+  // Only revoke blob URLs that are truly being removed (not just unmounting)
+  // Files in _fileStore must stay valid across route changes
 
   const enumerateCameras = async () => {
     try {
@@ -660,7 +679,19 @@ export default function MediaPage() {
                   )}
                   <Switch
                     checked={screenState?.lowerThirdEnabled ?? false}
-                    onCheckedChange={v => updateOverlay({ lowerThirdEnabled: v })}
+                    onCheckedChange={v => {
+                      if (v) {
+                        updateOverlay({
+                          lowerThirdEnabled: true,
+                          lowerThirdName: ltName || undefined,
+                          lowerThirdTitle: ltTitleText || undefined,
+                          lowerThirdPosition: ltPosition,
+                          lowerThirdStyle: ltStyle,
+                        });
+                      } else {
+                        updateOverlay({ lowerThirdEnabled: false });
+                      }
+                    }}
                   />
                 </div>
               </div>
