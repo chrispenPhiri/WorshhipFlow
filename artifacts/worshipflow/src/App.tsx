@@ -11,22 +11,30 @@ import CustomTextPage from "@/pages/custom";
 import SchedulePage from "@/pages/schedule";
 import NotesPage from "@/pages/notes";
 import SettingsPage from "@/pages/settings";
+import MediaPage from "@/pages/media";
+import BroadcastPage from "@/pages/broadcast";
 
 const queryClient = new QueryClient();
 
 function Router() {
   return (
-    <Layout>
-      <Switch>
-        <Route path="/" component={BiblePage} />
-        <Route path="/songs" component={SongsPage} />
-        <Route path="/custom" component={CustomTextPage} />
-        <Route path="/schedule" component={SchedulePage} />
-        <Route path="/notes" component={NotesPage} />
-        <Route path="/settings" component={SettingsPage} />
-        <Route component={NotFound} />
-      </Switch>
-    </Layout>
+    <Switch>
+      <Route path="/broadcast" component={BroadcastPage} />
+      <Route>
+        <Layout>
+          <Switch>
+            <Route path="/" component={BiblePage} />
+            <Route path="/songs" component={SongsPage} />
+            <Route path="/custom" component={CustomTextPage} />
+            <Route path="/media" component={MediaPage} />
+            <Route path="/schedule" component={SchedulePage} />
+            <Route path="/notes" component={NotesPage} />
+            <Route path="/settings" component={SettingsPage} />
+            <Route component={NotFound} />
+          </Switch>
+        </Layout>
+      </Route>
+    </Switch>
   );
 }
 

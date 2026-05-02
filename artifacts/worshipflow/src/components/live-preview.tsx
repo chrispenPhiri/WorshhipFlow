@@ -1,7 +1,7 @@
 import { useGetScreenState, useUpdateScreenState, getGetScreenStateQueryKey } from "@workspace/api-client-react";
 import { Button } from "./ui/button";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ExternalLink } from "lucide-react";
 
 export function LivePreview() {
   const queryClient = useQueryClient();
@@ -46,9 +46,13 @@ export function LivePreview() {
     };
   };
 
+  const openBroadcast = () => {
+    window.open(window.location.origin + import.meta.env.BASE_URL + "broadcast", "_blank", "noopener,noreferrer");
+  };
+
   return (
     <div className="flex flex-col gap-4 h-full">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center flex-wrap gap-2">
         <div className="flex gap-2">
           <Button 
             variant={screenState.isBlack ? "default" : "outline"} 
@@ -60,6 +64,10 @@ export function LivePreview() {
           </Button>
           <Button variant="outline" size="sm" onClick={handleClear}>Clear</Button>
         </div>
+        <Button variant="outline" size="sm" onClick={openBroadcast} className="gap-1.5 text-primary border-primary/40 hover:bg-primary/10">
+          <ExternalLink className="w-3.5 h-3.5" />
+          Broadcast
+        </Button>
       </div>
 
       {/* Screen Preview Container (16:9) */}

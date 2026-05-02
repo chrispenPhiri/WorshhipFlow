@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { Book, Music, Type, Calendar, BookOpen, Settings } from "lucide-react";
+import { Book, Music, Type, Calendar, BookOpen, Settings, Video } from "lucide-react";
 import { LivePreview } from "./live-preview";
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -10,6 +10,7 @@ export function Layout({ children }: { children: ReactNode }) {
     { href: "/", label: "Bible", icon: Book },
     { href: "/songs", label: "Songs", icon: Music },
     { href: "/custom", label: "Custom Text", icon: Type },
+    { href: "/media", label: "Media & Broadcast", icon: Video },
     { href: "/schedule", label: "Schedule", icon: Calendar },
     { href: "/notes", label: "Sermon Notes", icon: BookOpen },
     { href: "/settings", label: "Settings", icon: Settings },
