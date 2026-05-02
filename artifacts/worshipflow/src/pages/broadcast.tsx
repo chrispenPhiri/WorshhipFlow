@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useGetScreenState, getGetScreenStateQueryKey } from "@workspace/api-client-react";
 import { Maximize2, Minimize2 } from "lucide-react";
+import { LiveWallpaperLayer } from "@/components/live-wallpaper";
 
 const ANIMATION_STYLES = `
 @keyframes wf-fade-in {
@@ -115,6 +116,12 @@ function BackgroundLayer({ background, cameraStream }: {
         )}
         {overlayStyle && <div className="absolute inset-0" style={overlayStyle} />}
       </div>
+    );
+  }
+
+  if (background.type === "live_wallpaper" && background.value) {
+    return (
+      <LiveWallpaperLayer wallpaperId={background.value} overlay={overlay} />
     );
   }
 

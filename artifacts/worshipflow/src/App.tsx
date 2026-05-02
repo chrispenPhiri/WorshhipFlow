@@ -13,6 +13,7 @@ import NotesPage from "@/pages/notes";
 import SettingsPage from "@/pages/settings";
 import MediaPage from "@/pages/media";
 import BroadcastPage from "@/pages/broadcast";
+import ThemesPage from "@/pages/themes";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ function Router() {
             <Route path="/" component={BiblePage} />
             <Route path="/songs" component={SongsPage} />
             <Route path="/custom" component={CustomTextPage} />
+            <Route path="/themes" component={ThemesPage} />
             <Route path="/media" component={MediaPage} />
             <Route path="/schedule" component={SchedulePage} />
             <Route path="/notes" component={NotesPage} />
