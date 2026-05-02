@@ -18,7 +18,7 @@ const ANIMATION_STYLES = `
   50%       { transform: translateY(-12px); }
 }
 @keyframes wf-ticker {
-  from { transform: translateX(100vw); }
+  from { transform: translateX(0%); }
   to   { transform: translateX(-100%); }
 }
 @keyframes wf-rec-pulse {
@@ -378,45 +378,6 @@ export default function BroadcastPage() {
   const pipWinRef = useRef<Window | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // ── Recording ─────────────────────────────────────────────────────────────
-  const [recIsLive, setRecIsLive] = useState(false);
-  const [recState, setRecState] = useState<"idle" | "recording">("idle");
-  const [recDuration, setRecDuration] = useState(0);
-  const [recDownloadUrl, setRecDownloadUrl] = useState<string | null>(null);
-  const recRef = useRef<{ recorder: MediaRecorder; chunks: Blob[]; timer: ReturnType<typeof setInterval> } | null>(null);
-
-  const startRecording = async () => {
-    try {
-      setRecDownloadUrl(null);
-      const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true } as DisplayMediaStreamOptions);
-      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ? "video/webm;codecs=vp9" : "video/webm";
-      const chunks: Blob[] = [];
-      const recorder = new MediaRecorder(displayStream, { mimeType });
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-      recorder.onstop = () => {
-        displayStream.getTracks().forEach(t => t.stop());
-        const blob = new Blob(chunks, { type: "video/webm" });
-        setRecDownloadUrl(URL.createObjectURL(blob));
-        setRecState("idle");
-        setRecDuration(0);
-        if (recRef.current) clearInterval(recRef.current.timer);
-        recRef.current = null;
-      };
-      const timer = setInterval(() => setRecDuration(d => d + 1), 1000);
-      recRef.current = { recorder, chunks, timer };
-      recorder.start(1000);
-      setRecState("recording");
-      setRecDuration(0);
-      displayStream.getVideoTracks()[0].addEventListener("ended", () => {
-        if (recRef.current?.recorder.state === "recording") recRef.current.recorder.stop();
-      });
-    } catch { /* user cancelled or denied */ }
-  };
-
-  const stopRecording = () => {
-    if (recRef.current?.recorder.state === "recording") recRef.current.recorder.stop();
-  };
-
   const { data: screenState } = useGetScreenState({
     query: { queryKey: getGetScreenStateQueryKey(), refetchInterval: 500 },
   });
@@ -470,29 +431,10 @@ export default function BroadcastPage() {
         case "pip_close":
           pipWinRef.current?.close();
           break;
-        case "rec_start":
-          setRecIsLive(true);
-          break;
-        case "rec_stop":
-          setRecIsLive(false);
-          break;
       }
     };
     return () => ch.close();
   }, []);
-
-  // R key toggles recording; Escape stops it
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.key === "r" || e.key === "R") {
-        if (recState === "idle") startRecording();
-        else stopRecording();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [recState]);
 
   // Clock
   const [clockTime, setClockTime] = useState(new Date());
@@ -757,24 +699,39 @@ export default function BroadcastPage() {
       {screenState?.tickerEnabled && screenState.tickerText && (
         <div
           className="absolute bottom-0 left-0 right-0 z-30 flex items-center overflow-hidden"
-          style={{ height: "48px", background: "rgba(0,0,0,0.75)", borderTop: "1px solid rgba(255,255,255,0.1)" }}
+          style={{
+            height: "48px",
+            background: screenState.tickerBgColor ?? "rgba(0,0,0,0.75)",
+            borderTop: "1px solid rgba(255,255,255,0.1)",
+          }}
         >
           <div
             style={{
-              display: "inline-block", whiteSpace: "nowrap", color: "#ffffff",
-              fontSize: "18px", fontWeight: 500, letterSpacing: "0.02em",
-              animation: `wf-ticker 20s linear infinite`,
+              display: "inline-block",
+              whiteSpace: "nowrap",
+              color: screenState.tickerColor ?? "#ffffff",
+              fontSize: `${screenState.tickerFontSize ?? 18}px`,
+              fontWeight: 500,
+              letterSpacing: "0.02em",
+              paddingLeft: "100%",
+              animation: `wf-ticker ${screenState.tickerSpeed ?? 20}s linear infinite`,
             }}
           >
-            {screenState.tickerText}&nbsp;&nbsp;&nbsp;&nbsp;✦&nbsp;&nbsp;&nbsp;&nbsp;{screenState.tickerText}
+            {screenState.tickerText}
+            <span style={{ margin: "0 2em", opacity: 0.6 }}>{screenState.tickerDivider ?? "✦"}</span>
+            {screenState.tickerText}
+            <span style={{ margin: "0 2em", opacity: 0.6 }}>{screenState.tickerDivider ?? "✦"}</span>
+            {screenState.tickerText}
           </div>
         </div>
       )}
 
-      {/* Idle watermark */}
-      {(!screenState || (screenState.isClear && !screenState.isBlack)) && (
+      {/* Idle watermark — uses optional Church Name from settings; nothing if not set */}
+      {(!screenState || (screenState.isClear && !screenState.isBlack)) && screenState?.idleWatermark && (
         <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-          <div className="text-white/8 text-3xl font-light tracking-widest uppercase select-none">WorshipFlow</div>
+          <div className="text-white/8 text-3xl font-light tracking-widest uppercase select-none">
+            {screenState.idleWatermark}
+          </div>
         </div>
       )}
 
@@ -788,50 +745,6 @@ export default function BroadcastPage() {
         </div>
       </div>
 
-      {/* REC indicator — shown when recording is active (from control page or R key) */}
-      {(recState === "recording" || recIsLive) && (
-        <div
-          className="absolute top-3 left-3 z-50 flex items-center gap-2 pointer-events-none"
-          style={{ background: "rgba(0,0,0,0.55)", borderRadius: "6px", padding: "5px 10px", backdropFilter: "blur(4px)" }}
-        >
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", display: "inline-block", animation: "wf-rec-pulse 1s ease-in-out infinite" }} />
-          <span style={{ color: "#fff", fontSize: "12px", fontWeight: 700, letterSpacing: "0.12em" }}>REC</span>
-          {recState === "recording" && (
-            <span style={{ color: "rgba(255,255,255,0.7)", fontSize: "11px", fontFamily: "monospace" }}>
-              {String(Math.floor(recDuration / 60)).padStart(2, "0")}:{String(recDuration % 60).padStart(2, "0")}
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Recording control HUD — shown when not in fullscreen */}
-      {!document.fullscreenElement && (recState === "recording" || recDownloadUrl) && (
-        <div
-          className="absolute top-3 right-3 z-50 flex flex-col gap-2"
-          style={{ background: "rgba(0,0,0,0.7)", borderRadius: "8px", padding: "10px", backdropFilter: "blur(6px)", minWidth: "160px" }}
-          onClick={e => e.stopPropagation()}
-        >
-          {recState === "recording" && (
-            <button
-              onClick={stopRecording}
-              style={{ background: "#ef4444", color: "#fff", border: "none", borderRadius: "5px", padding: "6px 12px", fontSize: "12px", fontWeight: 700, cursor: "pointer", letterSpacing: "0.05em" }}
-            >
-              ⬛ Stop Recording
-            </button>
-          )}
-          {recDownloadUrl && (
-            <a
-              href={recDownloadUrl}
-              download={`worship-${new Date().toISOString().slice(0, 10)}.webm`}
-              style={{ background: "rgba(255,255,255,0.15)", color: "#fff", borderRadius: "5px", padding: "6px 12px", fontSize: "12px", fontWeight: 600, textDecoration: "none", textAlign: "center", display: "block" }}
-              onClick={e => e.stopPropagation()}
-            >
-              ⬇ Download
-            </a>
-          )}
-          <p style={{ color: "rgba(255,255,255,0.45)", fontSize: "10px", margin: 0, textAlign: "center" }}>Press R to toggle recording</p>
-        </div>
-      )}
     </div>
   );
 }

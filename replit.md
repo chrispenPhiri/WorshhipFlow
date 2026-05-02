@@ -1,8 +1,8 @@
-# WorshipFlow
+# Phiri WorshipFlow
 
 ## Overview
 
-Full-stack church worship presentation software. pnpm workspace monorepo using TypeScript.
+Full-stack church worship presentation software (branded "Phiri WorshipFlow"). pnpm workspace monorepo using TypeScript.
 
 ## Stack
 
@@ -79,7 +79,8 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
   textStyle: { fontFamily, fontSize, textColor, accentColor, bold, italic, alignment, animation },
   background: { type (color|gradient|image|video|camera|live_wallpaper), value, overlay },
   layout: { textScale, verticalAlign, horizontalAlign, paddingX, paddingY, textWidthPct },
-  tickerEnabled, tickerText
+  tickerEnabled, tickerText, tickerSpeed, tickerDivider, tickerColor, tickerBgColor, tickerFontSize,
+  idleWatermark
 }
 ```
 
@@ -89,7 +90,8 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - `lib/db/src/schema/screen.ts` — DB schema including Layout interface
 - `artifacts/worshipflow/src/hooks/use-broadcast.ts` — Window Management API hook
 - `artifacts/worshipflow/src/components/live-preview.tsx` — Sidebar with Stage Controls
-- `artifacts/worshipflow/src/pages/broadcast.tsx` — Broadcast output window
+- `artifacts/worshipflow/src/pages/broadcast.tsx` — Broadcast output window (no overlays / REC indicator: kept lean for perf)
+- `artifacts/worshipflow/src/lib/recording.ts` — module-level recording manager with `useSyncExternalStore`. State (recording, duration, downloadUrl, includeMic) survives navigation. Mixes display audio + microphone via AudioContext.
 
 ### Important Patterns
 
@@ -98,3 +100,5 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - DB schema changes need: `pnpm --filter @workspace/db run push`
 - Broadcast window is rendered OUTSIDE the Layout in App.tsx (no sidebar/nav)
 - Local media files use `URL.createObjectURL()` — blob URLs are session-scoped (valid within same browser session, accessible from broadcast window since same origin)
+- Long-lived UI state that must survive route changes (e.g. recording, active media tab) lives in module-level stores (`src/lib/recording.ts`) or `sessionStorage`, not React component state
+- Broadcast window must stay free of heavy DOM updates (no animated REC indicator, no recording HUD) — it often runs on a secondary monitor where any extra repaint causes input lag in the operator window

@@ -23,8 +23,8 @@ export function Layout({ children }: { children: ReactNode }) {
       <aside className="w-64 border-r border-border bg-sidebar flex-shrink-0 flex flex-col">
         <div className="p-6">
           <h1 className="text-xl font-bold text-primary flex items-center gap-2">
-            <span className="bg-primary text-primary-foreground p-1 rounded">WF</span>
-            WorshipFlow
+            <span className="bg-primary text-primary-foreground p-1 rounded">PW</span>
+            Phiri WorshipFlow
           </h1>
         </div>
         <nav className="flex-1 px-4 space-y-2">

@@ -6,6 +6,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useUpdateScreenState, useGetScreenState, getGetScreenStateQueryKey, type Background } from "@workspace/api-client-react";
+import { useRecording, startRecording as recStart, stopRecording as recStop, setIncludeMic, clearDownload } from "@/lib/recording";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Camera, Video, Image as ImageIcon, Cast, CameraOff, Play, Square,
@@ -78,11 +79,17 @@ export default function MediaPage() {
   // Previous background — saved before camera goes live so Cut/Stop can roll back
   const prevBackgroundRef = useRef<{ type: string; value: string; overlay?: number; fit?: "cover" | "contain" | "fill"; loop?: boolean; cameraLayout?: string; cameraShape?: string; cameraPipSize?: number } | null>(null);
 
-  // Recording state
-  const [recState, setRecState] = useState<"idle" | "recording">("idle");
-  const [recDuration, setRecDuration] = useState(0);
-  const [recDownloadUrl, setRecDownloadUrl] = useState<string | null>(null);
-  const recRef = useRef<{ recorder: MediaRecorder; chunks: Blob[]; timer: ReturnType<typeof setInterval> } | null>(null);
+  // Recording — module-level state survives navigation
+  const recording = useRecording();
+  const recState = recording.state;
+  const recDuration = recording.duration;
+  const recDownloadUrl = recording.downloadUrl;
+  const recIncludeMic = recording.includeMic;
+
+  // Active tab — persisted across navigation via sessionStorage
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    try { return sessionStorage.getItem("wf-media-tab") || "upload"; } catch { return "upload"; }
+  });
 
   // Lower-third draft state
   const [ltName, setLtName] = useState("");
@@ -105,6 +112,15 @@ export default function MediaPage() {
   const [logoSizeDraft, setLogoSizeDraft] = useState(20);
   const [logoOpacityDraft, setLogoOpacityDraft] = useState(100);
   const [logoInitialized, setLogoInitialized] = useState(false);
+
+  // Ticker draft state
+  const [tickerTextDraft, setTickerTextDraft] = useState("");
+  const [tickerSpeedDraft, setTickerSpeedDraft] = useState(20);
+  const [tickerDividerDraft, setTickerDividerDraft] = useState("✦");
+  const [tickerColorDraft, setTickerColorDraft] = useState("#ffffff");
+  const [tickerBgColorDraft, setTickerBgColorDraft] = useState("rgba(0,0,0,0.75)");
+  const [tickerFontSizeDraft, setTickerFontSizeDraft] = useState(18);
+  const [tickerInitialized, setTickerInitialized] = useState(false);
 
   // Text overlay draft state
   const [toContent, setToContent] = useState("");
@@ -152,6 +168,19 @@ export default function MediaPage() {
       setLtInitialized(true);
     }
   }, [screenState, ltInitialized]);
+
+  // Sync ticker draft from server state on first load only
+  useEffect(() => {
+    if (!tickerInitialized && screenState) {
+      if (screenState.tickerText)      setTickerTextDraft(screenState.tickerText);
+      if (screenState.tickerSpeed)     setTickerSpeedDraft(screenState.tickerSpeed);
+      if (screenState.tickerDivider)   setTickerDividerDraft(screenState.tickerDivider);
+      if (screenState.tickerColor)     setTickerColorDraft(screenState.tickerColor);
+      if (screenState.tickerBgColor)   setTickerBgColorDraft(screenState.tickerBgColor);
+      if (screenState.tickerFontSize)  setTickerFontSizeDraft(screenState.tickerFontSize);
+      setTickerInitialized(true);
+    }
+  }, [screenState, tickerInitialized]);
 
   // Sync logo draft from server state on first load only
   useEffect(() => {
@@ -244,6 +273,12 @@ export default function MediaPage() {
     layout: screenState?.layout ?? undefined,
     tickerEnabled: screenState?.tickerEnabled ?? false,
     tickerText: screenState?.tickerText ?? undefined,
+    tickerSpeed: screenState?.tickerSpeed ?? 20,
+    tickerDivider: screenState?.tickerDivider ?? "✦",
+    tickerColor: screenState?.tickerColor ?? "#ffffff",
+    tickerBgColor: screenState?.tickerBgColor ?? "rgba(0,0,0,0.75)",
+    tickerFontSize: screenState?.tickerFontSize ?? 18,
+    idleWatermark: screenState?.idleWatermark ?? undefined,
     lowerThirdEnabled: screenState?.lowerThirdEnabled ?? false,
     lowerThirdName: screenState?.lowerThirdName ?? undefined,
     lowerThirdTitle: screenState?.lowerThirdTitle ?? undefined,
@@ -362,43 +397,14 @@ export default function MediaPage() {
   };
 
   const startRecording = async () => {
-    try {
-      setRecDownloadUrl(null);
-      const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true } as DisplayMediaStreamOptions);
-      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ? "video/webm;codecs=vp9" : "video/webm";
-      const chunks: Blob[] = [];
-      const recorder = new MediaRecorder(displayStream, { mimeType });
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-      recorder.onstop = () => {
-        displayStream.getTracks().forEach(t => t.stop());
-        const blob = new Blob(chunks, { type: "video/webm" });
-        setRecDownloadUrl(URL.createObjectURL(blob));
-        setRecState("idle");
-        setRecDuration(0);
-        if (recRef.current) clearInterval(recRef.current.timer);
-        recRef.current = null;
-        new BroadcastChannel("wf-broadcast-cmd").postMessage({ type: "rec_stop" });
-      };
-      const timer = setInterval(() => setRecDuration(d => d + 1), 1000);
-      recRef.current = { recorder, chunks, timer };
-      recorder.start(1000);
-      setRecState("recording");
-      setRecDuration(0);
-      new BroadcastChannel("wf-broadcast-cmd").postMessage({ type: "rec_start" });
-      // If user stops sharing via browser UI, treat as stop
-      displayStream.getVideoTracks()[0].addEventListener("ended", () => {
-        if (recRef.current?.recorder.state === "recording") recRef.current.recorder.stop();
-      });
-    } catch (e) {
-      if ((e as DOMException)?.name !== "NotAllowedError") {
-        toast({ title: "Recording failed", description: "Could not start screen capture.", variant: "destructive" });
-      }
+    const result = await recStart();
+    if (!result.ok && result.error && result.error !== "Permission denied" && result.error !== "Already recording or starting") {
+      toast({ title: "Recording failed", description: result.error, variant: "destructive" });
     }
   };
 
-  const stopRecording = () => {
-    if (recRef.current?.recorder.state === "recording") recRef.current.recorder.stop();
-  };
+  const stopRecording = () => recStop();
+  const setRecIncludeMic = (v: boolean) => setIncludeMic(v);
 
   const sendImageToScreen = async (url: string, fit: "cover" | "contain" | "fill" = "cover") => {
     if (!url) return;
@@ -465,7 +471,7 @@ export default function MediaPage() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="upload">
+      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); try { sessionStorage.setItem("wf-media-tab", v); } catch {} }}>
         <TabsList className="w-full flex-wrap h-auto gap-0.5">
           <TabsTrigger value="upload"    className="flex-1 gap-1.5 min-w-0"><Upload   className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Upload</span></TabsTrigger>
           <TabsTrigger value="camera"    className="flex-1 gap-1.5 min-w-0"><Camera   className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Camera</span></TabsTrigger>
@@ -822,18 +828,26 @@ export default function MediaPage() {
                     </div>
                   )}
                   {recDownloadUrl && (
-                    <a href={recDownloadUrl} download={`worship-${new Date().toISOString().slice(0,10)}.webm`} className="block">
-                      <Button variant="outline" className="w-full gap-2">
-                        <Download className="w-4 h-4" /> Download Recording
+                    <div className="flex items-center gap-2">
+                      <a href={recDownloadUrl} download={`worship-${new Date().toISOString().slice(0,10)}.webm`} className="flex-1">
+                        <Button variant="outline" className="w-full gap-2">
+                          <Download className="w-4 h-4" /> Download Recording
+                        </Button>
+                      </a>
+                      <Button variant="ghost" size="icon" onClick={clearDownload} title="Discard">
+                        <X className="w-4 h-4" />
                       </Button>
-                    </a>
+                    </div>
                   )}
-                  <div className="rounded-md bg-muted/40 border border-border p-3 space-y-1.5">
-                    <p className="text-xs font-medium text-foreground">Live Streaming with OBS</p>
-                    <p className="text-xs text-muted-foreground">Open the broadcast window, then in OBS add a <strong className="text-foreground">Window Capture</strong> source pointing at it. Stream to any RTMP destination (YouTube, Facebook, Twitch, etc.).</p>
+                  <div className="flex items-center justify-between gap-3 pt-1">
+                    <div>
+                      <p className="text-xs font-medium text-foreground">Include microphone audio</p>
+                      <p className="text-[11px] text-muted-foreground">Mix your microphone with the captured display audio</p>
+                    </div>
+                    <Switch checked={recIncludeMic} onCheckedChange={setRecIncludeMic} disabled={recState === "recording"} />
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    Clicking "Start Recording" prompts you to select your broadcast window or display.
+                    Clicking "Start Recording" prompts you to pick the broadcast window or display. Recording continues even if you switch tabs.
                   </p>
                 </CardContent>
               </Card>
@@ -1322,6 +1336,99 @@ export default function MediaPage() {
                 </Button>
                 {screenState?.textOverlayEnabled && (
                   <Button variant="outline" className="gap-2" onClick={() => updateOverlay({ textOverlayEnabled: false })}>
+                    Hide
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Scrolling Ticker */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base">Scrolling Ticker</CardTitle>
+                  <CardDescription className="text-xs">News-style scrolling text bar at the bottom</CardDescription>
+                </div>
+                {screenState?.tickerEnabled && (
+                  <Badge variant="default" className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30">Live</Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-foreground">Ticker text</label>
+                <Input
+                  value={tickerTextDraft}
+                  onChange={(e) => setTickerTextDraft(e.target.value)}
+                  placeholder="Welcome to our service today!"
+                  className="mt-1"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <ColorInput label="Text color" value={tickerColorDraft} onChange={setTickerColorDraft} />
+                <ColorInput label="Background" value={tickerBgColorDraft} onChange={setTickerBgColorDraft} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] text-muted-foreground">Font size: {tickerFontSizeDraft}px</label>
+                  <Slider value={[tickerFontSizeDraft]} min={12} max={48} step={1}
+                    onValueChange={(v) => setTickerFontSizeDraft(v[0])} className="mt-1.5" />
+                </div>
+                <div>
+                  <label className="text-[11px] text-muted-foreground">Speed: {tickerSpeedDraft}s/loop</label>
+                  <Slider value={[tickerSpeedDraft]} min={5} max={60} step={1}
+                    onValueChange={(v) => setTickerSpeedDraft(v[0])} className="mt-1.5" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] text-muted-foreground">Divider character</label>
+                <div className="flex gap-1 mt-1.5 flex-wrap">
+                  {["✦", "•", "★", "◆", "●", "—", "|", "♦"].map(d => (
+                    <button key={d} onClick={() => setTickerDividerDraft(d)}
+                      className={`w-8 h-8 rounded border text-sm transition-colors ${tickerDividerDraft === d ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                      {d}
+                    </button>
+                  ))}
+                  <Input value={tickerDividerDraft} onChange={e => setTickerDividerDraft(e.target.value.slice(0, 3))}
+                    className="w-16 h-8 text-center" maxLength={3} />
+                </div>
+              </div>
+
+              {/* Live preview */}
+              <div className="rounded-md overflow-hidden border border-border" style={{ background: "#0b0b0b" }}>
+                <div style={{ background: tickerBgColorDraft, padding: "8px 0", overflow: "hidden", whiteSpace: "nowrap" }}>
+                  <div style={{ display: "inline-block", color: tickerColorDraft, fontSize: `${tickerFontSizeDraft}px`, paddingLeft: "100%", animation: `wf-ticker ${tickerSpeedDraft}s linear infinite` }}>
+                    {tickerTextDraft || "Welcome to our service today!"}
+                    <span style={{ margin: "0 2em", opacity: 0.6 }}>{tickerDividerDraft}</span>
+                    {tickerTextDraft || "Welcome to our service today!"}
+                    <span style={{ margin: "0 2em", opacity: 0.6 }}>{tickerDividerDraft}</span>
+                    {tickerTextDraft || "Welcome to our service today!"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button className="flex-1 gap-2" disabled={!tickerTextDraft.trim()}
+                  onClick={() => updateScreen({ data: {
+                    ...safeFullState(),
+                    tickerEnabled: true,
+                    tickerText: tickerTextDraft.trim(),
+                    tickerSpeed: tickerSpeedDraft,
+                    tickerDivider: tickerDividerDraft,
+                    tickerColor: tickerColorDraft,
+                    tickerBgColor: tickerBgColorDraft,
+                    tickerFontSize: tickerFontSizeDraft,
+                  }})}>
+                  <Cast className="w-4 h-4" /> Show Ticker
+                </Button>
+                {screenState?.tickerEnabled && (
+                  <Button variant="outline" className="gap-2"
+                    onClick={() => updateScreen({ data: { ...safeFullState(), tickerEnabled: false } })}>
                     Hide
                   </Button>
                 )}

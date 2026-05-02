@@ -721,6 +721,18 @@ components:
           type: boolean
         tickerText:
           type: string
+        tickerSpeed:
+          type: integer
+        tickerDivider:
+          type: string
+        tickerColor:
+          type: string
+        tickerBgColor:
+          type: string
+        tickerFontSize:
+          type: integer
+        idleWatermark:
+          type: string
         lowerThirdEnabled:
           type: boolean
         lowerThirdName:

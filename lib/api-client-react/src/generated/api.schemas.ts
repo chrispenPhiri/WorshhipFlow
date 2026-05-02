@@ -381,6 +381,12 @@ export interface ScreenState {
   layout?: Layout;
   tickerEnabled?: boolean;
   tickerText?: string;
+  tickerSpeed?: number;
+  tickerDivider?: string;
+  tickerColor?: string;
+  tickerBgColor?: string;
+  tickerFontSize?: number;
+  idleWatermark?: string;
   lowerThirdEnabled?: boolean;
   lowerThirdName?: string;
   lowerThirdTitle?: string;

@@ -1,6 +1,6 @@
 {
-  "name": "WorshipFlow",
-  "short_name": "WorshipFlow",
+  "name": "Phiri WorshipFlow",
+  "short_name": "Phiri WF",
   "description": "Church worship presentation software for live services",
   "start_url": "./",
   "display": "standalone",

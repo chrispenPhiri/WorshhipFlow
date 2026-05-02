@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "WorshipFlow"
+title = "Phiri WorshipFlow"
 version = "1.0.0"
 id = "artifacts/worshipflow"
 router = "path"
