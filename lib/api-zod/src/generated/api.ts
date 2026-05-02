@@ -496,7 +496,14 @@ export const GetScreenStateResponse = zod.object({
     .optional(),
   background: zod
     .object({
-      type: zod.enum(["color", "gradient", "image", "video"]),
+      type: zod.enum([
+        "color",
+        "gradient",
+        "image",
+        "video",
+        "camera",
+        "live_wallpaper",
+      ]),
       value: zod.string(),
       overlay: zod.number().optional(),
     })
@@ -535,7 +542,14 @@ export const UpdateScreenStateBody = zod.object({
     .optional(),
   background: zod
     .object({
-      type: zod.enum(["color", "gradient", "image", "video"]),
+      type: zod.enum([
+        "color",
+        "gradient",
+        "image",
+        "video",
+        "camera",
+        "live_wallpaper",
+      ]),
       value: zod.string(),
       overlay: zod.number().optional(),
     })
@@ -571,7 +585,14 @@ export const UpdateScreenStateResponse = zod.object({
     .optional(),
   background: zod
     .object({
-      type: zod.enum(["color", "gradient", "image", "video"]),
+      type: zod.enum([
+        "color",
+        "gradient",
+        "image",
+        "video",
+        "camera",
+        "live_wallpaper",
+      ]),
       value: zod.string(),
       overlay: zod.number().optional(),
     })

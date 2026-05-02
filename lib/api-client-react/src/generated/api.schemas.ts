@@ -205,6 +205,8 @@ export const BackgroundType = {
   gradient: "gradient",
   image: "image",
   video: "video",
+  camera: "camera",
+  live_wallpaper: "live_wallpaper",
 } as const;
 
 export interface Background {

@@ -657,7 +657,7 @@ components:
       properties:
         type:
           type: string
-          enum: [color, gradient, image, video]
+          enum: [color, gradient, image, video, camera, live_wallpaper]
         value:
           type: string
         overlay:
