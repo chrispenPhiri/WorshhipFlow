@@ -508,6 +508,16 @@ export const GetScreenStateResponse = zod.object({
       overlay: zod.number().optional(),
     })
     .optional(),
+  layout: zod
+    .object({
+      textScale: zod.number().optional(),
+      verticalAlign: zod.enum(["top", "center", "bottom"]).optional(),
+      horizontalAlign: zod.enum(["left", "center", "right"]).optional(),
+      paddingX: zod.number().optional(),
+      paddingY: zod.number().optional(),
+      textWidthPct: zod.number().optional(),
+    })
+    .optional(),
   tickerEnabled: zod.boolean().optional(),
   tickerText: zod.string().optional(),
 });
@@ -554,6 +564,16 @@ export const UpdateScreenStateBody = zod.object({
       overlay: zod.number().optional(),
     })
     .optional(),
+  layout: zod
+    .object({
+      textScale: zod.number().optional(),
+      verticalAlign: zod.enum(["top", "center", "bottom"]).optional(),
+      horizontalAlign: zod.enum(["left", "center", "right"]).optional(),
+      paddingX: zod.number().optional(),
+      paddingY: zod.number().optional(),
+      textWidthPct: zod.number().optional(),
+    })
+    .optional(),
   tickerEnabled: zod.boolean().optional(),
   tickerText: zod.string().optional(),
 });
@@ -595,6 +615,16 @@ export const UpdateScreenStateResponse = zod.object({
       ]),
       value: zod.string(),
       overlay: zod.number().optional(),
+    })
+    .optional(),
+  layout: zod
+    .object({
+      textScale: zod.number().optional(),
+      verticalAlign: zod.enum(["top", "center", "bottom"]).optional(),
+      horizontalAlign: zod.enum(["left", "center", "right"]).optional(),
+      paddingX: zod.number().optional(),
+      paddingY: zod.number().optional(),
+      textWidthPct: zod.number().optional(),
     })
     .optional(),
   tickerEnabled: zod.boolean().optional(),

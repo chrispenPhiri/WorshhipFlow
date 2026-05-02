@@ -1,4 +1,4 @@
-import { pgTable, serial, text, boolean, integer, json, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, json, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -14,9 +14,18 @@ export interface TextStyle {
 }
 
 export interface Background {
-  type: "color" | "gradient" | "image" | "video";
+  type: "color" | "gradient" | "image" | "video" | "camera" | "live_wallpaper";
   value: string;
   overlay?: number;
+}
+
+export interface Layout {
+  textScale: number;
+  verticalAlign: "top" | "center" | "bottom";
+  horizontalAlign: "left" | "center" | "right";
+  paddingX: number;
+  paddingY: number;
+  textWidthPct: number;
 }
 
 export const screenStateTable = pgTable("screen_state", {
@@ -40,6 +49,14 @@ export const screenStateTable = pgTable("screen_state", {
     type: "color",
     value: "#000000",
     overlay: 0,
+  }),
+  layout: json("layout").$type<Layout>().default({
+    textScale: 1,
+    verticalAlign: "center",
+    horizontalAlign: "center",
+    paddingX: 8,
+    paddingY: 8,
+    textWidthPct: 100,
   }),
   tickerEnabled: boolean("ticker_enabled").notNull().default(false),
   tickerText: text("ticker_text"),

@@ -666,6 +666,24 @@ components:
         - type
         - value
 
+    Layout:
+      type: object
+      properties:
+        textScale:
+          type: number
+        verticalAlign:
+          type: string
+          enum: [top, center, bottom]
+        horizontalAlign:
+          type: string
+          enum: [left, center, right]
+        paddingX:
+          type: integer
+        paddingY:
+          type: integer
+        textWidthPct:
+          type: integer
+
     ScreenState:
       type: object
       properties:
@@ -684,6 +702,8 @@ components:
           $ref: "#/components/schemas/TextStyle"
         background:
           $ref: "#/components/schemas/Background"
+        layout:
+          $ref: "#/components/schemas/Layout"
         tickerEnabled:
           type: boolean
         tickerText:

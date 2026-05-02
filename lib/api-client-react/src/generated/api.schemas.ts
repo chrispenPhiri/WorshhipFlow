@@ -215,6 +215,33 @@ export interface Background {
   overlay?: number;
 }
 
+export type LayoutVerticalAlign =
+  (typeof LayoutVerticalAlign)[keyof typeof LayoutVerticalAlign];
+
+export const LayoutVerticalAlign = {
+  top: "top",
+  center: "center",
+  bottom: "bottom",
+} as const;
+
+export type LayoutHorizontalAlign =
+  (typeof LayoutHorizontalAlign)[keyof typeof LayoutHorizontalAlign];
+
+export const LayoutHorizontalAlign = {
+  left: "left",
+  center: "center",
+  right: "right",
+} as const;
+
+export interface Layout {
+  textScale?: number;
+  verticalAlign?: LayoutVerticalAlign;
+  horizontalAlign?: LayoutHorizontalAlign;
+  paddingX?: number;
+  paddingY?: number;
+  textWidthPct?: number;
+}
+
 export type ScreenStateContentType =
   (typeof ScreenStateContentType)[keyof typeof ScreenStateContentType];
 
@@ -235,6 +262,7 @@ export interface ScreenState {
   content?: string;
   textStyle?: TextStyle;
   background?: Background;
+  layout?: Layout;
   tickerEnabled?: boolean;
   tickerText?: string;
 }

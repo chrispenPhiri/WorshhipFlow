@@ -1,8 +1,8 @@
-# Workspace
+# WorshipFlow
 
 ## Overview
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+Full-stack church worship presentation software. pnpm workspace monorepo using TypeScript.
 
 ## Stack
 
@@ -10,6 +10,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Node.js version**: 24
 - **Package manager**: pnpm
 - **TypeScript version**: 5.9
+- **Frontend**: React + Vite, Tailwind v4, shadcn/ui, wouter, TanStack Query
 - **API framework**: Express 5
 - **Database**: PostgreSQL + Drizzle ORM
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
@@ -25,3 +26,75 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+
+## Features
+
+### Pages
+
+- **Bible** — Look up passages from bible-api.com with translation selector (16 translations), all 66 books. Verse-by-verse navigation with numbered cards. Toggle verse numbers on/off. Send mode: "One at a time" (navigate per verse) or "All together". Send individual verse or all to screen with reference label.
+- **Songs** — Library with search + 9 category tabs (shows counts). Full Add Song dialog (title, author, category, key, tempo, lyrics). Lyrics split by blank lines into slides. Slide-by-slide navigation panel. Send individual slide or all lyrics to screen. Delete songs. Key/tempo badges.
+- **Custom Text** — Free-form text with font/size/alignment controls.
+- **Themes** — 12 presets + 8 live animated wallpapers (particle, aurora, matrix, starfield, flame, ocean, geometric, neon). Apply with toast feedback.
+- **Media & Broadcast** — Upload tab (drag-drop or file browser for images/videos from local PC, blob URLs, session-scoped), Camera tab (webcam live feed), URL tab (image/video by URL), Broadcast tab (screen detection, auto-fullscreen, cursor hide, video loop toggles).
+- **Schedule** — Drag-and-drop service order builder.
+- **Sermon Notes** — Rich CRUD notes editor.
+- **Settings** — App settings (church name, default font, etc.).
+
+### Live Preview Sidebar (always visible)
+
+- 16:9 mini-preview of the current screen state, updates every 2s
+- Black Screen / Clear buttons
+- Broadcast button with multi-display picker (Window Management API)
+- **Stage Controls** (collapsible panel):
+  - **Zoom** slider (40–200%)
+  - **Text Width** slider (30–100%)
+  - **Vertical Position**: top / center / bottom buttons
+  - **Horizontal Position**: left / center / right buttons
+  - **H/V Padding** sliders (0–30%)
+  - Reset to defaults
+
+### Broadcast Window (`/broadcast`)
+
+- Full-screen output window polled every 500ms
+- Renders background (color, gradient, image, video, camera, live wallpaper)
+- Applies `layout` from screen state: textScale, verticalAlign, horizontalAlign, paddingX/Y, textWidthPct
+- Hover-reveal control bar: hide cursor, PiP (Document PiP + video fallback), settings info overlay, fullscreen toggle
+- Ticker bar support
+- Animation support: fade_in, glow, float
+- PWA manifest for desktop install
+
+## Architecture
+
+### Data Flow
+
+1. Operator sets content in any page (Bible/Songs/Custom/etc.)
+2. Page calls `PUT /api/screen` with full `ScreenState`
+3. Broadcast window polls `GET /api/screen` every 500ms and re-renders
+
+### ScreenState Schema
+
+```
+{
+  isBlack, isClear, contentType, title, content,
+  textStyle: { fontFamily, fontSize, textColor, accentColor, bold, italic, alignment, animation },
+  background: { type (color|gradient|image|video|camera|live_wallpaper), value, overlay },
+  layout: { textScale, verticalAlign, horizontalAlign, paddingX, paddingY, textWidthPct },
+  tickerEnabled, tickerText
+}
+```
+
+### Key Files
+
+- `lib/api-spec/openapi.yaml` — OpenAPI spec (source of truth for all types)
+- `lib/db/src/schema/screen.ts` — DB schema including Layout interface
+- `artifacts/worshipflow/src/hooks/use-broadcast.ts` — Window Management API hook
+- `artifacts/worshipflow/src/components/live-preview.tsx` — Sidebar with Stage Controls
+- `artifacts/worshipflow/src/pages/broadcast.tsx` — Broadcast output window
+
+### Important Patterns
+
+- `safeBase` pattern: always build explicit objects before calling `updateScreen` — never spread raw DB rows (null fields fail Zod boolean validation)
+- Codegen must be rerun after any OpenAPI spec change: `pnpm --filter @workspace/api-spec run codegen`
+- DB schema changes need: `pnpm --filter @workspace/db run push`
+- Broadcast window is rendered OUTSIDE the Layout in App.tsx (no sidebar/nav)
+- Local media files use `URL.createObjectURL()` — blob URLs are session-scoped (valid within same browser session, accessible from broadcast window since same origin)
