@@ -15,6 +15,8 @@ import SettingsPage from "@/pages/settings";
 import MediaPage from "@/pages/media";
 import BroadcastPage from "@/pages/broadcast";
 import ThemesPage from "@/pages/themes";
+import InspirationPage from "@/pages/inspiration";
+import HowToPage from "@/pages/how-to";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +39,8 @@ function Router() {
             <Route path="/media" component={MediaPage} />
             <Route path="/schedule" component={SchedulePage} />
             <Route path="/notes" component={NotesPage} />
+            <Route path="/inspiration" component={InspirationPage} />
+            <Route path="/how-to" component={HowToPage} />
             <Route path="/settings" component={SettingsPage} />
             <Route component={NotFound} />
           </Switch>
