@@ -1525,6 +1525,7 @@ export default function MediaPage() {
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Text</label>
                 <textarea rows={3}
+                  data-testid="textarea-to-content"
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="Type overlay text here…"
                   value={toContent}

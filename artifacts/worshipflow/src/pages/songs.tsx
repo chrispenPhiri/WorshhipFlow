@@ -174,29 +174,28 @@ export default function SongsPage() {
 
   const sendSection = (song: any, text: string, slideNum: number) => {
     const { label, content } = getSectionInfo(text, slideNum);
-    updateScreen({
-      data: {
-        ...safeBase,
-        // Encode section label after § so the broadcast screen can parse it
-        title: `${song.title}§${label}`,
-        content,
-        textStyle: screenState?.textStyle ?? {
-          fontFamily: "Inter",
-          fontSize: 52,
-          textColor: "#ffffff",
-          alignment: "center",
-          animation: "fade_in",
-        },
-        background: screenState?.background ?? { type: "color", value: "#000000" },
+    const screenData = {
+      ...safeBase,
+      // Encode section label after § so the broadcast screen can parse it
+      title: `${song.title}§${label}`,
+      content,
+      textStyle: screenState?.textStyle ?? {
+        fontFamily: "Inter",
+        fontSize: 52,
+        textColor: "#ffffff",
+        alignment: "center" as const,
+        animation: "fade_in" as const,
       },
-    });
-    // Track in recently-presented (B3.6)
+      background: screenState?.background ?? { type: "color", value: "#000000" },
+    };
+    updateScreen({ data: screenData });
+    // Track in recently-presented (B3.6) — snapshot screenData so click-to-restore re-sends exactly.
     addRecent({
-      id: `song-${song.id}`,
+      id: `song-${song.id}-${slideNum}`,
       type: "song",
       title: song.title,
-      subtitle: song.author,
-      payload: { songId: song.id, sectionIdx: slideNum - 1 },
+      subtitle: label,
+      payload: { songId: song.id, sectionIdx: slideNum - 1, screenData },
     });
     toast({ title: "Sent to screen", description: `${song.title} — ${label}` });
   };

@@ -129,7 +129,8 @@ export default function BiblePage() {
       }
     }
 
-    updateScreen({ data: { ...safeBase, title: titleWithTranslation, content: buildText(verses), ...secondaryFields } });
+    const screenData = { ...safeBase, title: titleWithTranslation, content: buildText(verses), ...secondaryFields };
+    updateScreen({ data: screenData });
 
     // Track in recently-presented (B3.6)
     const compareSuffix = compareEnabled && secondaryResult ? ` + ${compareTranslationAbbr}` : "";
@@ -145,6 +146,8 @@ export default function BiblePage() {
         toVerse: String(verses[verses.length - 1].verse),
         compareEnabled,
         compareTranslation: compareEnabled ? compareTranslation : undefined,
+        // Snapshot of exact data sent — used by restoreRecent to re-send instantly (Bug fix May 2026).
+        screenData,
       },
     });
 
@@ -204,14 +207,27 @@ export default function BiblePage() {
 
   const restoreRecent = async (item: typeof recentItems[number]) => {
     const p = item.payload ?? {};
-    if (typeof p.translation === "string") setTranslationValue(p.translation);
-    if (typeof p.book === "string") setBook(p.book);
-    if (typeof p.chapter === "string") setChapter(p.chapter);
-    if (typeof p.fromVerse === "string") setFromVerse(p.fromVerse);
-    if (typeof p.toVerse === "string") setToVerse(p.toVerse);
-    if (typeof p.compareEnabled === "boolean") setCompareEnabled(p.compareEnabled);
-    if (typeof p.compareTranslation === "string") setCompareTranslation(p.compareTranslation);
-    toast({ title: "Restored", description: `${item.title} (${item.subtitle ?? ""})` });
+
+    // For verse items, also restore the form params so the lookup matches what's on screen.
+    if (item.type === "verse") {
+      if (typeof p.translation === "string") setTranslationValue(p.translation);
+      if (typeof p.book === "string") setBook(p.book);
+      if (typeof p.chapter === "string") setChapter(p.chapter);
+      if (typeof p.fromVerse === "string") setFromVerse(p.fromVerse);
+      if (typeof p.toVerse === "string") setToVerse(p.toVerse);
+      if (typeof p.compareEnabled === "boolean") setCompareEnabled(p.compareEnabled);
+      if (typeof p.compareTranslation === "string") setCompareTranslation(p.compareTranslation);
+    }
+
+    // Re-send the previously displayed screen payload (verse / song / note / text).
+    // Snapshot stored in payload.screenData by each page's send handler.
+    if (p.screenData && typeof p.screenData === "object") {
+      updateScreen({ data: p.screenData as any });
+      toast({ title: "Re-sent to screen", description: `${item.title}${item.subtitle ? ` (${item.subtitle})` : ""}` });
+    } else {
+      // Legacy items (saved before May 2026 fix) without snapshot → just restore form
+      toast({ title: "Restored", description: `${item.title} — click Get Verses then Send to display.` });
+    }
   };
 
   const highlightedVerses = result?.verses.filter(v => highlighted.has(v.verse)) ?? [];

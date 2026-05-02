@@ -189,32 +189,31 @@ export default function NotesPage() {
 
   const handlePresent = (note: any, opts?: { fontSize?: number; alignment?: "left" | "center" | "right"; fontFamily?: string }) => {
     const baseStyle = screenState?.textStyle ?? { fontFamily: "Georgia", fontSize: 48, textColor: "#ffffff", alignment: "left" as const, animation: "fade_in" as const };
-    updateScreen({
-      data: {
-        isBlack: screenState?.isBlack ?? false,
-        isClear: false,
-        contentType: "custom_text",
-        title: note.title,
-        content: note.content,
-        textStyle: {
-          ...baseStyle,
-          fontSize: opts?.fontSize ?? baseStyle.fontSize ?? 48,
-          alignment: opts?.alignment ?? baseStyle.alignment ?? "left",
-          fontFamily: opts?.fontFamily ?? baseStyle.fontFamily ?? "Georgia",
-        },
-        background: screenState?.background ?? { type: "color", value: "#000000" },
-        tickerEnabled: screenState?.tickerEnabled ?? false,
-        // Always clear comparison mode when sending non-bible content (B3.5)
-        comparisonMode: false,
+    const screenData = {
+      isBlack: screenState?.isBlack ?? false,
+      isClear: false,
+      contentType: "custom_text" as const,
+      title: note.title,
+      content: note.content,
+      textStyle: {
+        ...baseStyle,
+        fontSize: opts?.fontSize ?? baseStyle.fontSize ?? 48,
+        alignment: opts?.alignment ?? baseStyle.alignment ?? "left",
+        fontFamily: opts?.fontFamily ?? baseStyle.fontFamily ?? "Georgia",
       },
-    });
-    // Track in recently-presented (B3.6)
+      background: screenState?.background ?? { type: "color", value: "#000000" },
+      tickerEnabled: screenState?.tickerEnabled ?? false,
+      // Always clear comparison mode when sending non-bible content (B3.5)
+      comparisonMode: false,
+    };
+    updateScreen({ data: screenData });
+    // Track in recently-presented (B3.6) — snapshot screenData so click-to-restore re-sends exactly.
     addRecent({
       id: `note-${note.id}`,
       type: "note",
       title: note.title,
       subtitle: note.speaker,
-      payload: { noteId: note.id },
+      payload: { noteId: note.id, screenData },
     });
     toast({ title: "Note sent to screen", description: note.title });
     setPresentNote(null);

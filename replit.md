@@ -83,7 +83,7 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
   lowerThird*: enabled, name, title, position, style, nameColor, titleColor, bgColor, accentColor, nameSize, titleSize, autoDismissSec (0=manual; B2.3),
   clock*: overlayEnabled, position, style, showDate, showSeconds, dateFormat, fontSize, color, bgColor, bgOpacity, bgRadius, bgPadding,
   logo*: overlayEnabled, url, position, size, opacity, shape (rect|circle|rounded|hex|shield), text, textColor, textSize, textPosition, textWeight,
-  textOverlay*: enabled, content, position, fontSize, color, bg, bold, italic, align, fontFamily, shadow, opacity, padding, radius, letterSpacing, animation (none|fade_in|slide_up|glow|pulse), maxWidth, borderColor, borderWidth, autoDismissSec (0=manual; B2.3),
+  textOverlay*: enabled, content, position, fontSize, color, bg, bold, italic, align, fontFamily, shadow, opacity, padding, radius, letterSpacing, animation (none|fade_in|slide_up|glow|pulse), maxWidth, borderColor, borderWidth, autoDismissSec (0=manual; B2.3 — broadcast schedules setTimeout keyed by enabled+dismissSec to fire on wall-clock time),
   comparisonMode (B3.5; bool; when true broadcast renders content + secondaryContent side-by-side),
   secondaryTitle, secondaryContent (B3.5; secondary translation for side-by-side bible compare),
   timer*: enabled, mode (stopwatch|countdown), startedAt (ISO; "" = paused/cleared), accumulatedMs, durationSec, position, fontSize, color, bgColor, label, warningSec, warningColor, criticalColor,

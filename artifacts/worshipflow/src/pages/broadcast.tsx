@@ -602,49 +602,62 @@ export default function BroadcastPage() {
   });
 
   // --- Auto-hide overlays (B2.3) ---------------------------------------------
-  // Track the moment each overlay was first observed enabled, so the timeout
-  // resets only on a fresh false→true transition (not on every poll).
-  const ltShownAtRef = useRef<number | null>(null);
-  const toShownAtRef = useRef<number | null>(null);
+  // Scheduled timeouts so dismissal fires on a real wall-clock timer rather than
+  // depending on the next poll. Keyed by enabled+dismissSec so we only schedule
+  // once per "show" event (TanStack Query reuses the same screenState ref via
+  // structural sharing when nothing changes — the effect would otherwise never
+  // re-fire to check elapsed time).
+  //
+  // We read screenState through a ref at fire time so isBlack/isClear/contentType
+  // reflect the LATEST values, not a stale snapshot from when the timer was scheduled.
+  // (OpenAPI requires those three fields on every update; the DB layer is otherwise
+  // a true column-level PATCH so unrelated columns are preserved.)
+  const screenStateRef = useRef(screenState);
+  useEffect(() => { screenStateRef.current = screenState; }, [screenState]);
+
+  const ltKey = screenState?.lowerThirdEnabled
+    ? `lt:${screenState.lowerThirdAutoDismissSec ?? 0}`
+    : "lt:off";
+  const toKey = screenState?.textOverlayEnabled
+    ? `to:${screenState.textOverlayAutoDismissSec ?? 0}`
+    : "to:off";
 
   useEffect(() => {
-    if (!screenState) return;
-    const now = Date.now();
+    if (!screenState?.lowerThirdEnabled) return;
+    const sec = screenState?.lowerThirdAutoDismissSec ?? 0;
+    if (sec <= 0) return;
+    const id = setTimeout(() => {
+      const cur = screenStateRef.current;
+      if (!cur || !cur.lowerThirdEnabled) return; // already hidden — nothing to do
+      updateScreen({ data: {
+        isBlack: cur.isBlack,
+        isClear: cur.isClear,
+        contentType: cur.contentType,
+        lowerThirdEnabled: false,
+      }});
+    }, sec * 1000);
+    return () => clearTimeout(id);
+    // Re-run only on a fresh "show" event (key encodes enabled flag + dismiss seconds).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ltKey]);
 
-    // Lower third
-    if (screenState.lowerThirdEnabled) {
-      if (ltShownAtRef.current === null) ltShownAtRef.current = now;
-      const dismissSec = screenState.lowerThirdAutoDismissSec ?? 0;
-      if (dismissSec > 0 && now - ltShownAtRef.current >= dismissSec * 1000) {
-        ltShownAtRef.current = null;
-        updateScreen({ data: {
-          isBlack: screenState.isBlack,
-          isClear: screenState.isClear,
-          contentType: screenState.contentType,
-          lowerThirdEnabled: false,
-        }});
-      }
-    } else {
-      ltShownAtRef.current = null;
-    }
-
-    // Text overlay
-    if (screenState.textOverlayEnabled) {
-      if (toShownAtRef.current === null) toShownAtRef.current = now;
-      const dismissSec = screenState.textOverlayAutoDismissSec ?? 0;
-      if (dismissSec > 0 && now - toShownAtRef.current >= dismissSec * 1000) {
-        toShownAtRef.current = null;
-        updateScreen({ data: {
-          isBlack: screenState.isBlack,
-          isClear: screenState.isClear,
-          contentType: screenState.contentType,
-          textOverlayEnabled: false,
-        }});
-      }
-    } else {
-      toShownAtRef.current = null;
-    }
-  }, [screenState, updateScreen]);
+  useEffect(() => {
+    if (!screenState?.textOverlayEnabled) return;
+    const sec = screenState?.textOverlayAutoDismissSec ?? 0;
+    if (sec <= 0) return;
+    const id = setTimeout(() => {
+      const cur = screenStateRef.current;
+      if (!cur || !cur.textOverlayEnabled) return;
+      updateScreen({ data: {
+        isBlack: cur.isBlack,
+        isClear: cur.isClear,
+        contentType: cur.contentType,
+        textOverlayEnabled: false,
+      }});
+    }, sec * 1000);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toKey]);
 
   // Apply URL params set by the launcher
   useEffect(() => {
