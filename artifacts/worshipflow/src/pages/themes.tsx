@@ -28,7 +28,6 @@ function ThemePreview({ theme, isActive, onApply }: {
       className={`cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg ${isActive ? "ring-2 ring-primary shadow-primary/20 shadow-lg" : "hover:border-primary/40"}`}
       onClick={() => onApply(theme)}
     >
-      {/* Mini preview */}
       <div className="relative h-28 rounded-t-lg overflow-hidden select-none">
         {isLive && wallpaperId ? (
           <LiveWallpaperLayer wallpaperId={wallpaperId} overlay={theme.background.overlay} />
@@ -132,7 +131,9 @@ export default function ThemesPage() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetScreenStateQueryKey() });
-        toast({ title: "Theme applied", description: "Your presentation look has been updated." });
+      },
+      onError: () => {
+        toast({ title: "Failed to apply", description: "Could not update the screen. Please try again.", variant: "destructive" });
       },
     },
   });
@@ -153,36 +154,59 @@ export default function ThemesPage() {
   )?.id;
   const activeWallpaper = currentBg?.type === "live_wallpaper" ? currentBg.value : null;
 
-  const base = screenState ?? {
-    isBlack: false,
-    isClear: false,
-    contentType: "none" as const,
-    textStyle: { fontFamily: "Inter", fontSize: 64, textColor: "#ffffff", bold: false, italic: false, alignment: "center" as const, animation: "fade_in" as const },
+  // Build a safe base from screenState — never spread the raw DB row directly
+  // since it may include null values that fail Zod validation
+  const safeBase = {
+    isBlack: screenState?.isBlack ?? false,
+    isClear: screenState?.isClear ?? false,
+    contentType: (screenState?.contentType as "none" | "verse" | "song" | "custom_text" | "image" | "video") ?? "none",
+    title: screenState?.title ?? undefined,
+    content: screenState?.content ?? undefined,
+    tickerEnabled: screenState?.tickerEnabled ?? false,
+    tickerText: screenState?.tickerText ?? undefined,
   };
 
   const applyTheme = (theme: ThemePreset) => {
     updateScreen({
       data: {
-        ...base,
-        background: theme.background as any,
-        textStyle: theme.textStyle as any,
+        ...safeBase,
+        background: {
+          type: theme.background.type as "color" | "gradient" | "image" | "video" | "camera" | "live_wallpaper",
+          value: theme.background.value,
+          overlay: theme.background.overlay,
+        },
+        textStyle: {
+          fontFamily: theme.textStyle.fontFamily,
+          fontSize: theme.textStyle.fontSize,
+          textColor: theme.textStyle.textColor,
+          bold: theme.textStyle.bold,
+          italic: theme.textStyle.italic,
+          alignment: theme.textStyle.alignment,
+          animation: theme.textStyle.animation,
+        },
       },
     });
+    toast({ title: `Theme applied`, description: `"${theme.name}" is now live on screen.` });
   };
 
   const applyWallpaper = (wallpaperId: string) => {
     updateScreen({
       data: {
-        ...base,
-        background: { type: "live_wallpaper", value: wallpaperId, overlay: overlayPct[0] },
+        ...safeBase,
+        background: {
+          type: "live_wallpaper",
+          value: wallpaperId,
+          overlay: overlayPct[0],
+        },
       },
     });
+    toast({ title: "Wallpaper set", description: "Live wallpaper is now active on screen." });
   };
 
   const applyCustomTypography = () => {
     updateScreen({
       data: {
-        ...base,
+        ...safeBase,
         textStyle: {
           fontFamily: customFont,
           fontSize: customFontSize[0],
@@ -200,10 +224,14 @@ export default function ThemesPage() {
   const applyBgColor = () => {
     updateScreen({
       data: {
-        ...base,
-        background: { type: "color", value: bgColor },
+        ...safeBase,
+        background: {
+          type: "color",
+          value: bgColor,
+        },
       },
     });
+    toast({ title: "Background updated", description: "Solid colour background applied." });
   };
 
   return (
@@ -282,7 +310,6 @@ export default function ThemesPage() {
                     </SelectContent>
                   </Select>
 
-                  {/* Font preview */}
                   <div
                     className="p-3 bg-black rounded text-center text-lg"
                     style={{ fontFamily: customFont, color: customColor, fontWeight: customBold ? "bold" : "normal", fontStyle: customItalic ? "italic" : "normal" }}
@@ -338,12 +365,7 @@ export default function ThemesPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex gap-3 items-center">
-                    <Input
-                      type="color"
-                      value={customColor}
-                      onChange={(e) => setCustomColor(e.target.value)}
-                      className="w-14 h-10 p-1 cursor-pointer"
-                    />
+                    <Input type="color" value={customColor} onChange={(e) => setCustomColor(e.target.value)} className="w-14 h-10 p-1 cursor-pointer" />
                     <Input value={customColor} onChange={(e) => setCustomColor(e.target.value)} className="flex-1 font-mono" />
                   </div>
 
@@ -372,12 +394,7 @@ export default function ThemesPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex gap-3 items-center">
-                    <Input
-                      type="color"
-                      value={bgColor}
-                      onChange={(e) => setBgColor(e.target.value)}
-                      className="w-14 h-10 p-1 cursor-pointer"
-                    />
+                    <Input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="w-14 h-10 p-1 cursor-pointer" />
                     <Input value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="flex-1 font-mono" />
                     <Button onClick={applyBgColor} variant="outline" size="sm">Set</Button>
                   </div>
@@ -395,6 +412,7 @@ export default function ThemesPage() {
                 </CardContent>
               </Card>
             </div>
+
           </div>
         </TabsContent>
       </Tabs>
