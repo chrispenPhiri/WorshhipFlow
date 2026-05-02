@@ -3,8 +3,19 @@ export const BIBLE_BOOKS = [
   "Matthew", "Mark", "Luke", "John", "Acts", "Romans", "1 Corinthians", "2 Corinthians", "Galatians", "Ephesians", "Philippians", "Colossians", "1 Thessalonians", "2 Thessalonians", "1 Timothy", "2 Timothy", "Titus", "Philemon", "Hebrews", "James", "1 Peter", "2 Peter", "1 John", "2 John", "3 John", "Jude", "Revelation"
 ];
 
-export const BIBLE_TRANSLATIONS = [
-  "KJV", "NIV", "ESV", "NKJV", "NLT", "NASB", "AMP", "MSG", "RSV", "RV1960", "LSG", "NVI-PT", "SWAHILI", "ZULU", "XHOSA", "AFRIKAANS"
+/**
+ * Translations supported by bible-api.com (free / open-licensed).
+ * NIV, ESV, NKJV, NLT, NASB are copyright-protected and unavailable via this API.
+ */
+export const BIBLE_TRANSLATIONS: { label: string; value: string }[] = [
+  { label: "KJV — King James Version",           value: "kjv"     },
+  { label: "WEB — World English Bible",           value: "web"     },
+  { label: "BBE — Bible in Basic English",        value: "bbe"     },
+  { label: "DARBY — Darby Translation",           value: "darby"   },
+  { label: "WEBBE — WEB British Edition",         value: "webbe"   },
+  { label: "RV1960 — Reina Valera (Spanish)",     value: "rv1960"  },
+  { label: "LSG — Louis Segond (French)",         value: "lsg"     },
+  { label: "ALMEIDA — Ferreira de Almeida (PT)",  value: "almeida" },
 ];
 
 export const FONTS = [
