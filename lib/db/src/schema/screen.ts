@@ -142,6 +142,16 @@ export const screenStateTable = pgTable("screen_state", {
   timerWarningSec: integer("timer_warning_sec").default(60),
   timerWarningColor: text("timer_warning_color").default("#fbbf24"),
   timerCriticalColor: text("timer_critical_color").default("#ef4444"),
+  // Scripture reference label customization (the "John 3:16 • KJV" pill at the bottom of bible verses).
+  bibleRefFontSize: integer("bible_ref_font_size").default(28),
+  bibleRefColor: text("bible_ref_color").default("#ffffff"),
+  bibleRefBgColor: text("bible_ref_bg_color").default("rgba(0,0,0,0.55)"),
+  bibleRefBold: boolean("bible_ref_bold").notNull().default(true),
+  bibleRefShowTranslation: boolean("bible_ref_show_translation").notNull().default(true),
+  bibleRefPadding: integer("bible_ref_padding").default(10),
+  bibleRefRadius: integer("bible_ref_radius").default(6),
+  bibleRefLetterSpacing: integer("bible_ref_letter_spacing").default(4),
+  bibleRefUppercase: boolean("bible_ref_uppercase").notNull().default(false),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 

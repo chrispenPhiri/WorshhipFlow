@@ -991,20 +991,33 @@ export default function BroadcastPage() {
         </div>
       )}
 
-      {/* ── Scripture reference + translation — bottom center ─────────────────── */}
-      {showContent && contentType === "verse" && verseRef && (
-        <div className="absolute z-30 pointer-events-none" style={{ bottom: tickerH + 20, ...labelHorizontalCenter }}>
-          <div style={{ background: "rgba(0,0,0,0.55)", borderRadius: "4px", padding: "5px 18px", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", gap: "10px", whiteSpace: "nowrap" }}>
-            <span style={{ color: "rgba(255,255,255,0.92)", fontSize: "15px", fontWeight: 500, letterSpacing: "0.04em" }}>{verseRef}</span>
-            {translationAbbr && (
-              <>
-                <span style={{ color: "rgba(255,255,255,0.3)", fontSize: "12px" }}>•</span>
-                <span style={{ color: "rgba(255,255,255,0.55)", fontSize: "12px", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase" }}>{translationAbbr}</span>
-              </>
-            )}
+      {/* ── Scripture reference + translation — bottom center (B-cust) ─────── */}
+      {showContent && contentType === "verse" && verseRef && (() => {
+        const refSize = screenState?.bibleRefFontSize ?? 28;
+        const refColor = screenState?.bibleRefColor ?? "#ffffff";
+        const refBg = screenState?.bibleRefBgColor ?? "rgba(0,0,0,0.55)";
+        const refBold = screenState?.bibleRefBold ?? true;
+        const refShowTr = screenState?.bibleRefShowTranslation ?? true;
+        const refPad = screenState?.bibleRefPadding ?? 10;
+        const refRad = screenState?.bibleRefRadius ?? 6;
+        const refLs = (screenState?.bibleRefLetterSpacing ?? 4) / 100;
+        const refUpper = screenState?.bibleRefUppercase ?? false;
+        const trSize = Math.max(10, Math.round(refSize * 0.55));
+        const dotSize = Math.max(8, Math.round(refSize * 0.45));
+        return (
+          <div className="absolute z-30 pointer-events-none" style={{ bottom: tickerH + 20, ...labelHorizontalCenter }}>
+            <div style={{ background: refBg, borderRadius: `${refRad}px`, padding: `${refPad}px ${refPad * 2}px`, backdropFilter: "blur(4px)", display: "flex", alignItems: "center", gap: `${Math.max(6, refPad)}px`, whiteSpace: "nowrap" }}>
+              <span style={{ color: refColor, fontSize: `${refSize}px`, fontWeight: refBold ? 700 : 500, letterSpacing: `${refLs}em`, textTransform: refUpper ? "uppercase" : "none", lineHeight: 1.1 }} data-testid="text-bible-ref">{verseRef}</span>
+              {refShowTr && translationAbbr && (
+                <>
+                  <span style={{ color: refColor, opacity: 0.4, fontSize: `${dotSize}px` }}>•</span>
+                  <span style={{ color: refColor, opacity: 0.7, fontSize: `${trSize}px`, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase" }}>{translationAbbr}</span>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── Song name — top center ───────────────────────────────────────────── */}
       {showContent && contentType === "song" && songName && (

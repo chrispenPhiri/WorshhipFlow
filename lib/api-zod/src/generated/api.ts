@@ -667,6 +667,23 @@ export const GetScreenStateResponse = zod.object({
   textOverlayAlign: zod.enum(["left", "center", "right"]).optional(),
   textOverlayFontFamily: zod.string().optional(),
   textOverlayShadow: zod.boolean().optional(),
+  bibleRefFontSize: zod
+    .number()
+    .optional()
+    .describe(
+      "Font size in px for the scripture reference label at the bottom of bible verses.",
+    ),
+  bibleRefColor: zod.string().optional(),
+  bibleRefBgColor: zod.string().optional(),
+  bibleRefBold: zod.boolean().optional(),
+  bibleRefShowTranslation: zod.boolean().optional(),
+  bibleRefPadding: zod.number().optional(),
+  bibleRefRadius: zod.number().optional(),
+  bibleRefLetterSpacing: zod
+    .number()
+    .optional()
+    .describe("Letter spacing in 0.01em units (e.g. 4 = 0.04em)."),
+  bibleRefUppercase: zod.boolean().optional(),
 });
 
 /**
@@ -870,6 +887,23 @@ export const UpdateScreenStateBody = zod.object({
   textOverlayAlign: zod.enum(["left", "center", "right"]).optional(),
   textOverlayFontFamily: zod.string().optional(),
   textOverlayShadow: zod.boolean().optional(),
+  bibleRefFontSize: zod
+    .number()
+    .optional()
+    .describe(
+      "Font size in px for the scripture reference label at the bottom of bible verses.",
+    ),
+  bibleRefColor: zod.string().optional(),
+  bibleRefBgColor: zod.string().optional(),
+  bibleRefBold: zod.boolean().optional(),
+  bibleRefShowTranslation: zod.boolean().optional(),
+  bibleRefPadding: zod.number().optional(),
+  bibleRefRadius: zod.number().optional(),
+  bibleRefLetterSpacing: zod
+    .number()
+    .optional()
+    .describe("Letter spacing in 0.01em units (e.g. 4 = 0.04em)."),
+  bibleRefUppercase: zod.boolean().optional(),
 });
 
 export const UpdateScreenStateResponse = zod.object({
@@ -1070,4 +1104,21 @@ export const UpdateScreenStateResponse = zod.object({
   textOverlayAlign: zod.enum(["left", "center", "right"]).optional(),
   textOverlayFontFamily: zod.string().optional(),
   textOverlayShadow: zod.boolean().optional(),
+  bibleRefFontSize: zod
+    .number()
+    .optional()
+    .describe(
+      "Font size in px for the scripture reference label at the bottom of bible verses.",
+    ),
+  bibleRefColor: zod.string().optional(),
+  bibleRefBgColor: zod.string().optional(),
+  bibleRefBold: zod.boolean().optional(),
+  bibleRefShowTranslation: zod.boolean().optional(),
+  bibleRefPadding: zod.number().optional(),
+  bibleRefRadius: zod.number().optional(),
+  bibleRefLetterSpacing: zod
+    .number()
+    .optional()
+    .describe("Letter spacing in 0.01em units (e.g. 4 = 0.04em)."),
+  bibleRefUppercase: zod.boolean().optional(),
 });

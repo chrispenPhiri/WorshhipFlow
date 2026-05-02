@@ -516,6 +516,17 @@ export interface ScreenState {
   textOverlayAlign?: ScreenStateTextOverlayAlign;
   textOverlayFontFamily?: string;
   textOverlayShadow?: boolean;
+  /** Font size in px for the scripture reference label at the bottom of bible verses. */
+  bibleRefFontSize?: number;
+  bibleRefColor?: string;
+  bibleRefBgColor?: string;
+  bibleRefBold?: boolean;
+  bibleRefShowTranslation?: boolean;
+  bibleRefPadding?: number;
+  bibleRefRadius?: number;
+  /** Letter spacing in 0.01em units (e.g. 4 = 0.04em). */
+  bibleRefLetterSpacing?: number;
+  bibleRefUppercase?: boolean;
 }
 
 export type ListSongsParams = {

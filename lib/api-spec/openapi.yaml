@@ -893,6 +893,26 @@ components:
           type: string
         textOverlayShadow:
           type: boolean
+        bibleRefFontSize:
+          type: integer
+          description: "Font size in px for the scripture reference label at the bottom of bible verses."
+        bibleRefColor:
+          type: string
+        bibleRefBgColor:
+          type: string
+        bibleRefBold:
+          type: boolean
+        bibleRefShowTranslation:
+          type: boolean
+        bibleRefPadding:
+          type: integer
+        bibleRefRadius:
+          type: integer
+        bibleRefLetterSpacing:
+          type: integer
+          description: "Letter spacing in 0.01em units (e.g. 4 = 0.04em)."
+        bibleRefUppercase:
+          type: boolean
       required:
         - isBlack
         - isClear
