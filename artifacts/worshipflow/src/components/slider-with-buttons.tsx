@@ -10,21 +10,27 @@ export function SliderWithButtons(props: SliderProps) {
     max = 100,
     step = 1,
     value,
+    defaultValue,
     onValueChange,
+    disabled,
     className,
     ...rest
   } = props;
 
-  const cur = Array.isArray(value) && typeof value[0] === "number" ? value[0] : min;
+  const source = Array.isArray(value) ? value : Array.isArray(defaultValue) ? defaultValue : undefined;
+  const cur = source && typeof source[0] === "number" ? source[0] : min;
+  const isMulti = !!source && source.length > 1;
   const atMin = cur <= min;
   const atMax = cur >= max;
+  // Disable +/- in multi-thumb (range) mode to avoid collapsing thumbs.
+  const disableButtons = !!disabled || isMulti;
 
   const dec = () => {
-    if (atMin) return;
+    if (disableButtons || atMin) return;
     onValueChange?.([Math.max(min, cur - step)]);
   };
   const inc = () => {
-    if (atMax) return;
+    if (disableButtons || atMax) return;
     onValueChange?.([Math.min(max, cur + step)]);
   };
 
@@ -33,7 +39,7 @@ export function SliderWithButtons(props: SliderProps) {
       <button
         type="button"
         onClick={dec}
-        disabled={atMin}
+        disabled={disableButtons || atMin}
         aria-label="Decrease"
         className="h-7 w-7 shrink-0 rounded border border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
       >
@@ -45,13 +51,15 @@ export function SliderWithButtons(props: SliderProps) {
         max={max}
         step={step}
         value={value}
+        defaultValue={defaultValue}
         onValueChange={onValueChange}
+        disabled={disabled}
         className="flex-1"
       />
       <button
         type="button"
         onClick={inc}
-        disabled={atMax}
+        disabled={disableButtons || atMax}
         aria-label="Increase"
         className="h-7 w-7 shrink-0 rounded border border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
       >
