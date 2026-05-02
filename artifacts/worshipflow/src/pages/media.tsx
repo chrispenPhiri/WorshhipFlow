@@ -8,10 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { useUpdateScreenState, useGetScreenState, getGetScreenStateQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  Camera, Video, Image, Cast, CameraOff, Play, Square,
+  Camera, Video, Image as ImageIcon, Cast, CameraOff, Play, Square,
   MonitorSpeaker, Monitor, Settings2, Loader2, CheckCircle2,
   PictureInPicture2, Maximize2, EyeOff, RotateCcw, ChevronRight,
-  Upload, X, FileImage, FileVideo, User, Clock, Scissors, RefreshCw, Layers3
+  Upload, X, FileImage, FileVideo, User, Clock, Scissors, RefreshCw, Layers3,
+  Bold, Italic, AlignLeft, AlignCenter, AlignRight
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -37,6 +38,20 @@ function formatBytes(bytes: number) {
 /** Module-level store — persists uploaded files across route changes (cleared on page refresh). */
 const _fileStore: { files: UploadedFile[] } = { files: [] };
 
+// A small color swatch + hex input combo
+function ColorInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="space-y-1">
+      <label className="text-[11px] text-muted-foreground">{label}</label>
+      <div className="flex gap-1 items-center">
+        <input type="color" value={value.startsWith("rgba") ? "#888888" : value} onChange={e => onChange(e.target.value)}
+          className="h-7 w-8 rounded border border-input cursor-pointer bg-transparent p-0.5 shrink-0" />
+        <Input className="h-7 text-[11px] font-mono" value={value} onChange={e => onChange(e.target.value)} />
+      </div>
+    </div>
+  );
+}
+
 export default function MediaPage() {
   const queryClient = useQueryClient();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -51,24 +66,25 @@ export default function MediaPage() {
   const [overlay, setOverlay] = useState([0]);
   const [imageUrl, setImageUrl] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
-  // Initialise from module-level store so files survive tab navigation
   const [uploadedFiles, setUploadedFilesState] = useState<UploadedFile[]>(_fileStore.files);
   const [draggingOver, setDraggingOver] = useState(false);
 
-  /** Wrapper that keeps the module store in sync with React state. */
-  const setUploadedFiles = (updater: UploadedFile[] | ((prev: UploadedFile[]) => UploadedFile[])) => {
-    setUploadedFilesState(prev => {
-      const next = typeof updater === "function" ? updater(prev) : updater;
-      _fileStore.files = next;
-      return next;
-    });
-  };
+  // Camera layout settings
+  const [camLayout, setCamLayout] = useState<"fullscreen" | "pip-topright" | "pip-topleft" | "pip-bottomright" | "pip-bottomleft" | "side-left" | "side-right">("fullscreen");
+  const [camShape, setCamShape] = useState<"rect" | "circle" | "rounded">("rect");
+  const [camPipSize, setCamPipSize] = useState(30);
 
-  // Lower-third state (local draft before sending)
+  // Lower-third draft state
   const [ltName, setLtName] = useState("");
   const [ltTitleText, setLtTitleText] = useState("");
   const [ltPosition, setLtPosition] = useState<"bottom-left" | "bottom-center" | "bottom-right">("bottom-left");
   const [ltStyle, setLtStyle] = useState<"modern" | "classic" | "gradient" | "minimal">("modern");
+  const [ltNameColor, setLtNameColor] = useState("#ffffff");
+  const [ltTitleColor, setLtTitleColor] = useState("rgba(255,255,255,0.65)");
+  const [ltBgColor, setLtBgColor] = useState("rgba(0,0,0,0.72)");
+  const [ltAccentColor, setLtAccentColor] = useState("rgba(255,255,255,0.75)");
+  const [ltNameSize, setLtNameSize] = useState(22);
+  const [ltTitleSize, setLtTitleSize] = useState(13);
   const [ltInitialized, setLtInitialized] = useState(false);
 
   // Logo overlay draft state
@@ -87,6 +103,10 @@ export default function MediaPage() {
   const [toColor, setToColor] = useState("#ffffff");
   const [toBg, setToBg] = useState("rgba(0,0,0,0.55)");
   const [toBold, setToBold] = useState(false);
+  const [toItalic, setToItalic] = useState(false);
+  const [toAlign, setToAlign] = useState<"left" | "center" | "right">("left");
+  const [toFontFamily, setToFontFamily] = useState("inherit");
+  const [toShadow, setToShadow] = useState(false);
 
   const { toast } = useToast();
 
@@ -113,6 +133,12 @@ export default function MediaPage() {
       if (screenState.lowerThirdTitle)    setLtTitleText(screenState.lowerThirdTitle);
       if (screenState.lowerThirdPosition) setLtPosition(screenState.lowerThirdPosition as typeof ltPosition);
       if (screenState.lowerThirdStyle)    setLtStyle(screenState.lowerThirdStyle as typeof ltStyle);
+      if (screenState.lowerThirdNameColor)   setLtNameColor(screenState.lowerThirdNameColor);
+      if (screenState.lowerThirdTitleColor)  setLtTitleColor(screenState.lowerThirdTitleColor);
+      if (screenState.lowerThirdBgColor)     setLtBgColor(screenState.lowerThirdBgColor);
+      if (screenState.lowerThirdAccentColor) setLtAccentColor(screenState.lowerThirdAccentColor);
+      if (screenState.lowerThirdNameSize)    setLtNameSize(screenState.lowerThirdNameSize);
+      if (screenState.lowerThirdTitleSize)   setLtTitleSize(screenState.lowerThirdTitleSize);
       setLtInitialized(true);
     }
   }, [screenState, ltInitialized]);
@@ -128,8 +154,13 @@ export default function MediaPage() {
     }
   }, [screenState, logoInitialized]);
 
-  // Only revoke blob URLs that are truly being removed (not just unmounting)
-  // Files in _fileStore must stay valid across route changes
+  const setUploadedFiles = (updater: UploadedFile[] | ((prev: UploadedFile[]) => UploadedFile[])) => {
+    setUploadedFilesState(prev => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      _fileStore.files = next;
+      return next;
+    });
+  };
 
   const enumerateCameras = async () => {
     try {
@@ -143,10 +174,7 @@ export default function MediaPage() {
   const startCamera = async (deviceId?: string) => {
     setCameraError(null);
     try {
-      const constraints: MediaStreamConstraints = {
-        video: deviceId ? { deviceId: { exact: deviceId } } : true,
-        audio: false,
-      };
+      const constraints: MediaStreamConstraints = { video: deviceId ? { deviceId: { exact: deviceId } } : true, audio: false };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       setCameraStream(stream);
       if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play(); }
@@ -190,9 +218,19 @@ export default function MediaPage() {
     lowerThirdTitle: screenState?.lowerThirdTitle ?? undefined,
     lowerThirdPosition: (screenState?.lowerThirdPosition ?? "bottom-left") as "bottom-left" | "bottom-center" | "bottom-right",
     lowerThirdStyle: (screenState?.lowerThirdStyle ?? "modern") as "modern" | "classic" | "gradient" | "minimal",
+    lowerThirdNameColor: screenState?.lowerThirdNameColor ?? "#ffffff",
+    lowerThirdTitleColor: screenState?.lowerThirdTitleColor ?? "rgba(255,255,255,0.65)",
+    lowerThirdBgColor: screenState?.lowerThirdBgColor ?? "rgba(0,0,0,0.72)",
+    lowerThirdAccentColor: screenState?.lowerThirdAccentColor ?? "rgba(255,255,255,0.75)",
+    lowerThirdNameSize: screenState?.lowerThirdNameSize ?? 22,
+    lowerThirdTitleSize: screenState?.lowerThirdTitleSize ?? 13,
     clockOverlayEnabled: screenState?.clockOverlayEnabled ?? false,
     clockPosition: (screenState?.clockPosition ?? "top-right") as "top-left" | "top-right" | "bottom-left" | "bottom-right",
     clockStyle: (screenState?.clockStyle ?? "digital") as "digital" | "clean",
+    clockShowDate: screenState?.clockShowDate ?? false,
+    clockDateFormat: (screenState?.clockDateFormat ?? "long") as "short" | "long" | "numeric",
+    clockFontSize: screenState?.clockFontSize ?? 16,
+    clockColor: screenState?.clockColor ?? "rgba(255,255,255,0.92)",
     logoOverlayEnabled: screenState?.logoOverlayEnabled ?? false,
     logoUrl: screenState?.logoUrl ?? undefined,
     logoPosition: (screenState?.logoPosition ?? "top-right") as "top-left" | "top-right" | "bottom-left" | "bottom-right" | "center",
@@ -205,12 +243,16 @@ export default function MediaPage() {
     textOverlayColor: screenState?.textOverlayColor ?? "#ffffff",
     textOverlayBg: screenState?.textOverlayBg ?? "rgba(0,0,0,0.55)",
     textOverlayBold: screenState?.textOverlayBold ?? false,
+    textOverlayItalic: screenState?.textOverlayItalic ?? false,
+    textOverlayAlign: (screenState?.textOverlayAlign ?? "left") as "left" | "center" | "right",
+    textOverlayFontFamily: screenState?.textOverlayFontFamily ?? "inherit",
+    textOverlayShadow: screenState?.textOverlayShadow ?? false,
   });
 
   const updateOverlay = (patch: Partial<ReturnType<typeof safeFullState>>) =>
     updateScreen({ data: { ...safeFullState(), ...patch } });
 
-  /** Compress a logo image to ≤400px PNG (preserves transparency). */
+  /** Compress a logo image to ≤400px PNG. */
   const compressLogoImage = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -233,9 +275,7 @@ export default function MediaPage() {
             if (!ctx) { resolve(raw); return; }
             ctx.drawImage(img, 0, 0, w, h);
             resolve(canvas.toDataURL("image/png"));
-          } catch {
-            resolve(raw);
-          }
+          } catch { resolve(raw); }
         };
         img.src = raw;
       };
@@ -256,8 +296,6 @@ export default function MediaPage() {
     return () => { if (cameraStream) cameraStream.getTracks().forEach(t => t.stop()); };
   }, [cameraStream]);
 
-  const base = screenState ?? { isBlack: false, isClear: false, contentType: "none" as const };
-
   /** Convert a blob: URL to a data URL so the broadcast window can load it. */
   const blobToDataUrl = (blobUrl: string): Promise<string> =>
     new Promise((resolve, reject) => {
@@ -276,11 +314,18 @@ export default function MediaPage() {
       img.src = blobUrl;
     });
 
-  const sendCameraToScreen = () => updateScreen({ data: { ...safeFullState(), isBlack: false, isClear: false, contentType: "custom_text" as const, background: { type: "camera", value: "camera", overlay: overlay[0] } } });
+  const sendCameraToScreen = () => updateScreen({
+    data: {
+      ...safeFullState(),
+      isBlack: false,
+      isClear: false,
+      contentType: "custom_text" as const,
+      background: { type: "camera", value: "camera", overlay: overlay[0], cameraLayout: camLayout, cameraShape: camShape, cameraPipSize: camPipSize },
+    }
+  });
 
   const sendImageToScreen = async (url: string, fit: "cover" | "contain" | "fill" = "cover") => {
     if (!url) return;
-    // Convert blob URLs to data URLs so they work in the broadcast window
     const resolved = url.startsWith("blob:") ? await blobToDataUrl(url).catch(() => url) : url;
     updateScreen({ data: { ...safeFullState(), isBlack: false, isClear: false, contentType: "image" as const, background: { type: "image", value: resolved, overlay: overlay[0], fit } } });
   };
@@ -301,15 +346,7 @@ export default function MediaPage() {
       }
       const url = URL.createObjectURL(file);
       const id = `${Date.now()}-${Math.random()}`;
-      setUploadedFiles(prev => [...prev, {
-        id,
-        name: file.name,
-        url,
-        type: isImage ? "image" : "video",
-        size: formatBytes(file.size),
-        fit: "cover",
-        loop: true,
-      }]);
+      setUploadedFiles(prev => [...prev, { id, name: file.name, url, type: isImage ? "image" : "video", size: formatBytes(file.size), fit: "cover", loop: true }]);
     });
   }, [toast]);
 
@@ -329,6 +366,9 @@ export default function MediaPage() {
     setDraggingOver(false);
     handleFileUpload(e.dataTransfer.files);
   };
+
+  const isPip = camLayout.startsWith("pip-");
+  const isSide = camLayout.startsWith("side-");
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -351,20 +391,17 @@ export default function MediaPage() {
 
       <Tabs defaultValue="upload">
         <TabsList className="w-full flex-wrap h-auto gap-0.5">
-          <TabsTrigger value="upload" className="flex-1 gap-1.5 min-w-0"><Upload className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Upload</span></TabsTrigger>
-          <TabsTrigger value="camera" className="flex-1 gap-1.5 min-w-0"><Camera className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Camera</span></TabsTrigger>
-          <TabsTrigger value="url" className="flex-1 gap-1.5 min-w-0"><Video className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">URL</span></TabsTrigger>
-          <TabsTrigger value="overlays" className="flex-1 gap-1.5 min-w-0"><Layers3 className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Overlays</span></TabsTrigger>
+          <TabsTrigger value="upload"    className="flex-1 gap-1.5 min-w-0"><Upload   className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Upload</span></TabsTrigger>
+          <TabsTrigger value="camera"    className="flex-1 gap-1.5 min-w-0"><Camera   className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Camera</span></TabsTrigger>
+          <TabsTrigger value="url"       className="flex-1 gap-1.5 min-w-0"><Video    className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">URL</span></TabsTrigger>
+          <TabsTrigger value="overlays"  className="flex-1 gap-1.5 min-w-0"><Layers3  className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Overlays</span></TabsTrigger>
           <TabsTrigger value="broadcast" className="flex-1 gap-1.5 min-w-0"><Settings2 className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Broadcast</span></TabsTrigger>
         </TabsList>
 
         {/* ── UPLOAD ── */}
         <TabsContent value="upload" className="mt-4 space-y-4">
-          {/* Drop zone */}
           <div
-            className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
-              draggingOver ? "border-primary bg-primary/10" : "border-border hover:border-primary/50 hover:bg-muted/30"
-            }`}
+            className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${draggingOver ? "border-primary bg-primary/10" : "border-border hover:border-primary/50 hover:bg-muted/30"}`}
             onClick={() => imageInputRef.current?.click()}
             onDragOver={e => { e.preventDefault(); setDraggingOver(true); }}
             onDragLeave={() => setDraggingOver(false)}
@@ -374,102 +411,53 @@ export default function MediaPage() {
             <p className="font-medium">Drop images or videos here</p>
             <p className="text-sm text-muted-foreground mt-1">or click to browse — JPG, PNG, GIF, WebP, MP4, WebM</p>
             <div className="flex justify-center gap-2 mt-4">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={e => { e.stopPropagation(); imageInputRef.current?.click(); }}
-                className="gap-1.5"
-              >
+              <Button size="sm" variant="outline" onClick={e => { e.stopPropagation(); imageInputRef.current?.click(); }} className="gap-1.5">
                 <FileImage className="w-4 h-4" /> Images
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={e => { e.stopPropagation(); videoInputRef.current?.click(); }}
-                className="gap-1.5"
-              >
+              <Button size="sm" variant="outline" onClick={e => { e.stopPropagation(); videoInputRef.current?.click(); }} className="gap-1.5">
                 <FileVideo className="w-4 h-4" /> Videos
               </Button>
             </div>
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={e => handleFileUpload(e.target.files)}
-            />
-            <input
-              ref={videoInputRef}
-              type="file"
-              accept="video/*"
-              multiple
-              className="hidden"
-              onChange={e => handleFileUpload(e.target.files)}
-            />
+            <input ref={imageInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => handleFileUpload(e.target.files)} />
+            <input ref={videoInputRef} type="file" accept="video/*" multiple className="hidden" onChange={e => handleFileUpload(e.target.files)} />
           </div>
 
           <div className="text-xs text-muted-foreground bg-amber-500/10 border border-amber-500/20 rounded-md px-3 py-2">
             Uploaded files are available for this browser session. Re-upload after refreshing the page.
           </div>
 
-          {/* Uploaded file grid */}
           {uploadedFiles.length > 0 && (
             <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
               {uploadedFiles.map(f => (
                 <Card key={f.id} className="overflow-hidden">
                   <div className="relative aspect-video bg-black">
-                    {f.type === "image" ? (
-                      <img src={f.url} alt={f.name} className={`w-full h-full ${f.fit === "contain" ? "object-contain" : f.fit === "fill" ? "object-fill" : "object-cover"}`} />
-                    ) : (
-                      <video src={f.url} className={`w-full h-full ${f.fit === "contain" ? "object-contain" : f.fit === "fill" ? "object-fill" : "object-cover"}`} muted playsInline />
-                    )}
-                    <button
-                      onClick={() => removeFile(f.id)}
-                      className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 text-white hover:bg-black/80"
-                    >
+                    {f.type === "image"
+                      ? <img src={f.url} alt={f.name} className={`w-full h-full ${f.fit === "contain" ? "object-contain" : f.fit === "fill" ? "object-fill" : "object-cover"}`} />
+                      : <video src={f.url} className={`w-full h-full ${f.fit === "contain" ? "object-contain" : f.fit === "fill" ? "object-fill" : "object-cover"}`} muted playsInline />
+                    }
+                    <button onClick={() => removeFile(f.id)} className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 text-white hover:bg-black/80">
                       <X className="w-3 h-3" />
                     </button>
-                    <Badge className="absolute bottom-1.5 left-1.5 text-[10px] py-0 bg-black/60 border-0 capitalize">
-                      {f.type}
-                    </Badge>
+                    <Badge className="absolute bottom-1.5 left-1.5 text-[10px] py-0 bg-black/60 border-0 capitalize">{f.type}</Badge>
                   </div>
                   <CardContent className="p-2 space-y-2">
                     <p className="text-xs font-medium truncate" title={f.name}>{f.name}</p>
-
-                    {/* Fit mode */}
                     <div className="flex gap-1">
                       {(["cover", "contain", "fill"] as const).map(mode => (
-                        <button
-                          key={mode}
-                          onClick={() => updateFile(f.id, { fit: mode })}
-                          className={`flex-1 py-0.5 rounded text-[10px] border transition-colors capitalize ${f.fit === mode ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}
-                        >
+                        <button key={mode} onClick={() => updateFile(f.id, { fit: mode })}
+                          className={`flex-1 py-0.5 rounded text-[10px] border transition-colors capitalize ${f.fit === mode ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
                           {mode}
                         </button>
                       ))}
                     </div>
-
-                    {/* Loop toggle for videos */}
                     {f.type === "video" && (
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] text-muted-foreground">Loop video</span>
-                        <Switch
-                          checked={f.loop}
-                          onCheckedChange={v => updateFile(f.id, { loop: v })}
-                          className="scale-75 origin-right"
-                        />
+                        <Switch checked={f.loop} onCheckedChange={v => updateFile(f.id, { loop: v })} className="scale-75 origin-right" />
                       </div>
                     )}
-
-                    <Button
-                      size="sm"
-                      className="w-full gap-1.5 h-7 text-xs"
-                      onClick={() => f.type === "image"
-                        ? sendImageToScreen(f.url, f.fit)
-                        : sendVideoToScreen(f.url, f.fit, f.loop)
-                      }
-                    >
+                    <Button size="sm" className="w-full gap-1.5 h-7 text-xs"
+                      onClick={() => f.type === "image" ? sendImageToScreen(f.url, f.fit) : sendVideoToScreen(f.url, f.fit, f.loop)}>
                       <Cast className="w-3 h-3" /> Send to Screen
                     </Button>
                   </CardContent>
@@ -477,34 +465,24 @@ export default function MediaPage() {
               ))}
             </div>
           )}
-
-          {uploadedFiles.length === 0 && (
-            <div className="text-center py-4 text-muted-foreground text-sm">
-              No files uploaded yet
-            </div>
-          )}
+          {uploadedFiles.length === 0 && <div className="text-center py-4 text-muted-foreground text-sm">No files uploaded yet</div>}
         </TabsContent>
 
         {/* ── CAMERA ── */}
-        <TabsContent value="camera" className="mt-4">
+        <TabsContent value="camera" className="mt-4 space-y-4">
           <div className="grid md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Camera className="w-4 h-4" /> Live Camera Feed</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Camera device selector (shows after permission granted) */}
                 {cameras.length > 0 && (
                   <div className="flex gap-2 items-center">
                     <Select value={selectedCameraId} onValueChange={switchCamera} disabled={cameras.length <= 1}>
-                      <SelectTrigger className="flex-1 h-8 text-xs">
-                        <SelectValue placeholder="Select camera…" />
-                      </SelectTrigger>
+                      <SelectTrigger className="flex-1 h-8 text-xs"><SelectValue placeholder="Select camera…" /></SelectTrigger>
                       <SelectContent>
                         {cameras.map((c, i) => (
-                          <SelectItem key={c.deviceId} value={c.deviceId} className="text-xs">
-                            {c.label || `Camera ${i + 1}`}
-                          </SelectItem>
+                          <SelectItem key={c.deviceId} value={c.deviceId} className="text-xs">{c.label || `Camera ${i + 1}`}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -534,12 +512,7 @@ export default function MediaPage() {
                   <Button onClick={sendCameraToScreen} disabled={!cameraStream} className="flex-1 gap-2">
                     <Cast className="w-4 h-4" /> Send to Screen
                   </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={cutFeed}
-                    title="Stop camera and black the screen immediately"
-                    className="gap-2 shrink-0"
-                  >
+                  <Button variant="destructive" onClick={cutFeed} title="Stop camera and black the screen" className="gap-2 shrink-0">
                     <Scissors className="w-4 h-4" /> Cut
                   </Button>
                 </div>
@@ -547,13 +520,67 @@ export default function MediaPage() {
             </Card>
 
             <Card>
-              <CardHeader><CardTitle>Tips</CardTitle></CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <p>1. Click <strong className="text-foreground">Start Camera</strong> to access your webcam.</p>
-                <p>2. A device selector appears if multiple cameras are detected — use it to switch between them.</p>
-                <p>3. Click <strong className="text-foreground">Send to Screen</strong> to use the camera feed as a live background.</p>
-                <p>4. Press <strong className="text-destructive/90">Cut</strong> to instantly stop the camera and black out the presentation screen.</p>
-                <p>5. Bible verses or songs can be displayed on top of the camera background.</p>
+              <CardHeader><CardTitle>Camera Layout</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                {/* Layout mode */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Display Mode</label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {([
+                      { value: "fullscreen",       label: "Fullscreen" },
+                      { value: "pip-topright",     label: "PiP Top-Right" },
+                      { value: "pip-topleft",      label: "PiP Top-Left" },
+                      { value: "pip-bottomright",  label: "PiP Bottom-Right" },
+                      { value: "pip-bottomleft",   label: "PiP Bottom-Left" },
+                      { value: "side-left",        label: "Side-by-Side Left" },
+                      { value: "side-right",       label: "Side-by-Side Right" },
+                    ] as const).map(opt => (
+                      <button key={opt.value} onClick={() => setCamLayout(opt.value)}
+                        className={`py-1.5 rounded text-xs border transition-colors ${camLayout === opt.value ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Shape — only for PiP */}
+                {isPip && (
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">PiP Shape</label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {([
+                        { value: "rect",    label: "Rectangle" },
+                        { value: "rounded", label: "Rounded" },
+                        { value: "circle",  label: "Circle" },
+                      ] as const).map(opt => (
+                        <button key={opt.value} onClick={() => setCamShape(opt.value)}
+                          className={`py-1.5 rounded text-xs border transition-colors ${camShape === opt.value ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* PiP size */}
+                {isPip && (
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between">
+                      <label className="text-sm font-medium">PiP Size</label>
+                      <span className="text-xs text-muted-foreground">{camPipSize}% of width</span>
+                    </div>
+                    <Slider min={15} max={55} step={5} value={[camPipSize]} onValueChange={([v]) => setCamPipSize(v)} />
+                  </div>
+                )}
+
+                {(isPip || isSide) && (
+                  <p className="text-xs text-muted-foreground bg-muted/30 rounded px-3 py-2">
+                    {isSide
+                      ? "Camera occupies half the screen. Use the other half for content or leave as solid background."
+                      : "Camera appears as an overlay in the chosen corner. Content and other overlays show normally beneath it."
+                    }
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -576,7 +603,7 @@ export default function MediaPage() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><Image className="w-4 h-4" /> Image from URL</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><ImageIcon className="w-4 h-4" /> Image from URL</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <Input placeholder="https://example.com/background.jpg" value={imageUrl} onChange={e => setImageUrl(e.target.value)} />
               {imageUrl && (
@@ -695,13 +722,9 @@ export default function MediaPage() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between gap-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <User className="w-4 h-4" /> Presenter Lower-Third
-                </CardTitle>
+                <CardTitle className="flex items-center gap-2 text-base"><User className="w-4 h-4" /> Presenter Lower-Third</CardTitle>
                 <div className="flex items-center gap-2">
-                  {screenState?.lowerThirdEnabled && (
-                    <Badge className="text-[10px] py-0 h-4 bg-green-600 border-0">LIVE</Badge>
-                  )}
+                  {screenState?.lowerThirdEnabled && <Badge className="text-[10px] py-0 h-4 bg-green-600 border-0">LIVE</Badge>}
                   <Switch
                     checked={screenState?.lowerThirdEnabled ?? false}
                     onCheckedChange={v => {
@@ -712,6 +735,12 @@ export default function MediaPage() {
                           lowerThirdTitle: ltTitleText || undefined,
                           lowerThirdPosition: ltPosition,
                           lowerThirdStyle: ltStyle,
+                          lowerThirdNameColor: ltNameColor,
+                          lowerThirdTitleColor: ltTitleColor,
+                          lowerThirdBgColor: ltBgColor,
+                          lowerThirdAccentColor: ltAccentColor,
+                          lowerThirdNameSize: ltNameSize,
+                          lowerThirdTitleSize: ltTitleSize,
                         });
                       } else {
                         updateOverlay({ lowerThirdEnabled: false });
@@ -722,49 +751,38 @@ export default function MediaPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Name + Title */}
               <div className="grid sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">Name</label>
-                  <Input
-                    value={ltName}
-                    onChange={e => setLtName(e.target.value)}
-                    placeholder="Pastor John Smith"
-                  />
+                  <Input value={ltName} onChange={e => setLtName(e.target.value)} placeholder="Pastor John Smith" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">Title / Role</label>
-                  <Input
-                    value={ltTitleText}
-                    onChange={e => setLtTitleText(e.target.value)}
-                    placeholder="Lead Pastor"
-                  />
+                  <Input value={ltTitleText} onChange={e => setLtTitleText(e.target.value)} placeholder="Lead Pastor" />
                 </div>
               </div>
 
+              {/* Position */}
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Position</label>
                 <div className="grid grid-cols-3 gap-2">
                   {(["bottom-left", "bottom-center", "bottom-right"] as const).map(pos => (
-                    <button
-                      key={pos}
-                      onClick={() => setLtPosition(pos)}
-                      className={`py-1.5 rounded text-xs transition-colors border ${ltPosition === pos ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}
-                    >
+                    <button key={pos} onClick={() => setLtPosition(pos)}
+                      className={`py-1.5 rounded text-xs transition-colors border ${ltPosition === pos ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
                       {pos === "bottom-left" ? "Bottom Left" : pos === "bottom-center" ? "Center" : "Bottom Right"}
                     </button>
                   ))}
                 </div>
               </div>
 
+              {/* Style */}
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Style</label>
                 <div className="grid grid-cols-4 gap-2">
                   {(["modern", "classic", "gradient", "minimal"] as const).map(sty => (
-                    <button
-                      key={sty}
-                      onClick={() => setLtStyle(sty)}
-                      className={`py-1.5 rounded text-xs capitalize transition-colors border ${ltStyle === sty ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}
-                    >
+                    <button key={sty} onClick={() => setLtStyle(sty)}
+                      className={`py-1.5 rounded text-xs capitalize transition-colors border ${ltStyle === sty ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
                       {sty}
                     </button>
                   ))}
@@ -777,26 +795,60 @@ export default function MediaPage() {
                 </p>
               </div>
 
+              {/* Colors */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Colors</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <ColorInput label="Name Color" value={ltNameColor} onChange={setLtNameColor} />
+                  <ColorInput label="Title Color" value={ltTitleColor} onChange={setLtTitleColor} />
+                  {ltStyle !== "minimal" && (
+                    <>
+                      <ColorInput label="Background" value={ltBgColor} onChange={setLtBgColor} />
+                      <ColorInput label={ltStyle === "modern" ? "Accent Border" : ltStyle === "gradient" ? "Gradient Base" : "Top Line"} value={ltAccentColor} onChange={setLtAccentColor} />
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Font sizes */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <div className="flex justify-between">
+                    <label className="text-sm font-medium">Name Size</label>
+                    <span className="text-xs text-muted-foreground">{ltNameSize}px</span>
+                  </div>
+                  <Slider min={14} max={48} step={1} value={[ltNameSize]} onValueChange={([v]) => setLtNameSize(v)} />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between">
+                    <label className="text-sm font-medium">Title Size</label>
+                    <span className="text-xs text-muted-foreground">{ltTitleSize}px</span>
+                  </div>
+                  <Slider min={9} max={28} step={1} value={[ltTitleSize]} onValueChange={([v]) => setLtTitleSize(v)} />
+                </div>
+              </div>
+
               <div className="flex gap-2">
-                <Button
-                  className="flex-1 gap-2"
+                <Button className="flex-1 gap-2"
                   onClick={() => updateOverlay({
                     lowerThirdEnabled: true,
                     lowerThirdName: ltName || undefined,
                     lowerThirdTitle: ltTitleText || undefined,
                     lowerThirdPosition: ltPosition,
                     lowerThirdStyle: ltStyle,
+                    lowerThirdNameColor: ltNameColor,
+                    lowerThirdTitleColor: ltTitleColor,
+                    lowerThirdBgColor: ltBgColor,
+                    lowerThirdAccentColor: ltAccentColor,
+                    lowerThirdNameSize: ltNameSize,
+                    lowerThirdTitleSize: ltTitleSize,
                   })}
                   disabled={!ltName}
                 >
                   <Cast className="w-4 h-4" /> Show Lower Third
                 </Button>
                 {screenState?.lowerThirdEnabled && (
-                  <Button
-                    variant="outline"
-                    className="gap-2"
-                    onClick={() => updateOverlay({ lowerThirdEnabled: false })}
-                  >
+                  <Button variant="outline" className="gap-2" onClick={() => updateOverlay({ lowerThirdEnabled: false })}>
                     Hide
                   </Button>
                 )}
@@ -815,51 +867,88 @@ export default function MediaPage() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between gap-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Clock className="w-4 h-4" /> Clock Overlay
-                </CardTitle>
+                <CardTitle className="flex items-center gap-2 text-base"><Clock className="w-4 h-4" /> Clock Overlay</CardTitle>
                 <div className="flex items-center gap-2">
-                  {screenState?.clockOverlayEnabled && (
-                    <Badge className="text-[10px] py-0 h-4 bg-green-600 border-0">LIVE</Badge>
-                  )}
-                  <Switch
-                    checked={screenState?.clockOverlayEnabled ?? false}
-                    onCheckedChange={v => updateOverlay({ clockOverlayEnabled: v })}
-                  />
+                  {screenState?.clockOverlayEnabled && <Badge className="text-[10px] py-0 h-4 bg-green-600 border-0">LIVE</Badge>}
+                  <Switch checked={screenState?.clockOverlayEnabled ?? false} onCheckedChange={v => updateOverlay({ clockOverlayEnabled: v })} />
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Position */}
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Position</label>
                 <div className="grid grid-cols-2 gap-2">
                   {(["top-left", "top-right", "bottom-left", "bottom-right"] as const).map(pos => (
-                    <button
-                      key={pos}
-                      onClick={() => updateOverlay({ clockPosition: pos })}
-                      className={`py-1.5 rounded text-xs transition-colors border capitalize ${(screenState?.clockPosition ?? "top-right") === pos ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}
-                    >
+                    <button key={pos} onClick={() => updateOverlay({ clockPosition: pos })}
+                      className={`py-1.5 rounded text-xs transition-colors border capitalize ${(screenState?.clockPosition ?? "top-right") === pos ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
                       {pos.replace("-", " ").replace(/\b\w/g, c => c.toUpperCase())}
                     </button>
                   ))}
                 </div>
               </div>
 
+              {/* Style */}
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Style</label>
+                <label className="text-sm font-medium">Time Format</label>
                 <div className="grid grid-cols-2 gap-2">
                   {([
                     { value: "digital", label: "Digital — HH:MM:SS" },
                     { value: "clean",   label: "Clean — HH:MM" },
                   ] as const).map(s => (
-                    <button
-                      key={s.value}
-                      onClick={() => updateOverlay({ clockStyle: s.value })}
-                      className={`py-1.5 rounded text-xs transition-colors border ${(screenState?.clockStyle ?? "digital") === s.value ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}
-                    >
+                    <button key={s.value} onClick={() => updateOverlay({ clockStyle: s.value })}
+                      className={`py-1.5 rounded text-xs transition-colors border ${(screenState?.clockStyle ?? "digital") === s.value ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
                       {s.label}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* Date toggle + format */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">Show Date</label>
+                  <Switch
+                    checked={screenState?.clockShowDate ?? false}
+                    onCheckedChange={v => updateOverlay({ clockShowDate: v })}
+                  />
+                </div>
+                {(screenState?.clockShowDate ?? false) && (
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {([
+                      { value: "long",    label: "Monday, May 5" },
+                      { value: "short",   label: "May 5, 2025" },
+                      { value: "numeric", label: "5/5/2025" },
+                    ] as const).map(d => (
+                      <button key={d.value} onClick={() => updateOverlay({ clockDateFormat: d.value })}
+                        className={`py-1.5 rounded text-[10px] border transition-colors ${(screenState?.clockDateFormat ?? "long") === d.value ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Font size + color */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <div className="flex justify-between">
+                    <label className="text-sm font-medium">Font Size</label>
+                    <span className="text-xs text-muted-foreground">{screenState?.clockFontSize ?? 16}px</span>
+                  </div>
+                  <Slider min={10} max={40} step={1} value={[screenState?.clockFontSize ?? 16]}
+                    onValueChange={([v]) => updateOverlay({ clockFontSize: v })} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Color</label>
+                  <div className="flex gap-1.5 items-center">
+                    <input type="color" value="#ffffff"
+                      onChange={e => updateOverlay({ clockColor: e.target.value })}
+                      className="h-8 w-10 rounded border border-input cursor-pointer bg-transparent p-0.5" />
+                    <Input className="h-8 text-xs font-mono"
+                      value={screenState?.clockColor ?? "rgba(255,255,255,0.92)"}
+                      onChange={e => updateOverlay({ clockColor: e.target.value })} />
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -869,13 +958,9 @@ export default function MediaPage() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between gap-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Image className="w-4 h-4" /> Logo Overlay
-                </CardTitle>
+                <CardTitle className="flex items-center gap-2 text-base"><ImageIcon className="w-4 h-4" /> Logo Overlay</CardTitle>
                 <div className="flex items-center gap-2">
-                  {screenState?.logoOverlayEnabled && (
-                    <Badge className="text-[10px] py-0 h-4 bg-green-600 border-0">LIVE</Badge>
-                  )}
+                  {screenState?.logoOverlayEnabled && <Badge className="text-[10px] py-0 h-4 bg-green-600 border-0">LIVE</Badge>}
                   <Switch
                     checked={screenState?.logoOverlayEnabled ?? false}
                     onCheckedChange={v => updateOverlay({ logoOverlayEnabled: v })}
@@ -885,107 +970,67 @@ export default function MediaPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Source: upload or URL */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Logo Image</label>
-
-                {/* Hidden file input */}
-                <input
-                  ref={logoFileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={e => { const f = e.target.files?.[0]; if (f) handleLogoFile(f); e.target.value = ""; }}
-                />
-
-                {/* Preview + upload button */}
+                <input ref={logoFileInputRef} type="file" accept="image/*" className="hidden"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleLogoFile(f); e.target.value = ""; }} />
                 <div className="flex gap-2 items-start">
                   {logoUrlDraft && (
                     <div className="relative shrink-0">
                       <img src={logoUrlDraft} alt="logo preview" className="h-16 w-auto max-w-[120px] object-contain rounded border border-border bg-checkerboard" />
-                      <button
-                        onClick={() => { setLogoUrlDraft(""); setLogoUrlInput(""); }}
-                        className="absolute -top-1.5 -right-1.5 bg-background border border-border rounded-full w-4 h-4 flex items-center justify-center text-muted-foreground hover:text-foreground"
-                      >
+                      <button onClick={() => { setLogoUrlDraft(""); setLogoUrlInput(""); }}
+                        className="absolute -top-1.5 -right-1.5 bg-background border border-border rounded-full w-4 h-4 flex items-center justify-center text-muted-foreground hover:text-foreground">
                         <X className="w-2.5 h-2.5" />
                       </button>
                     </div>
                   )}
                   <div className="flex-1 space-y-1.5">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full gap-2 h-8 text-xs"
-                      onClick={() => logoFileInputRef.current?.click()}
-                    >
+                    <Button size="sm" variant="outline" className="w-full gap-2 h-8 text-xs" onClick={() => logoFileInputRef.current?.click()}>
                       <Upload className="w-3.5 h-3.5" /> Upload image
                     </Button>
                     <div className="flex gap-1.5">
-                      <Input
-                        className="h-8 text-xs"
-                        placeholder="or paste URL…"
-                        value={logoUrlInput}
-                        onChange={e => setLogoUrlInput(e.target.value)}
-                        onBlur={() => { if (logoUrlInput) { setLogoUrlDraft(logoUrlInput); } }}
-                        onKeyDown={e => { if (e.key === "Enter" && logoUrlInput) { setLogoUrlDraft(logoUrlInput); } }}
-                      />
+                      <Input className="h-8 text-xs" placeholder="or paste URL…" value={logoUrlInput} onChange={e => setLogoUrlInput(e.target.value)}
+                        onBlur={() => { if (logoUrlInput) setLogoUrlDraft(logoUrlInput); }}
+                        onKeyDown={e => { if (e.key === "Enter" && logoUrlInput) setLogoUrlDraft(logoUrlInput); }} />
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Position */}
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Position</label>
                 <div className="grid grid-cols-3 gap-1.5">
                   {([
-                    { value: "top-left",     label: "↖ Top Left" },
-                    { value: "top-right",    label: "↗ Top Right" },
-                    { value: "bottom-left",  label: "↙ Bot Left" },
-                    { value: "bottom-right", label: "↘ Bot Right" },
-                    { value: "center",       label: "⊙ Center" },
-                  ] as const).map(p => (
-                    <button
-                      key={p.value}
-                      onClick={() => setLogoPosDraft(p.value)}
-                      className={`py-1.5 rounded text-xs transition-colors border ${logoPosDraft === p.value ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}
-                    >
-                      {p.label}
+                    ["top-left","Top Left"],["top-right","Top Right"],["center","Center"],
+                    ["bottom-left","Bot Left"],["bottom-right","Bot Right"],
+                  ] as const).map(([pos, label]) => (
+                    <button key={pos} onClick={() => setLogoPosDraft(pos as typeof logoPosDraft)}
+                      className={`py-1.5 rounded text-xs transition-colors border ${logoPosDraft === pos ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                      {label}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Size */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between">
-                  <label className="text-sm font-medium">Size</label>
-                  <span className="text-xs text-muted-foreground">{logoSizeDraft}% of screen width</span>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <div className="flex justify-between">
+                    <label className="text-sm font-medium">Size</label>
+                    <span className="text-xs text-muted-foreground">{logoSizeDraft}%</span>
+                  </div>
+                  <Slider min={5} max={40} step={1} value={[logoSizeDraft]} onValueChange={([v]) => setLogoSizeDraft(v)} />
                 </div>
-                <Slider
-                  min={3} max={50} step={1}
-                  value={[logoSizeDraft]}
-                  onValueChange={([v]) => setLogoSizeDraft(v)}
-                />
+                <div className="space-y-1.5">
+                  <div className="flex justify-between">
+                    <label className="text-sm font-medium">Opacity</label>
+                    <span className="text-xs text-muted-foreground">{logoOpacityDraft}%</span>
+                  </div>
+                  <Slider min={10} max={100} step={5} value={[logoOpacityDraft]} onValueChange={([v]) => setLogoOpacityDraft(v)} />
+                </div>
               </div>
 
-              {/* Opacity */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between">
-                  <label className="text-sm font-medium">Opacity</label>
-                  <span className="text-xs text-muted-foreground">{logoOpacityDraft}%</span>
-                </div>
-                <Slider
-                  min={10} max={100} step={1}
-                  value={[logoOpacityDraft]}
-                  onValueChange={([v]) => setLogoOpacityDraft(v)}
-                />
-              </div>
-
-              {/* Actions */}
               <div className="flex gap-2">
-                <Button
-                  className="flex-1 gap-2"
+                <Button className="flex-1 gap-2"
                   onClick={() => updateOverlay({
                     logoOverlayEnabled: true,
                     logoUrl: logoUrlDraft || undefined,
@@ -1010,13 +1055,9 @@ export default function MediaPage() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between gap-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <FileImage className="w-4 h-4" /> Text Overlay
-                </CardTitle>
+                <CardTitle className="flex items-center gap-2 text-base"><FileImage className="w-4 h-4" /> Text Overlay</CardTitle>
                 <div className="flex items-center gap-2">
-                  {screenState?.textOverlayEnabled && (
-                    <Badge className="text-[10px] py-0 h-4 bg-green-600 border-0">LIVE</Badge>
-                  )}
+                  {screenState?.textOverlayEnabled && <Badge className="text-[10px] py-0 h-4 bg-green-600 border-0">LIVE</Badge>}
                   <Switch
                     checked={screenState?.textOverlayEnabled ?? false}
                     onCheckedChange={v => updateOverlay({ textOverlayEnabled: v })}
@@ -1029,8 +1070,7 @@ export default function MediaPage() {
               {/* Text content */}
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Text</label>
-                <textarea
-                  rows={3}
+                <textarea rows={3}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="Type overlay text here…"
                   value={toContent}
@@ -1042,24 +1082,32 @@ export default function MediaPage() {
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Position</label>
                 <div className="grid grid-cols-3 gap-1.5">
-                  {([
-                    "top-left","top-center","top-right",
-                    "center-left","center","center-right",
-                    "bottom-left","bottom-center","bottom-right",
-                  ] as const).map(pos => (
-                    <button
-                      key={pos}
-                      onClick={() => setToPosition(pos)}
-                      className={`py-1 rounded text-[10px] leading-tight transition-colors border ${toPosition === pos ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}
-                    >
+                  {(["top-left","top-center","top-right","center-left","center","center-right","bottom-left","bottom-center","bottom-right"] as const).map(pos => (
+                    <button key={pos} onClick={() => setToPosition(pos)}
+                      className={`py-1 rounded text-[10px] leading-tight transition-colors border ${toPosition === pos ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
                       {pos.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Style row */}
+              {/* Font family + size */}
               <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Font Family</label>
+                  <Select value={toFontFamily} onValueChange={setToFontFamily}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="inherit" className="text-xs">Default</SelectItem>
+                      <SelectItem value="Inter, sans-serif" className="text-xs">Inter</SelectItem>
+                      <SelectItem value="Arial, sans-serif" className="text-xs">Arial</SelectItem>
+                      <SelectItem value="Georgia, serif" className="text-xs">Georgia</SelectItem>
+                      <SelectItem value="'Times New Roman', serif" className="text-xs">Times New Roman</SelectItem>
+                      <SelectItem value="'Courier New', monospace" className="text-xs">Courier New</SelectItem>
+                      <SelectItem value="Impact, sans-serif" className="text-xs">Impact</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-1.5">
                   <div className="flex justify-between">
                     <label className="text-sm font-medium">Font Size</label>
@@ -1067,6 +1115,10 @@ export default function MediaPage() {
                   </div>
                   <Slider min={12} max={120} step={2} value={[toFontSize]} onValueChange={([v]) => setToFontSize(v)} />
                 </div>
+              </div>
+
+              {/* Color + background */}
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">Text Color</label>
                   <div className="flex gap-1.5 items-center">
@@ -1074,36 +1126,57 @@ export default function MediaPage() {
                     <Input className="h-8 text-xs font-mono" value={toColor} onChange={e => setToColor(e.target.value)} />
                   </div>
                 </div>
-              </div>
-
-              {/* Background + bold */}
-              <div className="flex items-center gap-4 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium">Bold</label>
-                  <Switch checked={toBold} onCheckedChange={setToBold} />
-                </div>
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <label className="text-sm font-medium shrink-0">Background</label>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Background</label>
                   <Select value={toBg} onValueChange={setToBg}>
-                    <SelectTrigger className="h-8 text-xs flex-1">
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none" className="text-xs">None</SelectItem>
-                      <SelectItem value="rgba(0,0,0,0.55)" className="text-xs">Dark (55%)</SelectItem>
-                      <SelectItem value="rgba(0,0,0,0.75)" className="text-xs">Dark (75%)</SelectItem>
-                      <SelectItem value="rgba(0,0,0,0.9)" className="text-xs">Dark (90%)</SelectItem>
-                      <SelectItem value="rgba(255,255,255,0.15)" className="text-xs">Light (15%)</SelectItem>
-                      <SelectItem value="rgba(255,255,255,0.35)" className="text-xs">Light (35%)</SelectItem>
+                      <SelectItem value="rgba(0,0,0,0.55)" className="text-xs">Dark 55%</SelectItem>
+                      <SelectItem value="rgba(0,0,0,0.75)" className="text-xs">Dark 75%</SelectItem>
+                      <SelectItem value="rgba(0,0,0,0.9)" className="text-xs">Dark 90%</SelectItem>
+                      <SelectItem value="rgba(255,255,255,0.15)" className="text-xs">Light 15%</SelectItem>
+                      <SelectItem value="rgba(255,255,255,0.35)" className="text-xs">Light 35%</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
+              {/* Style toggles row */}
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* Bold */}
+                <button onClick={() => setToBold(v => !v)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs border transition-colors ${toBold ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                  <Bold className="w-3.5 h-3.5" /> Bold
+                </button>
+                {/* Italic */}
+                <button onClick={() => setToItalic(v => !v)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs border transition-colors ${toItalic ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                  <Italic className="w-3.5 h-3.5" /> Italic
+                </button>
+                {/* Shadow */}
+                <button onClick={() => setToShadow(v => !v)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs border transition-colors ${toShadow ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                  Shadow
+                </button>
+                {/* Align */}
+                <div className="flex gap-0.5 ml-auto">
+                  {([
+                    { value: "left" as const,   icon: <AlignLeft   className="w-3.5 h-3.5" /> },
+                    { value: "center" as const, icon: <AlignCenter className="w-3.5 h-3.5" /> },
+                    { value: "right" as const,  icon: <AlignRight  className="w-3.5 h-3.5" /> },
+                  ]).map(a => (
+                    <button key={a.value} onClick={() => setToAlign(a.value)}
+                      className={`p-1.5 rounded border transition-colors ${toAlign === a.value ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                      {a.icon}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Actions */}
               <div className="flex gap-2">
-                <Button
-                  className="flex-1 gap-2"
+                <Button className="flex-1 gap-2"
                   onClick={() => updateOverlay({
                     textOverlayEnabled: true,
                     textOverlayContent: toContent || undefined,
@@ -1112,6 +1185,10 @@ export default function MediaPage() {
                     textOverlayColor: toColor,
                     textOverlayBg: toBg,
                     textOverlayBold: toBold,
+                    textOverlayItalic: toItalic,
+                    textOverlayAlign: toAlign,
+                    textOverlayFontFamily: toFontFamily,
+                    textOverlayShadow: toShadow,
                   })}
                   disabled={!toContent}
                 >

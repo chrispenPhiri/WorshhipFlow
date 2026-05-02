@@ -3,7 +3,9 @@ import {
   useListSchedules,
   useCreateSchedule,
   useDeleteSchedule,
+  useUpdateSchedule,
   useUpdateScreenState,
+  useGetScreenState,
   getListSchedulesQueryKey,
   getGetScreenStateQueryKey,
   ScheduleItemType,
@@ -17,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Plus, Play, Trash2, GripVertical, ChevronUp, ChevronDown, X } from "lucide-react";
+import { Calendar, Plus, Play, Trash2, GripVertical, ChevronUp, ChevronDown, X, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -41,6 +43,7 @@ const ITEM_TYPES: { value: ScheduleItemType; label: string }[] = [
 interface DraftItem {
   type: ScheduleItemType;
   title: string;
+  content: string;
   notes: string;
 }
 
@@ -59,6 +62,7 @@ export default function SchedulePage() {
 
   // ── Dialog state ──────────────────────────────────────────────────────
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [schedTitle, setSchedTitle]   = useState("");
   const [schedDate, setSchedDate]     = useState(new Date().toISOString().split("T")[0]);
   const [schedServiceType, setSchedServiceType] = useState<CreateScheduleBodyServiceType>("sunday_morning");
@@ -66,8 +70,15 @@ export default function SchedulePage() {
   const [items, setItems]             = useState<DraftItem[]>([]);
   const [newItemType, setNewItemType] = useState<ScheduleItemType>("song");
   const [newItemTitle, setNewItemTitle] = useState("");
+  const [newItemContent, setNewItemContent] = useState("");
+
+  // ── Screen state for handleRun ─────────────────────────────────────────
+  const { data: screenState } = useGetScreenState({
+    query: { queryKey: getGetScreenStateQueryKey(), refetchInterval: 5000 },
+  });
 
   const resetForm = () => {
+    setEditingId(null);
     setSchedTitle("");
     setSchedDate(new Date().toISOString().split("T")[0]);
     setSchedServiceType("sunday_morning");
@@ -75,12 +86,34 @@ export default function SchedulePage() {
     setItems([]);
     setNewItemType("song");
     setNewItemTitle("");
+    setNewItemContent("");
+  };
+
+  const openCreate = () => { resetForm(); setOpen(true); };
+
+  const openEdit = (schedule: any) => {
+    setEditingId(schedule.id);
+    setSchedTitle(schedule.title ?? "");
+    setSchedDate(schedule.date ?? new Date().toISOString().split("T")[0]);
+    setSchedServiceType(schedule.serviceType ?? "sunday_morning");
+    setSchedNotes(schedule.notes ?? "");
+    setItems((schedule.items ?? []).map((it: any) => ({
+      type: it.type,
+      title: it.title ?? "",
+      content: it.content ?? "",
+      notes: it.notes ?? "",
+    })));
+    setNewItemType("song");
+    setNewItemTitle("");
+    setNewItemContent("");
+    setOpen(true);
   };
 
   const addItem = () => {
     if (!newItemTitle.trim()) return;
-    setItems(prev => [...prev, { type: newItemType, title: newItemTitle.trim(), notes: "" }]);
+    setItems(prev => [...prev, { type: newItemType, title: newItemTitle.trim(), content: newItemContent.trim(), notes: "" }]);
     setNewItemTitle("");
+    setNewItemContent("");
   };
 
   const removeItem = (i: number) => setItems(prev => prev.filter((_, idx) => idx !== i));
@@ -112,6 +145,18 @@ export default function SchedulePage() {
     },
   });
 
+  const { mutate: updateSchedule, isPending: updating } = useUpdateSchedule({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListSchedulesQueryKey() });
+        toast({ title: "Schedule updated" });
+        setOpen(false);
+        resetForm();
+      },
+      onError: () => toast({ title: "Failed to update schedule", variant: "destructive" }),
+    },
+  });
+
   const { mutate: deleteSchedule } = useDeleteSchedule({
     mutation: {
       onSuccess: () => queryClient.invalidateQueries({ queryKey: getListSchedulesQueryKey() }),
@@ -121,10 +166,11 @@ export default function SchedulePage() {
   const { mutate: updateScreen } = useUpdateScreenState({
     mutation: {
       onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetScreenStateQueryKey() }),
+      onError: () => toast({ title: "Failed to send to screen", variant: "destructive" }),
     },
   });
 
-  const handleCreate = () => {
+  const handleSave = () => {
     if (!schedTitle.trim()) {
       toast({ title: "Title is required", variant: "destructive" });
       return;
@@ -133,27 +179,88 @@ export default function SchedulePage() {
       toast({ title: "Date is required", variant: "destructive" });
       return;
     }
-    createSchedule({
-      data: {
-        title: schedTitle.trim(),
-        date: schedDate,
-        serviceType: schedServiceType,
-        notes: schedNotes || undefined,
-        items: items.map((item, i) => ({ type: item.type, title: item.title, notes: item.notes || undefined })),
-      } as any,
-    });
+    const payload = {
+      title: schedTitle.trim(),
+      date: schedDate,
+      serviceType: schedServiceType,
+      notes: schedNotes || undefined,
+      items: items.map(item => ({
+        type: item.type,
+        title: item.title,
+        content: item.content || undefined,
+        notes: item.notes || undefined,
+      })),
+    } as any;
+
+    if (editingId !== null) {
+      updateSchedule({ id: editingId, data: payload });
+    } else {
+      createSchedule({ data: payload });
+    }
   };
 
+  /** Safe full state passthrough — preserves all overlay fields so partial updates don't wipe them */
+  const safeFullState = () => ({
+    isBlack: false,
+    isClear: false,
+    textStyle: screenState?.textStyle ?? {
+      fontFamily: "Inter", fontSize: 52, textColor: "#ffffff",
+      accentColor: "#f59e0b", bold: false, italic: false,
+      alignment: "center" as const, animation: "fade_in" as const,
+    },
+    background: screenState?.background ?? { type: "color" as const, value: "#000000" },
+    layout: screenState?.layout ?? undefined,
+    tickerEnabled: screenState?.tickerEnabled ?? false,
+    tickerText: screenState?.tickerText ?? undefined,
+    lowerThirdEnabled: screenState?.lowerThirdEnabled ?? false,
+    lowerThirdName: screenState?.lowerThirdName ?? undefined,
+    lowerThirdTitle: screenState?.lowerThirdTitle ?? undefined,
+    lowerThirdPosition: (screenState?.lowerThirdPosition ?? "bottom-left") as "bottom-left" | "bottom-center" | "bottom-right",
+    lowerThirdStyle: (screenState?.lowerThirdStyle ?? "modern") as "modern" | "classic" | "gradient" | "minimal",
+    lowerThirdNameColor: screenState?.lowerThirdNameColor ?? "#ffffff",
+    lowerThirdTitleColor: screenState?.lowerThirdTitleColor ?? "rgba(255,255,255,0.65)",
+    lowerThirdBgColor: screenState?.lowerThirdBgColor ?? "rgba(0,0,0,0.72)",
+    lowerThirdAccentColor: screenState?.lowerThirdAccentColor ?? "rgba(255,255,255,0.75)",
+    lowerThirdNameSize: screenState?.lowerThirdNameSize ?? 22,
+    lowerThirdTitleSize: screenState?.lowerThirdTitleSize ?? 13,
+    clockOverlayEnabled: screenState?.clockOverlayEnabled ?? false,
+    clockPosition: (screenState?.clockPosition ?? "top-right") as "top-left" | "top-right" | "bottom-left" | "bottom-right",
+    clockStyle: (screenState?.clockStyle ?? "digital") as "digital" | "clean",
+    clockShowDate: screenState?.clockShowDate ?? false,
+    clockDateFormat: (screenState?.clockDateFormat ?? "long") as "short" | "long" | "numeric",
+    clockFontSize: screenState?.clockFontSize ?? 16,
+    clockColor: screenState?.clockColor ?? "rgba(255,255,255,0.92)",
+    logoOverlayEnabled: screenState?.logoOverlayEnabled ?? false,
+    logoUrl: screenState?.logoUrl ?? undefined,
+    logoPosition: (screenState?.logoPosition ?? "top-right") as "top-left" | "top-right" | "bottom-left" | "bottom-right" | "center",
+    logoSize: screenState?.logoSize ?? 20,
+    logoOpacity: screenState?.logoOpacity ?? 100,
+    textOverlayEnabled: screenState?.textOverlayEnabled ?? false,
+    textOverlayContent: screenState?.textOverlayContent ?? undefined,
+    textOverlayPosition: (screenState?.textOverlayPosition ?? "top-left") as "top-left" | "top-center" | "top-right" | "center-left" | "center" | "center-right" | "bottom-left" | "bottom-center" | "bottom-right",
+    textOverlayFontSize: screenState?.textOverlayFontSize ?? 36,
+    textOverlayColor: screenState?.textOverlayColor ?? "#ffffff",
+    textOverlayBg: screenState?.textOverlayBg ?? "rgba(0,0,0,0.55)",
+    textOverlayBold: screenState?.textOverlayBold ?? false,
+    textOverlayItalic: screenState?.textOverlayItalic ?? false,
+    textOverlayAlign: (screenState?.textOverlayAlign ?? "left") as "left" | "center" | "right",
+    textOverlayFontFamily: screenState?.textOverlayFontFamily ?? "inherit",
+    textOverlayShadow: screenState?.textOverlayShadow ?? false,
+  });
+
   const handleRun = (item: any) => {
+    const contentType: "song" | "verse" | "custom_text" =
+      item.type === "song" ? "song" : item.type === "verse" ? "verse" : "custom_text";
+
+    // Use item content if present, otherwise fall back to the title so something shows on screen
+    const displayContent = item.content || item.title || "";
+
     updateScreen({
       data: {
-        contentType: item.type === "song" ? "song" : item.type === "verse" ? "verse" : "custom_text",
+        ...safeFullState(),
+        contentType,
         title: item.title,
-        content: item.content || "",
-        isBlack: false,
-        isClear: false,
-        textStyle: { fontFamily: "Inter", fontSize: 48, textColor: "#ffffff", alignment: "center", animation: "fade_in" },
-        background: { type: "color", value: "#000000" },
+        content: displayContent,
       },
     });
     toast({ title: "Sent to screen", description: item.title });
@@ -171,16 +278,16 @@ export default function SchedulePage() {
             <p className="text-muted-foreground text-sm mt-0.5">Plan your service order and run items to the screen</p>
           </div>
         </div>
-        <Button onClick={() => setOpen(true)}>
+        <Button onClick={openCreate}>
           <Plus className="w-4 h-4 mr-2" /> New Schedule
         </Button>
       </div>
 
-      {/* ── Create Dialog ── */}
+      {/* ── Create / Edit Dialog ── */}
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create Schedule</DialogTitle>
+            <DialogTitle>{editingId !== null ? "Edit Schedule" : "Create Schedule"}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
@@ -211,7 +318,6 @@ export default function SchedulePage() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Service Order</label>
 
-              {/* Existing items */}
               {items.length > 0 && (
                 <div className="space-y-1.5 rounded-lg border border-border p-2">
                   {items.map((item, i) => (
@@ -228,7 +334,10 @@ export default function SchedulePage() {
                       <Badge className={`text-[10px] py-0 px-1.5 border shrink-0 ${ITEM_TYPE_COLORS[item.type]}`}>
                         {ITEM_TYPES.find(t => t.value === item.type)?.label}
                       </Badge>
-                      <span className="flex-1 text-sm truncate">{item.title}</span>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm truncate block">{item.title}</span>
+                        {item.content && <span className="text-[10px] text-muted-foreground truncate block">{item.content.slice(0, 60)}{item.content.length > 60 ? "…" : ""}</span>}
+                      </div>
                       <button onClick={() => removeItem(i)} className="text-muted-foreground hover:text-destructive transition-colors shrink-0">
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -238,27 +347,35 @@ export default function SchedulePage() {
               )}
 
               {/* Add item row */}
-              <div className="flex gap-2">
-                <Select value={newItemType} onValueChange={v => setNewItemType(v as ScheduleItemType)}>
-                  <SelectTrigger className="w-36 shrink-0">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ITEM_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+              <div className="space-y-1.5 rounded-lg border border-border p-3 bg-muted/10">
+                <div className="flex gap-2">
+                  <Select value={newItemType} onValueChange={v => setNewItemType(v as ScheduleItemType)}>
+                    <SelectTrigger className="w-36 shrink-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ITEM_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    value={newItemTitle}
+                    onChange={e => setNewItemTitle(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addItem(); } }}
+                    placeholder="Title…"
+                    className="flex-1"
+                  />
+                  <Button type="button" variant="outline" onClick={addItem} disabled={!newItemTitle.trim()}>
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
                 <Input
-                  value={newItemTitle}
-                  onChange={e => setNewItemTitle(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addItem(); } }}
-                  placeholder="Item title…"
-                  className="flex-1"
+                  value={newItemContent}
+                  onChange={e => setNewItemContent(e.target.value)}
+                  placeholder="Content to display on screen (optional)"
+                  className="text-sm"
                 />
-                <Button type="button" variant="outline" onClick={addItem} disabled={!newItemTitle.trim()}>
-                  <Plus className="w-4 h-4" />
-                </Button>
+                <p className="text-xs text-muted-foreground">Leave content blank to display the title on screen when Run is clicked</p>
               </div>
-              <p className="text-xs text-muted-foreground">Press Enter or click + to add each item</p>
             </div>
 
             {/* Notes */}
@@ -269,8 +386,8 @@ export default function SchedulePage() {
 
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => { setOpen(false); resetForm(); }}>Cancel</Button>
-              <Button onClick={handleCreate} disabled={creating}>
-                {creating ? "Creating…" : "Create Schedule"}
+              <Button onClick={handleSave} disabled={creating || updating}>
+                {creating || updating ? "Saving…" : editingId !== null ? "Save Changes" : "Create Schedule"}
               </Button>
             </div>
           </div>
@@ -296,14 +413,26 @@ export default function SchedulePage() {
                     <p className="text-xs text-muted-foreground mt-1 italic">{schedule.notes}</p>
                   )}
                 </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="text-destructive hover:bg-destructive hover:text-destructive-foreground shrink-0"
-                  onClick={() => deleteSchedule({ id: schedule.id })}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => openEdit(schedule)}
+                    title="Edit schedule"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                    onClick={() => deleteSchedule({ id: schedule.id })}
+                    title="Delete schedule"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
@@ -312,14 +441,21 @@ export default function SchedulePage() {
                       key={index}
                       className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border group hover:bg-muted/50 transition-colors"
                     >
-                      <div className="flex items-center gap-3">
-                        <GripVertical className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 cursor-move" />
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <GripVertical className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 cursor-move shrink-0" />
                         <Badge className={`text-[10px] py-0 px-1.5 border shrink-0 ${ITEM_TYPE_COLORS[item.type as ScheduleItemType] ?? ""}`}>
                           {ITEM_TYPES.find(t => t.value === item.type)?.label ?? item.type}
                         </Badge>
-                        <span className="font-medium text-sm">{item.title}</span>
+                        <div className="min-w-0">
+                          <span className="font-medium text-sm block truncate">{item.title}</span>
+                          {item.content && (
+                            <span className="text-[11px] text-muted-foreground block truncate">
+                              {item.content.slice(0, 80)}{item.content.length > 80 ? "…" : ""}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <div className="flex flex-col opacity-0 group-hover:opacity-100">
                           <Button variant="ghost" size="icon" className="h-6 w-6"><ChevronUp className="w-3 h-3" /></Button>
                           <Button variant="ghost" size="icon" className="h-6 w-6"><ChevronDown className="w-3 h-3" /></Button>
@@ -332,7 +468,10 @@ export default function SchedulePage() {
                   ))}
                   {schedule.items.length === 0 && (
                     <div className="text-center py-4 text-muted-foreground text-sm">
-                      No items in this schedule yet.
+                      No items in this schedule yet.{" "}
+                      <button className="underline hover:text-foreground transition-colors" onClick={() => openEdit(schedule)}>
+                        Add items
+                      </button>
                     </div>
                   )}
                 </div>
@@ -343,7 +482,7 @@ export default function SchedulePage() {
             <div className="py-16 text-center text-muted-foreground border-2 border-dashed border-border rounded-xl space-y-3">
               <Calendar className="w-10 h-10 mx-auto opacity-30" />
               <p>No schedules yet. Create one to plan your service order.</p>
-              <Button variant="outline" onClick={() => setOpen(true)}>
+              <Button variant="outline" onClick={openCreate}>
                 <Plus className="w-4 h-4 mr-2" /> New Schedule
               </Button>
             </div>

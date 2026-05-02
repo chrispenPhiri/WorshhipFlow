@@ -24,9 +24,10 @@ router.post("/", async (req, res) => {
   if (!body.success) {
     return res.status(400).json({ error: body.error.issues });
   }
+  const { date, ...rest } = body.data;
   const [note] = await db
     .insert(notesTable)
-    .values({ ...body.data, scriptures: body.data.scriptures ?? [] })
+    .values({ ...rest, date: date instanceof Date ? date.toISOString().slice(0, 10) : date, scriptures: rest.scriptures ?? [] })
     .returning();
   return res.status(201).json(note);
 });
@@ -52,9 +53,10 @@ router.put("/:id", async (req, res) => {
     return res.status(400).json({ error: body.error.issues });
   }
 
+  const { date: noteDate, ...restNote } = body.data;
   const [note] = await db
     .update(notesTable)
-    .set({ ...body.data, updatedAt: new Date() })
+    .set({ ...restNote, date: noteDate instanceof Date ? noteDate.toISOString().slice(0, 10) : noteDate, updatedAt: new Date() })
     .where(eq(notesTable.id, params.data.id))
     .returning();
   if (!note) return res.status(404).json({ error: "Not found" });

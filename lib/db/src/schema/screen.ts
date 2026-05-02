@@ -6,9 +6,9 @@ export interface TextStyle {
   fontFamily: string;
   fontSize: number;
   textColor: string;
-  accentColor: string;
-  bold: boolean;
-  italic: boolean;
+  accentColor?: string;
+  bold?: boolean;
+  italic?: boolean;
   alignment: "left" | "center" | "right";
   animation: "none" | "fade_in" | "glow" | "float";
 }
@@ -19,15 +19,18 @@ export interface Background {
   overlay?: number;
   fit?: "cover" | "contain" | "fill";
   loop?: boolean;
+  cameraLayout?: "fullscreen" | "pip-topright" | "pip-topleft" | "pip-bottomright" | "pip-bottomleft" | "side-left" | "side-right";
+  cameraShape?: "rect" | "circle" | "rounded";
+  cameraPipSize?: number;
 }
 
 export interface Layout {
-  textScale: number;
-  verticalAlign: "top" | "center" | "bottom";
-  horizontalAlign: "left" | "center" | "right";
-  paddingX: number;
-  paddingY: number;
-  textWidthPct: number;
+  textScale?: number;
+  verticalAlign?: "top" | "center" | "bottom";
+  horizontalAlign?: "left" | "center" | "right";
+  paddingX?: number;
+  paddingY?: number;
+  textWidthPct?: number;
 }
 
 export const screenStateTable = pgTable("screen_state", {
@@ -67,9 +70,19 @@ export const screenStateTable = pgTable("screen_state", {
   lowerThirdTitle: text("lower_third_title"),
   lowerThirdPosition: text("lower_third_position").default("bottom-left"),
   lowerThirdStyle: text("lower_third_style").default("modern"),
+  lowerThirdNameColor: text("lower_third_name_color").default("#ffffff"),
+  lowerThirdTitleColor: text("lower_third_title_color").default("rgba(255,255,255,0.65)"),
+  lowerThirdBgColor: text("lower_third_bg_color").default("rgba(0,0,0,0.72)"),
+  lowerThirdAccentColor: text("lower_third_accent_color").default("rgba(255,255,255,0.75)"),
+  lowerThirdNameSize: integer("lower_third_name_size").default(22),
+  lowerThirdTitleSize: integer("lower_third_title_size").default(13),
   clockOverlayEnabled: boolean("clock_overlay_enabled").notNull().default(false),
   clockPosition: text("clock_position").default("top-right"),
   clockStyle: text("clock_style").default("digital"),
+  clockShowDate: boolean("clock_show_date").notNull().default(false),
+  clockDateFormat: text("clock_date_format").default("long"),
+  clockFontSize: integer("clock_font_size").default(16),
+  clockColor: text("clock_color").default("rgba(255,255,255,0.92)"),
   logoOverlayEnabled: boolean("logo_overlay_enabled").notNull().default(false),
   logoUrl: text("logo_url"),
   logoPosition: text("logo_position").default("top-right"),
@@ -82,6 +95,10 @@ export const screenStateTable = pgTable("screen_state", {
   textOverlayColor: text("text_overlay_color").default("#ffffff"),
   textOverlayBg: text("text_overlay_bg").default("rgba(0,0,0,0.55)"),
   textOverlayBold: boolean("text_overlay_bold").notNull().default(false),
+  textOverlayItalic: boolean("text_overlay_italic").notNull().default(false),
+  textOverlayAlign: text("text_overlay_align").default("left"),
+  textOverlayFontFamily: text("text_overlay_font_family").default("inherit"),
+  textOverlayShadow: boolean("text_overlay_shadow").notNull().default(false),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 

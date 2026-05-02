@@ -24,9 +24,10 @@ router.post("/", async (req, res) => {
   if (!body.success) {
     return res.status(400).json({ error: body.error.issues });
   }
+  const { date, ...rest } = body.data;
   const [schedule] = await db
     .insert(schedulesTable)
-    .values({ ...body.data, items: body.data.items ?? [] })
+    .values({ ...rest, date: date instanceof Date ? date.toISOString().slice(0, 10) : date, items: rest.items ?? [] })
     .returning();
   return res.status(201).json(schedule);
 });
@@ -52,9 +53,10 @@ router.put("/:id", async (req, res) => {
     return res.status(400).json({ error: body.error.issues });
   }
 
+  const { date: schedDate, ...restSched } = body.data;
   const [schedule] = await db
     .update(schedulesTable)
-    .set({ ...body.data, updatedAt: new Date() })
+    .set({ ...restSched, date: schedDate instanceof Date ? schedDate.toISOString().slice(0, 10) : schedDate, updatedAt: new Date() })
     .where(eq(schedulesTable.id, params.data.id))
     .returning();
   if (!schedule) return res.status(404).json({ error: "Not found" });

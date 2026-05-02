@@ -508,6 +508,19 @@ export const GetScreenStateResponse = zod.object({
       overlay: zod.number().optional(),
       fit: zod.enum(["cover", "contain", "fill"]).optional(),
       loop: zod.boolean().optional(),
+      cameraLayout: zod
+        .enum([
+          "fullscreen",
+          "pip-topright",
+          "pip-topleft",
+          "pip-bottomright",
+          "pip-bottomleft",
+          "side-left",
+          "side-right",
+        ])
+        .optional(),
+      cameraShape: zod.enum(["rect", "circle", "rounded"]).optional(),
+      cameraPipSize: zod.number().optional(),
     })
     .optional(),
   layout: zod
@@ -531,11 +544,21 @@ export const GetScreenStateResponse = zod.object({
   lowerThirdStyle: zod
     .enum(["modern", "classic", "gradient", "minimal"])
     .optional(),
+  lowerThirdNameColor: zod.string().optional(),
+  lowerThirdTitleColor: zod.string().optional(),
+  lowerThirdBgColor: zod.string().optional(),
+  lowerThirdAccentColor: zod.string().optional(),
+  lowerThirdNameSize: zod.number().optional(),
+  lowerThirdTitleSize: zod.number().optional(),
   clockOverlayEnabled: zod.boolean().optional(),
   clockPosition: zod
     .enum(["top-left", "top-right", "bottom-left", "bottom-right"])
     .optional(),
   clockStyle: zod.enum(["digital", "clean"]).optional(),
+  clockShowDate: zod.boolean().optional(),
+  clockDateFormat: zod.enum(["short", "long", "numeric"]).optional(),
+  clockFontSize: zod.number().optional(),
+  clockColor: zod.string().optional(),
   logoOverlayEnabled: zod.boolean().optional(),
   logoUrl: zod.string().optional(),
   logoPosition: zod
@@ -562,6 +585,10 @@ export const GetScreenStateResponse = zod.object({
   textOverlayColor: zod.string().optional(),
   textOverlayBg: zod.string().optional(),
   textOverlayBold: zod.boolean().optional(),
+  textOverlayItalic: zod.boolean().optional(),
+  textOverlayAlign: zod.enum(["left", "center", "right"]).optional(),
+  textOverlayFontFamily: zod.string().optional(),
+  textOverlayShadow: zod.boolean().optional(),
 });
 
 /**
@@ -606,6 +633,19 @@ export const UpdateScreenStateBody = zod.object({
       overlay: zod.number().optional(),
       fit: zod.enum(["cover", "contain", "fill"]).optional(),
       loop: zod.boolean().optional(),
+      cameraLayout: zod
+        .enum([
+          "fullscreen",
+          "pip-topright",
+          "pip-topleft",
+          "pip-bottomright",
+          "pip-bottomleft",
+          "side-left",
+          "side-right",
+        ])
+        .optional(),
+      cameraShape: zod.enum(["rect", "circle", "rounded"]).optional(),
+      cameraPipSize: zod.number().optional(),
     })
     .optional(),
   layout: zod
@@ -629,11 +669,21 @@ export const UpdateScreenStateBody = zod.object({
   lowerThirdStyle: zod
     .enum(["modern", "classic", "gradient", "minimal"])
     .optional(),
+  lowerThirdNameColor: zod.string().optional(),
+  lowerThirdTitleColor: zod.string().optional(),
+  lowerThirdBgColor: zod.string().optional(),
+  lowerThirdAccentColor: zod.string().optional(),
+  lowerThirdNameSize: zod.number().optional(),
+  lowerThirdTitleSize: zod.number().optional(),
   clockOverlayEnabled: zod.boolean().optional(),
   clockPosition: zod
     .enum(["top-left", "top-right", "bottom-left", "bottom-right"])
     .optional(),
   clockStyle: zod.enum(["digital", "clean"]).optional(),
+  clockShowDate: zod.boolean().optional(),
+  clockDateFormat: zod.enum(["short", "long", "numeric"]).optional(),
+  clockFontSize: zod.number().optional(),
+  clockColor: zod.string().optional(),
   logoOverlayEnabled: zod.boolean().optional(),
   logoUrl: zod.string().optional(),
   logoPosition: zod
@@ -660,6 +710,10 @@ export const UpdateScreenStateBody = zod.object({
   textOverlayColor: zod.string().optional(),
   textOverlayBg: zod.string().optional(),
   textOverlayBold: zod.boolean().optional(),
+  textOverlayItalic: zod.boolean().optional(),
+  textOverlayAlign: zod.enum(["left", "center", "right"]).optional(),
+  textOverlayFontFamily: zod.string().optional(),
+  textOverlayShadow: zod.boolean().optional(),
 });
 
 export const UpdateScreenStateResponse = zod.object({
@@ -701,6 +755,19 @@ export const UpdateScreenStateResponse = zod.object({
       overlay: zod.number().optional(),
       fit: zod.enum(["cover", "contain", "fill"]).optional(),
       loop: zod.boolean().optional(),
+      cameraLayout: zod
+        .enum([
+          "fullscreen",
+          "pip-topright",
+          "pip-topleft",
+          "pip-bottomright",
+          "pip-bottomleft",
+          "side-left",
+          "side-right",
+        ])
+        .optional(),
+      cameraShape: zod.enum(["rect", "circle", "rounded"]).optional(),
+      cameraPipSize: zod.number().optional(),
     })
     .optional(),
   layout: zod
@@ -724,11 +791,21 @@ export const UpdateScreenStateResponse = zod.object({
   lowerThirdStyle: zod
     .enum(["modern", "classic", "gradient", "minimal"])
     .optional(),
+  lowerThirdNameColor: zod.string().optional(),
+  lowerThirdTitleColor: zod.string().optional(),
+  lowerThirdBgColor: zod.string().optional(),
+  lowerThirdAccentColor: zod.string().optional(),
+  lowerThirdNameSize: zod.number().optional(),
+  lowerThirdTitleSize: zod.number().optional(),
   clockOverlayEnabled: zod.boolean().optional(),
   clockPosition: zod
     .enum(["top-left", "top-right", "bottom-left", "bottom-right"])
     .optional(),
   clockStyle: zod.enum(["digital", "clean"]).optional(),
+  clockShowDate: zod.boolean().optional(),
+  clockDateFormat: zod.enum(["short", "long", "numeric"]).optional(),
+  clockFontSize: zod.number().optional(),
+  clockColor: zod.string().optional(),
   logoOverlayEnabled: zod.boolean().optional(),
   logoUrl: zod.string().optional(),
   logoPosition: zod
@@ -755,4 +832,8 @@ export const UpdateScreenStateResponse = zod.object({
   textOverlayColor: zod.string().optional(),
   textOverlayBg: zod.string().optional(),
   textOverlayBold: zod.boolean().optional(),
+  textOverlayItalic: zod.boolean().optional(),
+  textOverlayAlign: zod.enum(["left", "center", "right"]).optional(),
+  textOverlayFontFamily: zod.string().optional(),
+  textOverlayShadow: zod.boolean().optional(),
 });

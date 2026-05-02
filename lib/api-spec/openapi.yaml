@@ -667,6 +667,14 @@ components:
           enum: [cover, contain, fill]
         loop:
           type: boolean
+        cameraLayout:
+          type: string
+          enum: [fullscreen, pip-topright, pip-topleft, pip-bottomright, pip-bottomleft, side-left, side-right]
+        cameraShape:
+          type: string
+          enum: [rect, circle, rounded]
+        cameraPipSize:
+          type: number
       required:
         - type
         - value
@@ -725,6 +733,18 @@ components:
         lowerThirdStyle:
           type: string
           enum: [modern, classic, gradient, minimal]
+        lowerThirdNameColor:
+          type: string
+        lowerThirdTitleColor:
+          type: string
+        lowerThirdBgColor:
+          type: string
+        lowerThirdAccentColor:
+          type: string
+        lowerThirdNameSize:
+          type: integer
+        lowerThirdTitleSize:
+          type: integer
         clockOverlayEnabled:
           type: boolean
         clockPosition:
@@ -733,6 +753,15 @@ components:
         clockStyle:
           type: string
           enum: [digital, clean]
+        clockShowDate:
+          type: boolean
+        clockDateFormat:
+          type: string
+          enum: [short, long, numeric]
+        clockFontSize:
+          type: integer
+        clockColor:
+          type: string
         logoOverlayEnabled:
           type: boolean
         logoUrl:
@@ -758,6 +787,15 @@ components:
         textOverlayBg:
           type: string
         textOverlayBold:
+          type: boolean
+        textOverlayItalic:
+          type: boolean
+        textOverlayAlign:
+          type: string
+          enum: [left, center, right]
+        textOverlayFontFamily:
+          type: string
+        textOverlayShadow:
           type: boolean
       required:
         - isBlack

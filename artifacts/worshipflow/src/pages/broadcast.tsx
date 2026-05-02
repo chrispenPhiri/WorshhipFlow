@@ -32,8 +32,10 @@ function getAnimationStyle(animation: string | undefined): React.CSSProperties {
 }
 
 // ── Lower-third presenter overlay ────────────────────────────────────────────
-function LowerThirdOverlay({ name, title, position, style, tickerH }: {
+function LowerThirdOverlay({ name, title, position, style, tickerH, nameColor, titleColor, bgColor, accentColor, nameSize, titleSize }: {
   name: string; title: string; position: string; style: string; tickerH: number;
+  nameColor: string; titleColor: string; bgColor: string; accentColor: string;
+  nameSize: number; titleSize: number;
 }) {
   const isLeft   = position === "bottom-left";
   const isCenter = position === "bottom-center";
@@ -45,9 +47,9 @@ function LowerThirdOverlay({ name, title, position, style, tickerH }: {
   if (style === "modern") {
     return (
       <div style={{ position: "absolute", zIndex: 32, bottom, ...hStyle, pointerEvents: "none" }}>
-        <div style={{ background: "rgba(0,0,0,0.72)", borderLeft: "4px solid rgba(255,255,255,0.75)", borderRadius: "0 4px 4px 0", padding: "10px 22px 10px 14px", backdropFilter: "blur(8px)", minWidth: "220px" }}>
-          <div style={{ color: "#fff", fontSize: "22px", fontWeight: 700, lineHeight: 1.2, letterSpacing: "0.01em" }}>{name}</div>
-          {title && <div style={{ color: "rgba(255,255,255,0.65)", fontSize: "13px", fontWeight: 400, letterSpacing: "0.08em", marginTop: "3px", textTransform: "uppercase" }}>{title}</div>}
+        <div style={{ background: bgColor, borderLeft: `4px solid ${accentColor}`, borderRadius: "0 4px 4px 0", padding: "10px 22px 10px 14px", backdropFilter: "blur(8px)", minWidth: "220px" }}>
+          <div style={{ color: nameColor, fontSize: `${nameSize}px`, fontWeight: 700, lineHeight: 1.2, letterSpacing: "0.01em" }}>{name}</div>
+          {title && <div style={{ color: titleColor, fontSize: `${titleSize}px`, fontWeight: 400, letterSpacing: "0.08em", marginTop: "3px", textTransform: "uppercase" }}>{title}</div>}
         </div>
       </div>
     );
@@ -55,11 +57,11 @@ function LowerThirdOverlay({ name, title, position, style, tickerH }: {
   if (style === "classic") {
     return (
       <div style={{ position: "absolute", zIndex: 32, bottom, ...hStyle, pointerEvents: "none" }}>
-        <div style={{ background: "rgba(0,0,0,0.88)", minWidth: "220px" }}>
-          <div style={{ height: "3px", background: "#fff" }} />
+        <div style={{ background: bgColor, minWidth: "220px" }}>
+          <div style={{ height: "3px", background: accentColor }} />
           <div style={{ padding: "8px 20px 10px 16px" }}>
-            <div style={{ color: "#fff", fontSize: "21px", fontWeight: 700 }}>{name}</div>
-            {title && <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "13px", marginTop: "2px" }}>{title}</div>}
+            <div style={{ color: nameColor, fontSize: `${nameSize}px`, fontWeight: 700 }}>{name}</div>
+            {title && <div style={{ color: titleColor, fontSize: `${titleSize}px`, marginTop: "2px" }}>{title}</div>}
           </div>
         </div>
       </div>
@@ -69,9 +71,9 @@ function LowerThirdOverlay({ name, title, position, style, tickerH }: {
     const dir = isLeft ? "to right" : isCenter ? "to right" : "to left";
     return (
       <div style={{ position: "absolute", zIndex: 32, bottom, ...hStyle, pointerEvents: "none" }}>
-        <div style={{ background: `linear-gradient(${dir}, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.6) 60%, transparent 100%)`, padding: "12px 48px 12px 20px", minWidth: "260px" }}>
-          <div style={{ color: "#fff", fontSize: "23px", fontWeight: 700 }}>{name}</div>
-          {title && <div style={{ color: "rgba(255,255,255,0.72)", fontSize: "13px", marginTop: "2px" }}>{title}</div>}
+        <div style={{ background: `linear-gradient(${dir}, ${bgColor} 0%, rgba(0,0,0,0.6) 60%, transparent 100%)`, padding: "12px 48px 12px 20px", minWidth: "260px" }}>
+          <div style={{ color: nameColor, fontSize: `${nameSize}px`, fontWeight: 700 }}>{name}</div>
+          {title && <div style={{ color: titleColor, fontSize: `${titleSize}px`, marginTop: "2px" }}>{title}</div>}
         </div>
       </div>
     );
@@ -80,19 +82,34 @@ function LowerThirdOverlay({ name, title, position, style, tickerH }: {
   return (
     <div style={{ position: "absolute", zIndex: 32, bottom, ...hStyle, pointerEvents: "none" }}>
       <div style={{ padding: "6px 12px", textAlign: isCenter ? "center" : isLeft ? "left" : "right" }}>
-        <div style={{ color: "#fff", fontSize: "22px", fontWeight: 700, textShadow: "0 2px 16px rgba(0,0,0,0.95),0 0 40px rgba(0,0,0,0.7)" }}>{name}</div>
-        {title && <div style={{ color: "rgba(255,255,255,0.82)", fontSize: "13px", marginTop: "1px", textShadow: "0 2px 10px rgba(0,0,0,0.95)" }}>{title}</div>}
+        <div style={{ color: nameColor, fontSize: `${nameSize}px`, fontWeight: 700, textShadow: "0 2px 16px rgba(0,0,0,0.95),0 0 40px rgba(0,0,0,0.7)" }}>{name}</div>
+        {title && <div style={{ color: titleColor, fontSize: `${titleSize}px`, marginTop: "1px", textShadow: "0 2px 10px rgba(0,0,0,0.95)" }}>{title}</div>}
       </div>
     </div>
   );
 }
 
 // ── Clock overlay ─────────────────────────────────────────────────────────────
-function ClockOverlay({ time, position, clockStyle }: { time: Date; position: string; clockStyle: string }) {
+function ClockOverlay({ time, position, clockStyle, showDate, dateFormat, fontSize, color }: {
+  time: Date; position: string; clockStyle: string;
+  showDate: boolean; dateFormat: string; fontSize: number; color: string;
+}) {
   const h = time.getHours().toString().padStart(2, "0");
   const m = time.getMinutes().toString().padStart(2, "0");
   const s = time.getSeconds().toString().padStart(2, "0");
-  const str = clockStyle === "digital" ? `${h}:${m}:${s}` : `${h}:${m}`;
+  const timeStr = clockStyle === "digital" ? `${h}:${m}:${s}` : `${h}:${m}`;
+
+  let dateStr = "";
+  if (showDate) {
+    if (dateFormat === "long") {
+      dateStr = time.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+    } else if (dateFormat === "short") {
+      dateStr = time.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    } else {
+      dateStr = time.toLocaleDateString(undefined, { month: "numeric", day: "numeric", year: "numeric" });
+    }
+  }
+
   const pos: React.CSSProperties = {
     top:    position.startsWith("top")    ? 16 : undefined,
     bottom: position.startsWith("bottom") ? 16 : undefined,
@@ -101,8 +118,23 @@ function ClockOverlay({ time, position, clockStyle }: { time: Date; position: st
   };
   return (
     <div style={{ position: "absolute", zIndex: 31, pointerEvents: "none", ...pos }}>
-      <div style={{ background: "rgba(0,0,0,0.52)", borderRadius: "6px", padding: "4px 13px", backdropFilter: "blur(4px)", color: "rgba(255,255,255,0.92)", fontFamily: clockStyle === "digital" ? "monospace" : "inherit", fontSize: clockStyle === "digital" ? "16px" : "19px", fontWeight: clockStyle === "digital" ? 400 : 300, letterSpacing: clockStyle === "digital" ? "0.1em" : "0.04em" }}>
-        {str}
+      <div style={{
+        background: "rgba(0,0,0,0.52)", borderRadius: "6px", padding: showDate ? "6px 13px 5px" : "4px 13px",
+        backdropFilter: "blur(4px)", textAlign: "center",
+      }}>
+        <div style={{
+          color, fontFamily: clockStyle === "digital" ? "monospace" : "inherit",
+          fontSize: `${fontSize}px`, fontWeight: clockStyle === "digital" ? 400 : 300,
+          letterSpacing: clockStyle === "digital" ? "0.1em" : "0.04em",
+          lineHeight: 1.2,
+        }}>
+          {timeStr}
+        </div>
+        {showDate && dateStr && (
+          <div style={{ color, fontSize: `${Math.max(10, fontSize * 0.62)}px`, opacity: 0.72, letterSpacing: "0.04em", marginTop: "2px" }}>
+            {dateStr}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -141,8 +173,9 @@ function LogoOverlay({ url, position, size, opacity, tickerH }: {
 }
 
 // ── Standalone text overlay ───────────────────────────────────────────────────
-function TextOverlayLayer({ content, position, fontSize, color, bg, bold, tickerH }: {
-  content: string; position: string; fontSize: number; color: string; bg: string; bold: boolean; tickerH: number;
+function TextOverlayLayer({ content, position, fontSize, color, bg, bold, italic, align, fontFamily, shadow, tickerH }: {
+  content: string; position: string; fontSize: number; color: string; bg: string;
+  bold: boolean; italic: boolean; align: string; fontFamily: string; shadow: boolean; tickerH: number;
 }) {
   const isCenterPos  = position === "center";
   const isBottom     = position.startsWith("bottom");
@@ -173,6 +206,10 @@ function TextOverlayLayer({ content, position, fontSize, color, bg, bold, ticker
   })();
 
   const hasBackground = bg && bg !== "none";
+  const textShadowVal = shadow
+    ? "0 2px 14px rgba(0,0,0,0.95),0 0 40px rgba(0,0,0,0.7)"
+    : hasBackground ? "none" : "0 2px 14px rgba(0,0,0,0.95),0 0 40px rgba(0,0,0,0.7)";
+
   return (
     <div style={{ position: "absolute", zIndex: 34, pointerEvents: "none", maxWidth: "80vw", ...pos }}>
       <div style={{
@@ -182,8 +219,11 @@ function TextOverlayLayer({ content, position, fontSize, color, bg, bold, ticker
         color,
         fontSize: `${fontSize}px`,
         fontWeight: bold ? 700 : 400,
+        fontStyle: italic ? "italic" : "normal",
+        fontFamily: fontFamily && fontFamily !== "inherit" ? fontFamily : undefined,
+        textAlign: (align as "left" | "center" | "right") || "left",
         lineHeight: 1.4,
-        textShadow: hasBackground ? "none" : "0 2px 14px rgba(0,0,0,0.95),0 0 40px rgba(0,0,0,0.7)",
+        textShadow: textShadowVal,
         whiteSpace: "pre-wrap",
         backdropFilter: hasBackground ? "blur(6px)" : undefined,
       }}>
@@ -193,8 +233,64 @@ function TextOverlayLayer({ content, position, fontSize, color, bg, bold, ticker
   );
 }
 
+// ── Camera PiP / side-by-side overlay ────────────────────────────────────────
+function CameraOverlay({ stream, layout, shape, pipSize }: {
+  stream: MediaStream | null; layout: string; shape: string; pipSize: number;
+}) {
+  const ref = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (ref.current && stream) {
+      ref.current.srcObject = stream;
+      ref.current.play().catch(() => {});
+    }
+  }, [stream]);
+
+  if (!stream) return null;
+
+  const borderRadius =
+    shape === "circle" ? "50%" :
+    shape === "rounded" ? "16px" : "0";
+
+  // Side-by-side layouts handled differently (takes half the screen)
+  if (layout === "side-left" || layout === "side-right") {
+    const isLeft = layout === "side-left";
+    return (
+      <div style={{
+        position: "absolute", zIndex: 25, top: 0, bottom: 0,
+        left: isLeft ? 0 : "50%", right: isLeft ? "50%" : 0,
+        pointerEvents: "none",
+      }}>
+        <video ref={ref} autoPlay muted playsInline className="w-full h-full object-cover" />
+      </div>
+    );
+  }
+
+  // PiP corner positions
+  const sizeVw = pipSize ?? 30;
+  const gap = 24;
+  const pos: React.CSSProperties = layout === "pip-topright"     ? { top: gap, right: gap }
+    : layout === "pip-topleft"      ? { top: gap, left: gap }
+    : layout === "pip-bottomright"  ? { bottom: gap, right: gap }
+    : layout === "pip-bottomleft"   ? { bottom: gap, left: gap }
+    : { top: gap, right: gap };
+
+  return (
+    <div style={{
+      position: "absolute", zIndex: 25, pointerEvents: "none",
+      width: `${sizeVw}vw`, aspectRatio: "16/9",
+      overflow: "hidden", borderRadius,
+      boxShadow: "0 8px 40px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.4)",
+      border: shape !== "circle" ? "2px solid rgba(255,255,255,0.12)" : "none",
+      ...pos,
+    }}>
+      <video ref={ref} autoPlay muted playsInline className="w-full h-full object-cover" />
+    </div>
+  );
+}
+
 function BackgroundLayer({ background, cameraStream }: {
-  background?: { type: string; value: string; overlay?: number } | null;
+  background?: { type: string; value: string; overlay?: number; fit?: string; loop?: boolean; cameraLayout?: string } | null;
   cameraStream: MediaStream | null;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -245,13 +341,24 @@ function BackgroundLayer({ background, cameraStream }: {
     );
   }
 
-  if (background.type === "camera")
+  if (background.type === "camera") {
+    const camLayout = background.cameraLayout ?? "fullscreen";
+    // PiP and side-by-side: show a solid/color background underneath, camera is rendered by CameraOverlay
+    if (camLayout !== "fullscreen") {
+      return (
+        <div className="absolute inset-0 bg-black">
+          {overlayStyle && <div className="absolute inset-0" style={overlayStyle} />}
+        </div>
+      );
+    }
+    // Fullscreen camera
     return (
       <div className="absolute inset-0 bg-black">
         {cameraStream && <video ref={cameraRef} className="w-full h-full object-cover" autoPlay muted playsInline />}
         {overlayStyle && <div className="absolute inset-0" style={overlayStyle} />}
       </div>
     );
+  }
 
   if (background.type === "live_wallpaper" && background.value)
     return <LiveWallpaperLayer wallpaperId={background.value} overlay={overlay} />;
@@ -265,6 +372,7 @@ export default function BroadcastPage() {
   const [contentKey, setContentKey] = useState(0);
   const prevContentRef = useRef<string>("");
   const pipWinRef = useRef<Window | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const { data: screenState } = useGetScreenState({
     query: { queryKey: getGetScreenStateQueryKey(), refetchInterval: 500 },
@@ -351,6 +459,13 @@ export default function BroadcastPage() {
     }
   }, [screenState?.background?.type]);
 
+  // Click anywhere to request fullscreen (user gesture)
+  const handleClick = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    }
+  };
+
   const textStyle = screenState?.textStyle;
   const bg = screenState?.background;
   const layout = screenState?.layout;
@@ -383,8 +498,6 @@ export default function BroadcastPage() {
   const showContent = screenState && !screenState.isBlack && !screenState.isClear && screenState.content;
 
   // ── Title parsing ─────────────────────────────────────────────────────────
-  // Song titles:  "Amazing Grace§Verse 1"  → songName + sectionLabel
-  // Verse titles: "John 3:16|KJV"          → verseRef + translationAbbr
   const rawTitle = screenState?.title ?? "";
 
   // Song: split on §
@@ -396,7 +509,6 @@ export default function BroadcastPage() {
   const pipeIdx        = rawTitle.indexOf("|");
   const verseRef       = contentType === "verse" ? (pipeIdx !== -1 ? rawTitle.slice(0, pipeIdx) : rawTitle) : "";
   const translationAbbr = pipeIdx !== -1 ? rawTitle.slice(pipeIdx + 1) : "";
-  // Book name = everything in ref before the chapter number
   const bookName = verseRef ? verseRef.replace(/\s+\d+:.*$/, "").trim() : "";
 
   // ── Verse content renderer with superscript numbers ───────────────────────
@@ -408,16 +520,7 @@ export default function BroadcastPage() {
         return (
           <span key={i}>
             {i > 0 && "\n"}
-            <sup
-              style={{
-                fontSize: "0.42em",
-                fontWeight: 700,
-                verticalAlign: "super",
-                opacity: 0.75,
-                letterSpacing: "0.04em",
-                marginRight: "0.18em",
-              }}
-            >{m[1]}</sup>{m[2]}
+            <sup style={{ fontSize: "0.42em", fontWeight: 700, verticalAlign: "super", opacity: 0.75, letterSpacing: "0.04em", marginRight: "0.18em" }}>{m[1]}</sup>{m[2]}
           </span>
         );
       }
@@ -428,15 +531,31 @@ export default function BroadcastPage() {
   // ── Ticker bottom offset ─────────────────────────────────────────────────
   const tickerH = screenState?.tickerEnabled && screenState.tickerText ? 48 : 0;
 
+  // ── Camera layout ────────────────────────────────────────────────────────
+  const camLayout = bg?.cameraLayout ?? "fullscreen";
+  const showCameraOverlay = bg?.type === "camera" && camLayout !== "fullscreen" && cameraStream;
+
   return (
     <div
+      ref={containerRef}
       className="relative w-screen h-screen overflow-hidden bg-black select-none"
       style={{ cursor: hideCursor ? "none" : "default" }}
+      onClick={handleClick}
     >
       <style dangerouslySetInnerHTML={{ __html: ANIMATION_STYLES }} />
 
       {/* Background */}
       <BackgroundLayer background={bg} cameraStream={cameraStream} />
+
+      {/* Camera PiP / Side overlay (non-fullscreen layouts) */}
+      {showCameraOverlay && (
+        <CameraOverlay
+          stream={cameraStream}
+          layout={camLayout}
+          shape={bg?.cameraShape ?? "rect"}
+          pipSize={bg?.cameraPipSize ?? 30}
+        />
+      )}
 
       {/* Black screen overlay */}
       {screenState?.isBlack && <div className="absolute inset-0 bg-black z-40" />}
@@ -468,20 +587,8 @@ export default function BroadcastPage() {
 
       {/* ── Book name — top center ───────────────────────────────────────────── */}
       {showContent && contentType === "verse" && bookName && (
-        <div
-          className="absolute z-30 pointer-events-none"
-          style={{ top: 20, left: "50%", transform: "translateX(-50%)" }}
-        >
-          <div
-            style={{
-              background: "rgba(0,0,0,0.52)",
-              borderRadius: "4px",
-              padding: "5px 20px",
-              backdropFilter: "blur(6px)",
-              textAlign: "center",
-              whiteSpace: "nowrap",
-            }}
-          >
+        <div className="absolute z-30 pointer-events-none" style={{ top: 20, left: "50%", transform: "translateX(-50%)" }}>
+          <div style={{ background: "rgba(0,0,0,0.52)", borderRadius: "4px", padding: "5px 20px", backdropFilter: "blur(6px)", textAlign: "center", whiteSpace: "nowrap" }}>
             <span style={{ color: "rgba(255,255,255,0.92)", fontSize: "15px", fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase" }}>
               {bookName}
             </span>
@@ -491,31 +598,13 @@ export default function BroadcastPage() {
 
       {/* ── Scripture reference + translation — bottom center ─────────────────── */}
       {showContent && contentType === "verse" && verseRef && (
-        <div
-          className="absolute z-30 pointer-events-none"
-          style={{ bottom: tickerH + 20, left: "50%", transform: "translateX(-50%)" }}
-        >
-          <div
-            style={{
-              background: "rgba(0,0,0,0.55)",
-              borderRadius: "4px",
-              padding: "5px 18px",
-              backdropFilter: "blur(4px)",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              whiteSpace: "nowrap",
-            }}
-          >
-            <span style={{ color: "rgba(255,255,255,0.92)", fontSize: "15px", fontWeight: 500, letterSpacing: "0.04em" }}>
-              {verseRef}
-            </span>
+        <div className="absolute z-30 pointer-events-none" style={{ bottom: tickerH + 20, left: "50%", transform: "translateX(-50%)" }}>
+          <div style={{ background: "rgba(0,0,0,0.55)", borderRadius: "4px", padding: "5px 18px", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", gap: "10px", whiteSpace: "nowrap" }}>
+            <span style={{ color: "rgba(255,255,255,0.92)", fontSize: "15px", fontWeight: 500, letterSpacing: "0.04em" }}>{verseRef}</span>
             {translationAbbr && (
               <>
                 <span style={{ color: "rgba(255,255,255,0.3)", fontSize: "12px" }}>•</span>
-                <span style={{ color: "rgba(255,255,255,0.55)", fontSize: "12px", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                  {translationAbbr}
-                </span>
+                <span style={{ color: "rgba(255,255,255,0.55)", fontSize: "12px", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase" }}>{translationAbbr}</span>
               </>
             )}
           </div>
@@ -524,20 +613,8 @@ export default function BroadcastPage() {
 
       {/* ── Song name — top center ───────────────────────────────────────────── */}
       {showContent && contentType === "song" && songName && (
-        <div
-          className="absolute z-30 pointer-events-none"
-          style={{ top: 20, left: "50%", transform: "translateX(-50%)" }}
-        >
-          <div
-            style={{
-              background: "rgba(0,0,0,0.52)",
-              borderRadius: "4px",
-              padding: "5px 20px",
-              backdropFilter: "blur(6px)",
-              textAlign: "center",
-              whiteSpace: "nowrap",
-            }}
-          >
+        <div className="absolute z-30 pointer-events-none" style={{ top: 20, left: "50%", transform: "translateX(-50%)" }}>
+          <div style={{ background: "rgba(0,0,0,0.52)", borderRadius: "4px", padding: "5px 20px", backdropFilter: "blur(6px)", textAlign: "center", whiteSpace: "nowrap" }}>
             <span style={{ color: "rgba(255,255,255,0.92)", fontSize: "15px", fontWeight: 600, letterSpacing: "0.06em" }}>
               {songName}
             </span>
@@ -547,19 +624,8 @@ export default function BroadcastPage() {
 
       {/* ── Song section — bottom center ─────────────────────────────────────── */}
       {showContent && contentType === "song" && sectionLabel && (
-        <div
-          className="absolute z-30 pointer-events-none"
-          style={{ bottom: tickerH + 20, left: "50%", transform: "translateX(-50%)" }}
-        >
-          <div
-            style={{
-              background: "rgba(0,0,0,0.55)",
-              borderRadius: "4px",
-              padding: "5px 18px",
-              backdropFilter: "blur(4px)",
-              whiteSpace: "nowrap",
-            }}
-          >
+        <div className="absolute z-30 pointer-events-none" style={{ bottom: tickerH + 20, left: "50%", transform: "translateX(-50%)" }}>
+          <div style={{ background: "rgba(0,0,0,0.55)", borderRadius: "4px", padding: "5px 18px", backdropFilter: "blur(4px)", whiteSpace: "nowrap" }}>
             <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "12px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>
               {sectionLabel}
             </span>
@@ -575,6 +641,12 @@ export default function BroadcastPage() {
           position={screenState.lowerThirdPosition ?? "bottom-left"}
           style={screenState.lowerThirdStyle ?? "modern"}
           tickerH={tickerH}
+          nameColor={screenState.lowerThirdNameColor ?? "#ffffff"}
+          titleColor={screenState.lowerThirdTitleColor ?? "rgba(255,255,255,0.65)"}
+          bgColor={screenState.lowerThirdBgColor ?? "rgba(0,0,0,0.72)"}
+          accentColor={screenState.lowerThirdAccentColor ?? "rgba(255,255,255,0.75)"}
+          nameSize={screenState.lowerThirdNameSize ?? 22}
+          titleSize={screenState.lowerThirdTitleSize ?? 13}
         />
       )}
 
@@ -584,6 +656,10 @@ export default function BroadcastPage() {
           time={clockTime}
           position={screenState.clockPosition ?? "top-right"}
           clockStyle={screenState.clockStyle ?? "digital"}
+          showDate={screenState.clockShowDate ?? false}
+          dateFormat={screenState.clockDateFormat ?? "long"}
+          fontSize={screenState.clockFontSize ?? 16}
+          color={screenState.clockColor ?? "rgba(255,255,255,0.92)"}
         />
       )}
 
@@ -607,6 +683,10 @@ export default function BroadcastPage() {
           color={screenState.textOverlayColor ?? "#ffffff"}
           bg={screenState.textOverlayBg ?? "rgba(0,0,0,0.55)"}
           bold={screenState.textOverlayBold ?? false}
+          italic={screenState.textOverlayItalic ?? false}
+          align={screenState.textOverlayAlign ?? "left"}
+          fontFamily={screenState.textOverlayFontFamily ?? "inherit"}
+          shadow={screenState.textOverlayShadow ?? false}
           tickerH={tickerH}
         />
       )}
@@ -635,6 +715,16 @@ export default function BroadcastPage() {
           <div className="text-white/8 text-3xl font-light tracking-widest uppercase select-none">WorshipFlow</div>
         </div>
       )}
+
+      {/* Fullscreen hint — only when not fullscreen */}
+      <div
+        className="absolute bottom-2 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-opacity duration-700"
+        style={{ opacity: document.fullscreenElement ? 0 : 0.35 }}
+      >
+        <div style={{ color: "#fff", fontSize: "11px", letterSpacing: "0.08em", textShadow: "0 1px 6px rgba(0,0,0,0.8)" }}>
+          Click anywhere to enter fullscreen
+        </div>
+      </div>
     </div>
   );
 }

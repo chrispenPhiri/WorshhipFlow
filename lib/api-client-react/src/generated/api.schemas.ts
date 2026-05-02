@@ -217,12 +217,37 @@ export const BackgroundFit = {
   fill: "fill",
 } as const;
 
+export type BackgroundCameraLayout =
+  (typeof BackgroundCameraLayout)[keyof typeof BackgroundCameraLayout];
+
+export const BackgroundCameraLayout = {
+  fullscreen: "fullscreen",
+  "pip-topright": "pip-topright",
+  "pip-topleft": "pip-topleft",
+  "pip-bottomright": "pip-bottomright",
+  "pip-bottomleft": "pip-bottomleft",
+  "side-left": "side-left",
+  "side-right": "side-right",
+} as const;
+
+export type BackgroundCameraShape =
+  (typeof BackgroundCameraShape)[keyof typeof BackgroundCameraShape];
+
+export const BackgroundCameraShape = {
+  rect: "rect",
+  circle: "circle",
+  rounded: "rounded",
+} as const;
+
 export interface Background {
   type: BackgroundType;
   value: string;
   overlay?: number;
   fit?: BackgroundFit;
   loop?: boolean;
+  cameraLayout?: BackgroundCameraLayout;
+  cameraShape?: BackgroundCameraShape;
+  cameraPipSize?: number;
 }
 
 export type LayoutVerticalAlign =
@@ -301,6 +326,15 @@ export const ScreenStateClockStyle = {
   clean: "clean",
 } as const;
 
+export type ScreenStateClockDateFormat =
+  (typeof ScreenStateClockDateFormat)[keyof typeof ScreenStateClockDateFormat];
+
+export const ScreenStateClockDateFormat = {
+  short: "short",
+  long: "long",
+  numeric: "numeric",
+} as const;
+
 export type ScreenStateLogoPosition =
   (typeof ScreenStateLogoPosition)[keyof typeof ScreenStateLogoPosition];
 
@@ -327,6 +361,15 @@ export const ScreenStateTextOverlayPosition = {
   "bottom-right": "bottom-right",
 } as const;
 
+export type ScreenStateTextOverlayAlign =
+  (typeof ScreenStateTextOverlayAlign)[keyof typeof ScreenStateTextOverlayAlign];
+
+export const ScreenStateTextOverlayAlign = {
+  left: "left",
+  center: "center",
+  right: "right",
+} as const;
+
 export interface ScreenState {
   isBlack: boolean;
   isClear: boolean;
@@ -343,9 +386,19 @@ export interface ScreenState {
   lowerThirdTitle?: string;
   lowerThirdPosition?: ScreenStateLowerThirdPosition;
   lowerThirdStyle?: ScreenStateLowerThirdStyle;
+  lowerThirdNameColor?: string;
+  lowerThirdTitleColor?: string;
+  lowerThirdBgColor?: string;
+  lowerThirdAccentColor?: string;
+  lowerThirdNameSize?: number;
+  lowerThirdTitleSize?: number;
   clockOverlayEnabled?: boolean;
   clockPosition?: ScreenStateClockPosition;
   clockStyle?: ScreenStateClockStyle;
+  clockShowDate?: boolean;
+  clockDateFormat?: ScreenStateClockDateFormat;
+  clockFontSize?: number;
+  clockColor?: string;
   logoOverlayEnabled?: boolean;
   logoUrl?: string;
   logoPosition?: ScreenStateLogoPosition;
@@ -358,6 +411,10 @@ export interface ScreenState {
   textOverlayColor?: string;
   textOverlayBg?: string;
   textOverlayBold?: boolean;
+  textOverlayItalic?: boolean;
+  textOverlayAlign?: ScreenStateTextOverlayAlign;
+  textOverlayFontFamily?: string;
+  textOverlayShadow?: boolean;
 }
 
 export type ListSongsParams = {
