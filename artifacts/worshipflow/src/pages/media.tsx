@@ -104,6 +104,8 @@ export default function MediaPage() {
   const [camSideBg, setCamSideBg] = useState<string>("linear-gradient(135deg,#1e1b4b 0%,#0f0a2e 100%)");
   // Search query for the Icons & Flags tab
   const [iconSearch, setIconSearch] = useState("");
+  // How clicking an icon/flag sends it to the presentation screen
+  const [iconSendMode, setIconSendMode] = useState<"logo" | "background">("logo");
 
   // Previous background — saved before camera goes live so Cut/Stop can roll back
   const prevBackgroundRef = useRef<{ type: string; value: string; overlay?: number; fit?: "cover" | "contain" | "fill"; loop?: boolean; cameraLayout?: string; cameraShape?: string; cameraPipSize?: number } | null>(null);
@@ -991,11 +993,19 @@ export default function MediaPage() {
               ? FLAG_PRESETS.filter(p => p.label.toLowerCase().includes(q) || p.code.includes(q))
               : FLAG_PRESETS;
 
-            const apply = (url: string) => {
+            const sendAsLogo = (url: string) => {
               setLogoUrlDraft(url);
               setLogoUrlInput(url);
               updateOverlay({ logoOverlayEnabled: true, logoUrl: url });
-              toast({ title: "Sent to screen", description: "Logo overlay updated. Tweak position/size in the Overlays tab." });
+              toast({ title: "Sent to presentation screen", description: "Showing as logo overlay. Tweak position/size in Overlays → Logo Overlay." });
+            };
+            const sendAsBackground = (url: string) => {
+              sendImageToScreen(url, "contain");
+              toast({ title: "Sent to presentation screen", description: "Showing as fullscreen background." });
+            };
+            const apply = (url: string) => {
+              if (iconSendMode === "background") sendAsBackground(url);
+              else sendAsLogo(url);
             };
 
             return (
@@ -1014,13 +1024,41 @@ export default function MediaPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-5">
-                    <div className="space-y-1.5">
+                    {/* Send-mode selector + search */}
+                    <div className="space-y-2">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-muted-foreground">When clicked, send to presentation screen as:</label>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <button
+                            type="button"
+                            data-testid="button-send-mode-logo"
+                            onClick={() => setIconSendMode("logo")}
+                            className={`py-2 rounded text-xs border transition-colors flex items-center justify-center gap-1.5 ${iconSendMode === "logo" ? "bg-primary/20 border-primary text-primary font-medium" : "border-border text-muted-foreground hover:bg-muted/40"}`}
+                          >
+                            <ImageIcon className="w-3.5 h-3.5" /> Logo Overlay
+                          </button>
+                          <button
+                            type="button"
+                            data-testid="button-send-mode-background"
+                            onClick={() => setIconSendMode("background")}
+                            className={`py-2 rounded text-xs border transition-colors flex items-center justify-center gap-1.5 ${iconSendMode === "background" ? "bg-primary/20 border-primary text-primary font-medium" : "border-border text-muted-foreground hover:bg-muted/40"}`}
+                          >
+                            <Maximize2 className="w-3.5 h-3.5" /> Fullscreen Background
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          {iconSendMode === "logo"
+                            ? "Small image overlay in the corner — content/verse remains visible behind it."
+                            : "Replaces the current screen with the icon/flag at full size (centered, kept-aspect)."}
+                        </p>
+                      </div>
                       <Input
                         data-testid="input-icon-search"
                         placeholder="Search icons or flags (e.g. cross, dove, australia, zw)…"
                         value={iconSearch}
                         onChange={e => setIconSearch(e.target.value)}
                         className="h-9"
+                        aria-label="Search icons and flags"
                       />
                     </div>
 
@@ -1078,8 +1116,8 @@ export default function MediaPage() {
                     </div>
 
                     <p className="text-[11px] text-muted-foreground bg-muted/30 rounded px-3 py-2">
-                      Tip: Selecting an item enables the logo overlay automatically. Use the
-                      <span className="font-medium"> Overlays</span> tab to fine-tune placement and styling, or to hide the logo.
+                      Tip: Switch the mode above to send icons/flags as a fullscreen background instead of a logo overlay.
+                      Use the <span className="font-medium">Overlays</span> tab to fine-tune logo placement and styling, or to hide the logo.
                     </p>
                   </CardContent>
                 </Card>
