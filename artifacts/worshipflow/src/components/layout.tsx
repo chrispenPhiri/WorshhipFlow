@@ -15,7 +15,7 @@ export function Layout({ children }: { children: ReactNode }) {
     { href: "/schedule", label: "Schedule", icon: Calendar },
     { href: "/notes", label: "Sermon Notes", icon: BookOpen },
     { href: "/inspiration", label: "Daily Inspiration", icon: Sparkles },
-    { href: "/sunday-school", label: "Sunday School", icon: GraduationCap },
+    { href: "/teachings", label: "Teachings", icon: GraduationCap },
     { href: "/how-to", label: "How To", icon: HelpCircle },
     { href: "/settings", label: "Settings", icon: Settings },
   ];

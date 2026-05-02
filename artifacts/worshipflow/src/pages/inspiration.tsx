@@ -42,19 +42,27 @@ export default function InspirationPage() {
     ev.jsDate.getDate() === today.getDate()
   );
 
-  /** Send a piece of inspiration content to the projection screen. */
+  /** Send a piece of inspiration content to the projection screen.
+   *  The category label (e.g. "Verse of the Day") is prepended to the content
+   *  so the audience clearly sees what they are looking at on screen. */
   const presentInspiration = (
     title: string,
     content: string,
     opts: { kind: "verse" | "fact" | "event"; idKey: string; subtitle?: string }
   ) => {
+    const kindLabel =
+      opts.kind === "verse" ? "Verse of the Day"
+      : opts.kind === "fact" ? "Did You Know?"
+      : "Christian Calendar";
     const baseStyle = screenState?.textStyle ?? { fontFamily: "Georgia", fontSize: 48, textColor: "#ffffff", alignment: "center" as const, animation: "fade_in" as const };
+    // Prepend the category so it appears on screen above the content.
+    const screenContent = `${kindLabel}\n\n${content}`;
     const screenData = {
       isBlack: screenState?.isBlack ?? false,
       isClear: false,
       contentType: "custom_text" as const,
       title,
-      content,
+      content: screenContent,
       textStyle: {
         ...baseStyle,
         fontSize: 56,
@@ -70,10 +78,10 @@ export default function InspirationPage() {
       id: `inspiration-${opts.kind}-${opts.idKey}`,
       type: "note",
       title,
-      subtitle: opts.subtitle ?? (opts.kind === "verse" ? "Scripture" : opts.kind === "fact" ? "Bible Fact" : "Christian Calendar"),
+      subtitle: opts.subtitle ?? kindLabel,
       payload: { screenData },
     });
-    toast({ title: "Sent to screen", description: title });
+    toast({ title: "Sent to screen", description: `${kindLabel} — ${title}` });
   };
 
   return (
@@ -120,7 +128,7 @@ export default function InspirationPage() {
               <Button
                 size="sm"
                 className="gap-1.5"
-                onClick={() => presentInspiration(verse.reference, verse.text, { kind: "verse", idKey: verse.reference, subtitle: "Verse of the Day" })}
+                onClick={() => presentInspiration(verse.reference, `"${verse.text}"\n\n— ${verse.reference}`, { kind: "verse", idKey: verse.reference, subtitle: "Verse of the Day" })}
                 data-testid="button-present-verse"
               >
                 <Send className="w-3.5 h-3.5" /> Send to screen
@@ -160,7 +168,7 @@ export default function InspirationPage() {
               <Button
                 size="sm"
                 className="gap-1.5"
-                onClick={() => presentInspiration(fact.topic, fact.fact, { kind: "fact", idKey: `${factIdx}`, subtitle: "Bible Fact" })}
+                onClick={() => presentInspiration(fact.topic, `${fact.topic}\n\n${fact.fact}`, { kind: "fact", idKey: `${factIdx}`, subtitle: "Did You Know?" })}
                 data-testid="button-present-fact"
               >
                 <Send className="w-3.5 h-3.5" /> Send to screen
@@ -224,7 +232,7 @@ export default function InspirationPage() {
                       size="sm"
                       variant="ghost"
                       className="shrink-0 gap-1.5 self-center"
-                      onClick={() => presentInspiration(ev.name, `${format(ev.jsDate, "MMMM d, yyyy")}\n\n${ev.description}`, { kind: "event", idKey: `${ev.date}-${ev.name}`, subtitle: "Christian Calendar" })}
+                      onClick={() => presentInspiration(ev.name, `${ev.name}\n${format(ev.jsDate, "MMMM d, yyyy")}\n\n${ev.description}`, { kind: "event", idKey: `${ev.date}-${ev.name}`, subtitle: "Christian Calendar" })}
                       data-testid={`button-present-event-${ev.name.replace(/\s+/g, "-").toLowerCase()}`}
                       title={`Send "${ev.name}" to screen`}
                     >

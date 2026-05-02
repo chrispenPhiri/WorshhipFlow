@@ -257,26 +257,26 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    id: "sunday-school",
+    id: "teachings",
     icon: GraduationCap,
-    title: "Sunday School Teachings",
-    to: "/sunday-school",
-    summary: "Ready-to-use lessons for Children, Youth, and Adult classes.",
+    title: "Teachings",
+    to: "/teachings",
+    summary: "Ready-to-use lessons for every audience and occasion — Sunday School, Youth, Mothers, Fathers, Adults, plus Happiness, Funeral, Baptism, Holy Communion, Marriage, and Healing.",
     steps: [
       {
-        heading: "Pick an age group",
-        body: <p>Filter by <strong>Children</strong>, <strong>Youth</strong>, or <strong>Adult</strong> at the top. Each group has 8 carefully written lessons that match their stage.</p>,
+        heading: "Pick a category",
+        body: <p>Filter by audience (<strong>Sunday School</strong>, <strong>Youth</strong>, <strong>Mothers</strong>, <strong>Fathers</strong>, <strong>Adults</strong>) or by occasion / topic (<strong>Happiness</strong>, <strong>Funeral</strong>, <strong>Baptism</strong>, <strong>Holy Communion</strong>, <strong>Marriage</strong>, <strong>Healing</strong>). Each category contains lessons written specifically for that group or moment.</p>,
       },
       {
-        heading: "Filter by theme",
-        body: <p>Browse by topic — Faith, Prayer, Identity, Family, Mission, and more. Combine with the search box to find exactly what you need.</p>,
+        heading: "Filter by theme or search",
+        body: <p>Narrow further by theme — Faith, Prayer, Identity, Joy, Comfort, and more — or use the search box to find lessons by title, verse, or category.</p>,
       },
       {
         heading: "Use a lesson live",
         body: (
           <>
             <p>Open a lesson from the list on the left. The full lesson appears on the right with a Key Verse, numbered Teaching Points, Discussion Questions, an Activity, and a Closing Prayer.</p>
-            <p className="mt-1">Each section has its own <strong>Send to screen</strong> button so you can project content step-by-step as you teach.</p>
+            <p className="mt-1">Each section has its own <strong>Send to screen</strong> button so you can project content step-by-step as you teach. The category and lesson title are shown on screen so the audience always knows the context.</p>
           </>
         ),
       },
@@ -284,9 +284,13 @@ const SECTIONS: Section[] = [
         heading: "Send all questions at once",
         body: <p>The Discussion Questions card has a <strong>Send All Questions to Screen</strong> button — perfect for small-group breakout time.</p>,
       },
+      {
+        heading: "Right lesson for the right moment",
+        body: <p>Pick <strong>Funeral</strong>, <strong>Baptism</strong>, or <strong>Holy Communion</strong> when preparing for those services. Pick <strong>Mothers</strong> or <strong>Fathers</strong> for fellowship meetings. Pick <strong>Happiness</strong> for joy-themed services or counselling.</p>,
+      },
     ],
     tips: [
-      <>Lessons load instantly and work <strong>offline</strong> — no setup needed before class.</>,
+      <>Lessons load instantly and work <strong>offline</strong> — no setup needed before class or service.</>,
       <>Use the <strong>Black Screen</strong> button between sections so the class can focus on you, not the projector.</>,
     ],
   },
