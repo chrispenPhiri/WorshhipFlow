@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Slider } from "@/components/ui/slider";
+import { SliderWithButtons } from "@/components/slider-with-buttons";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useUpdateScreenState, useGetScreenState, getGetScreenStateQueryKey, type Background } from "@workspace/api-client-react";
@@ -644,7 +644,7 @@ export default function MediaPage() {
         <CardContent className="pt-4">
           <div className="flex items-center gap-4">
             <label className="text-sm font-medium whitespace-nowrap w-32">Dark Overlay: {overlay[0]}%</label>
-            <Slider value={overlay} onValueChange={setOverlay} min={0} max={90} step={5} className="flex-1" />
+            <SliderWithButtons value={overlay} onValueChange={setOverlay} min={0} max={90} step={5} className="flex-1" />
           </div>
         </CardContent>
       </Card>
@@ -829,7 +829,7 @@ export default function MediaPage() {
                       <label className="text-sm font-medium">PiP Size</label>
                       <span className="text-xs text-muted-foreground">{camPipSize}% of width</span>
                     </div>
-                    <Slider min={15} max={55} step={5} value={[camPipSize]} onValueChange={([v]) => setCamPipSize(v)} />
+                    <SliderWithButtons min={15} max={55} step={5} value={[camPipSize]} onValueChange={([v]) => setCamPipSize(v)} />
                   </div>
                 )}
 
@@ -1185,14 +1185,14 @@ export default function MediaPage() {
                     <label className="text-sm font-medium">Name Size</label>
                     <span className="text-xs text-muted-foreground">{ltNameSize}px</span>
                   </div>
-                  <Slider min={14} max={48} step={1} value={[ltNameSize]} onValueChange={([v]) => setLtNameSize(v)} />
+                  <SliderWithButtons min={14} max={48} step={1} value={[ltNameSize]} onValueChange={([v]) => setLtNameSize(v)} />
                 </div>
                 <div className="space-y-1.5">
                   <div className="flex justify-between">
                     <label className="text-sm font-medium">Title Size</label>
                     <span className="text-xs text-muted-foreground">{ltTitleSize}px</span>
                   </div>
-                  <Slider min={9} max={28} step={1} value={[ltTitleSize]} onValueChange={([v]) => setLtTitleSize(v)} />
+                  <SliderWithButtons min={9} max={28} step={1} value={[ltTitleSize]} onValueChange={([v]) => setLtTitleSize(v)} />
                 </div>
               </div>
 
@@ -1205,7 +1205,7 @@ export default function MediaPage() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Slider data-testid="slider-lt-autodismiss" className="flex-1" min={0} max={60} step={1} value={[ltAutoDismissSec]} onValueChange={([v]) => setLtAutoDismissSec(v)} />
+                  <SliderWithButtons data-testid="slider-lt-autodismiss" className="flex-1" min={0} max={60} step={1} value={[ltAutoDismissSec]} onValueChange={([v]) => setLtAutoDismissSec(v)} />
                   <Input
                     data-testid="input-lt-autodismiss"
                     type="number"
@@ -1341,7 +1341,7 @@ export default function MediaPage() {
                     <label className="text-sm font-medium">Font Size</label>
                     <span className="text-xs text-muted-foreground">{screenState?.clockFontSize ?? 16}px</span>
                   </div>
-                  <Slider min={10} max={40} step={1} value={[screenState?.clockFontSize ?? 16]}
+                  <SliderWithButtons min={10} max={40} step={1} value={[screenState?.clockFontSize ?? 16]}
                     onValueChange={([v]) => updateOverlay({ clockFontSize: v })} />
                 </div>
                 <div className="space-y-1.5">
@@ -1392,7 +1392,7 @@ export default function MediaPage() {
                     <label className="text-sm font-medium">Opacity</label>
                     <span className="text-xs text-muted-foreground">{screenState?.clockBgOpacity ?? 100}%</span>
                   </div>
-                  <Slider min={0} max={100} step={5} value={[screenState?.clockBgOpacity ?? 100]}
+                  <SliderWithButtons min={0} max={100} step={5} value={[screenState?.clockBgOpacity ?? 100]}
                     onValueChange={([v]) => updateOverlay({ clockBgOpacity: v })} />
                 </div>
 
@@ -1403,7 +1403,7 @@ export default function MediaPage() {
                       <label className="text-sm font-medium">Corner Radius</label>
                       <span className="text-xs text-muted-foreground">{screenState?.clockBgRadius ?? 6}px</span>
                     </div>
-                    <Slider min={0} max={32} step={1} value={[screenState?.clockBgRadius ?? 6]}
+                    <SliderWithButtons min={0} max={32} step={1} value={[screenState?.clockBgRadius ?? 6]}
                       onValueChange={([v]) => updateOverlay({ clockBgRadius: v })} />
                   </div>
                   <div className="space-y-1.5">
@@ -1411,7 +1411,7 @@ export default function MediaPage() {
                       <label className="text-sm font-medium">Padding</label>
                       <span className="text-xs text-muted-foreground">{screenState?.clockBgPadding ?? 13}px</span>
                     </div>
-                    <Slider min={2} max={32} step={1} value={[screenState?.clockBgPadding ?? 13]}
+                    <SliderWithButtons min={2} max={32} step={1} value={[screenState?.clockBgPadding ?? 13]}
                       onValueChange={([v]) => updateOverlay({ clockBgPadding: v })} />
                   </div>
                 </div>
@@ -1484,14 +1484,14 @@ export default function MediaPage() {
                     <label className="text-sm font-medium">Size</label>
                     <span className="text-xs text-muted-foreground">{logoSizeDraft}%</span>
                   </div>
-                  <Slider min={5} max={40} step={1} value={[logoSizeDraft]} onValueChange={([v]) => setLogoSizeDraft(v)} />
+                  <SliderWithButtons min={5} max={40} step={1} value={[logoSizeDraft]} onValueChange={([v]) => setLogoSizeDraft(v)} />
                 </div>
                 <div className="space-y-1.5">
                   <div className="flex justify-between">
                     <label className="text-sm font-medium">Opacity</label>
                     <span className="text-xs text-muted-foreground">{logoOpacityDraft}%</span>
                   </div>
-                  <Slider min={10} max={100} step={5} value={[logoOpacityDraft]} onValueChange={([v]) => setLogoOpacityDraft(v)} />
+                  <SliderWithButtons min={10} max={100} step={5} value={[logoOpacityDraft]} onValueChange={([v]) => setLogoOpacityDraft(v)} />
                 </div>
               </div>
 
@@ -1551,7 +1551,7 @@ export default function MediaPage() {
                           <label className="text-sm font-medium">Text Size</label>
                           <span className="text-xs text-muted-foreground">{logoTextSizeDraft}px</span>
                         </div>
-                        <Slider min={8} max={48} step={1} value={[logoTextSizeDraft]} onValueChange={([v]) => setLogoTextSizeDraft(v)} />
+                        <SliderWithButtons min={8} max={48} step={1} value={[logoTextSizeDraft]} onValueChange={([v]) => setLogoTextSizeDraft(v)} />
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-sm font-medium">Text Color</label>
@@ -1676,7 +1676,7 @@ export default function MediaPage() {
                     <label className="text-sm font-medium">Font Size</label>
                     <span className="text-xs text-muted-foreground">{toFontSize}px</span>
                   </div>
-                  <Slider min={12} max={120} step={2} value={[toFontSize]} onValueChange={([v]) => setToFontSize(v)} />
+                  <SliderWithButtons min={12} max={120} step={2} value={[toFontSize]} onValueChange={([v]) => setToFontSize(v)} />
                 </div>
               </div>
 
@@ -1769,14 +1769,14 @@ export default function MediaPage() {
                       <label className="text-sm font-medium">Opacity</label>
                       <span className="text-xs text-muted-foreground">{toOpacity}%</span>
                     </div>
-                    <Slider min={20} max={100} step={5} value={[toOpacity]} onValueChange={([v]) => setToOpacity(v)} />
+                    <SliderWithButtons min={20} max={100} step={5} value={[toOpacity]} onValueChange={([v]) => setToOpacity(v)} />
                   </div>
                   <div className="space-y-1.5">
                     <div className="flex justify-between">
                       <label className="text-sm font-medium">Max Width</label>
                       <span className="text-xs text-muted-foreground">{toMaxWidth}%</span>
                     </div>
-                    <Slider min={20} max={95} step={5} value={[toMaxWidth]} onValueChange={([v]) => setToMaxWidth(v)} />
+                    <SliderWithButtons min={20} max={95} step={5} value={[toMaxWidth]} onValueChange={([v]) => setToMaxWidth(v)} />
                   </div>
                 </div>
 
@@ -1787,14 +1787,14 @@ export default function MediaPage() {
                       <label className="text-sm font-medium">Padding</label>
                       <span className="text-xs text-muted-foreground">{toPadding}px</span>
                     </div>
-                    <Slider min={0} max={40} step={1} value={[toPadding]} onValueChange={([v]) => setToPadding(v)} />
+                    <SliderWithButtons min={0} max={40} step={1} value={[toPadding]} onValueChange={([v]) => setToPadding(v)} />
                   </div>
                   <div className="space-y-1.5">
                     <div className="flex justify-between">
                       <label className="text-sm font-medium">Corner Radius</label>
                       <span className="text-xs text-muted-foreground">{toRadius}px</span>
                     </div>
-                    <Slider min={0} max={40} step={1} value={[toRadius]} onValueChange={([v]) => setToRadius(v)} />
+                    <SliderWithButtons min={0} max={40} step={1} value={[toRadius]} onValueChange={([v]) => setToRadius(v)} />
                   </div>
                 </div>
 
@@ -1804,7 +1804,7 @@ export default function MediaPage() {
                     <label className="text-sm font-medium">Letter Spacing</label>
                     <span className="text-xs text-muted-foreground">{(toLetterSpacing / 100).toFixed(2)}em</span>
                   </div>
-                  <Slider min={-5} max={30} step={1} value={[toLetterSpacing]} onValueChange={([v]) => setToLetterSpacing(v)} />
+                  <SliderWithButtons min={-5} max={30} step={1} value={[toLetterSpacing]} onValueChange={([v]) => setToLetterSpacing(v)} />
                 </div>
 
                 {/* Border */}
@@ -1814,7 +1814,7 @@ export default function MediaPage() {
                       <label className="text-sm font-medium">Border Width</label>
                       <span className="text-xs text-muted-foreground">{toBorderWidth}px</span>
                     </div>
-                    <Slider min={0} max={8} step={1} value={[toBorderWidth]} onValueChange={([v]) => setToBorderWidth(v)} />
+                    <SliderWithButtons min={0} max={8} step={1} value={[toBorderWidth]} onValueChange={([v]) => setToBorderWidth(v)} />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium">Border Color</label>
@@ -1834,7 +1834,7 @@ export default function MediaPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Slider data-testid="slider-to-autodismiss" className="flex-1" min={0} max={60} step={1} value={[toAutoDismissSec]} onValueChange={([v]) => setToAutoDismissSec(v)} />
+                    <SliderWithButtons data-testid="slider-to-autodismiss" className="flex-1" min={0} max={60} step={1} value={[toAutoDismissSec]} onValueChange={([v]) => setToAutoDismissSec(v)} />
                     <Input
                       data-testid="input-to-autodismiss"
                       type="number"
@@ -2071,7 +2071,7 @@ export default function MediaPage() {
                         <label className="text-sm font-medium">Size</label>
                         <span className="text-xs text-muted-foreground">{timerFontSizeDraft}px</span>
                       </div>
-                      <Slider min={24} max={140} step={2} value={[timerFontSizeDraft]} onValueChange={([v]) => setTimerFontSizeDraft(v)} />
+                      <SliderWithButtons min={24} max={140} step={2} value={[timerFontSizeDraft]} onValueChange={([v]) => setTimerFontSizeDraft(v)} />
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-sm font-medium">Text Color</label>
@@ -2106,7 +2106,7 @@ export default function MediaPage() {
                           <label className="text-sm font-medium">Warn at</label>
                           <span className="text-xs text-muted-foreground">{timerWarningSecDraft}s</span>
                         </div>
-                        <Slider min={5} max={300} step={5} value={[timerWarningSecDraft]} onValueChange={([v]) => setTimerWarningSecDraft(v)} />
+                        <SliderWithButtons min={5} max={300} step={5} value={[timerWarningSecDraft]} onValueChange={([v]) => setTimerWarningSecDraft(v)} />
                       </div>
                     )}
                   </div>
@@ -2207,7 +2207,7 @@ export default function MediaPage() {
                             <label className="text-sm font-medium">Font Size</label>
                             <span className="text-xs text-muted-foreground">{screenState?.bibleBookFontSize ?? 28}px</span>
                           </div>
-                          <Slider data-testid="slider-bible-book-size" min={12} max={96} step={1}
+                          <SliderWithButtons data-testid="slider-bible-book-size" min={12} max={96} step={1}
                             value={[screenState?.bibleBookFontSize ?? 28]}
                             onValueChange={([v]) => updateOverlay({ bibleBookFontSize: v })} />
                           <div className="flex flex-wrap gap-1 pt-1">
@@ -2258,7 +2258,7 @@ export default function MediaPage() {
                             <label className="text-[11px] font-medium">Padding</label>
                             <span className="text-[10px] text-muted-foreground">{screenState?.bibleBookPadding ?? 10}px</span>
                           </div>
-                          <Slider min={2} max={40} step={1} value={[screenState?.bibleBookPadding ?? 10]}
+                          <SliderWithButtons min={2} max={40} step={1} value={[screenState?.bibleBookPadding ?? 10]}
                             onValueChange={([v]) => updateOverlay({ bibleBookPadding: v })} />
                         </div>
                         <div className="space-y-1.5">
@@ -2266,7 +2266,7 @@ export default function MediaPage() {
                             <label className="text-[11px] font-medium">Radius</label>
                             <span className="text-[10px] text-muted-foreground">{screenState?.bibleBookRadius ?? 6}px</span>
                           </div>
-                          <Slider min={0} max={32} step={1} value={[screenState?.bibleBookRadius ?? 6]}
+                          <SliderWithButtons min={0} max={32} step={1} value={[screenState?.bibleBookRadius ?? 6]}
                             onValueChange={([v]) => updateOverlay({ bibleBookRadius: v })} />
                         </div>
                         <div className="space-y-1.5">
@@ -2274,7 +2274,7 @@ export default function MediaPage() {
                             <label className="text-[11px] font-medium">Spacing</label>
                             <span className="text-[10px] text-muted-foreground">0.{String(screenState?.bibleBookLetterSpacing ?? 18).padStart(2, "0")}em</span>
                           </div>
-                          <Slider min={0} max={40} step={1} value={[screenState?.bibleBookLetterSpacing ?? 18]}
+                          <SliderWithButtons min={0} max={40} step={1} value={[screenState?.bibleBookLetterSpacing ?? 18]}
                             onValueChange={([v]) => updateOverlay({ bibleBookLetterSpacing: v })} />
                         </div>
                       </div>
@@ -2297,7 +2297,7 @@ export default function MediaPage() {
                             <label className="text-sm font-medium">Font Size</label>
                             <span className="text-xs text-muted-foreground">{screenState?.bibleRefFontSize ?? 28}px</span>
                           </div>
-                          <Slider data-testid="slider-bible-ref-size" min={12} max={96} step={1}
+                          <SliderWithButtons data-testid="slider-bible-ref-size" min={12} max={96} step={1}
                             value={[screenState?.bibleRefFontSize ?? 28]}
                             onValueChange={([v]) => updateOverlay({ bibleRefFontSize: v })} />
                           <div className="flex flex-wrap gap-1 pt-1">
@@ -2352,7 +2352,7 @@ export default function MediaPage() {
                             <label className="text-[11px] font-medium">Padding</label>
                             <span className="text-[10px] text-muted-foreground">{screenState?.bibleRefPadding ?? 10}px</span>
                           </div>
-                          <Slider min={2} max={40} step={1} value={[screenState?.bibleRefPadding ?? 10]}
+                          <SliderWithButtons min={2} max={40} step={1} value={[screenState?.bibleRefPadding ?? 10]}
                             onValueChange={([v]) => updateOverlay({ bibleRefPadding: v })} />
                         </div>
                         <div className="space-y-1.5">
@@ -2360,7 +2360,7 @@ export default function MediaPage() {
                             <label className="text-[11px] font-medium">Radius</label>
                             <span className="text-[10px] text-muted-foreground">{screenState?.bibleRefRadius ?? 6}px</span>
                           </div>
-                          <Slider min={0} max={32} step={1} value={[screenState?.bibleRefRadius ?? 6]}
+                          <SliderWithButtons min={0} max={32} step={1} value={[screenState?.bibleRefRadius ?? 6]}
                             onValueChange={([v]) => updateOverlay({ bibleRefRadius: v })} />
                         </div>
                         <div className="space-y-1.5">
@@ -2368,7 +2368,7 @@ export default function MediaPage() {
                             <label className="text-[11px] font-medium">Spacing</label>
                             <span className="text-[10px] text-muted-foreground">0.{String(screenState?.bibleRefLetterSpacing ?? 4).padStart(2, "0")}em</span>
                           </div>
-                          <Slider min={0} max={40} step={1} value={[screenState?.bibleRefLetterSpacing ?? 4]}
+                          <SliderWithButtons min={0} max={40} step={1} value={[screenState?.bibleRefLetterSpacing ?? 4]}
                             onValueChange={([v]) => updateOverlay({ bibleRefLetterSpacing: v })} />
                         </div>
                       </div>
@@ -2414,12 +2414,12 @@ export default function MediaPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-[11px] text-muted-foreground">Font size: {tickerFontSizeDraft}px</label>
-                  <Slider value={[tickerFontSizeDraft]} min={12} max={48} step={1}
+                  <SliderWithButtons value={[tickerFontSizeDraft]} min={12} max={48} step={1}
                     onValueChange={(v) => setTickerFontSizeDraft(v[0])} className="mt-1.5" />
                 </div>
                 <div>
                   <label className="text-[11px] text-muted-foreground">Speed: {tickerSpeedDraft}s/loop</label>
-                  <Slider value={[tickerSpeedDraft]} min={5} max={60} step={1}
+                  <SliderWithButtons value={[tickerSpeedDraft]} min={5} max={60} step={1}
                     onValueChange={(v) => setTickerSpeedDraft(v[0])} className="mt-1.5" />
                 </div>
               </div>

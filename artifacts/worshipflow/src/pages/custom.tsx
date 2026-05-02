@@ -8,7 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Type, Cast, AlignLeft, AlignCenter, AlignRight, Bold, Italic } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
+import { SliderWithButtons } from "@/components/slider-with-buttons";
 import { FONTS } from "@/lib/constants";
 import { THEME_PRESETS, LIVE_WALLPAPERS } from "@/lib/themes";
 import { LiveWallpaperLayer } from "@/components/live-wallpaper";
@@ -163,7 +163,7 @@ export default function CustomTextPage() {
                   <label className="text-sm font-medium">Font Size</label>
                   <span className="text-sm text-muted-foreground">{fontSize[0]}px</span>
                 </div>
-                <Slider value={fontSize} onValueChange={setFontSize} min={24} max={144} step={2} />
+                <SliderWithButtons value={fontSize} onValueChange={setFontSize} min={24} max={144} step={2} />
               </div>
 
               <div className="space-y-2">
@@ -318,7 +318,7 @@ export default function CustomTextPage() {
                       <label className="font-medium">Dark Overlay</label>
                       <span className="text-muted-foreground">{bgOverlay[0]}%</span>
                     </div>
-                    <Slider
+                    <SliderWithButtons
                       min={0}
                       max={80}
                       step={5}

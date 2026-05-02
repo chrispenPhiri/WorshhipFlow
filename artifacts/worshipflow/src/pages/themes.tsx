@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Slider } from "@/components/ui/slider";
+import { SliderWithButtons } from "@/components/slider-with-buttons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Cast, Palette, Sparkles, Type, CheckCircle2 } from "lucide-react";
@@ -271,7 +271,7 @@ export default function ThemesPage() {
         <TabsContent value="wallpapers" className="mt-6 space-y-6">
           <div className="flex items-center gap-4">
             <label className="text-sm font-medium whitespace-nowrap w-32">Dark Overlay: {overlayPct[0]}%</label>
-            <Slider value={overlayPct} onValueChange={setOverlayPct} min={0} max={80} step={5} className="flex-1 max-w-xs" />
+            <SliderWithButtons value={overlayPct} onValueChange={setOverlayPct} min={0} max={80} step={5} className="flex-1 max-w-xs" />
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -323,7 +323,7 @@ export default function ThemesPage() {
                     <label className="text-sm font-medium">Font Size</label>
                     <span className="text-sm text-muted-foreground">{customFontSize[0]}px</span>
                   </div>
-                  <Slider value={customFontSize} onValueChange={setCustomFontSize} min={24} max={144} step={2} />
+                  <SliderWithButtons value={customFontSize} onValueChange={setCustomFontSize} min={24} max={144} step={2} />
                 </div>
 
                 <div className="space-y-2">
