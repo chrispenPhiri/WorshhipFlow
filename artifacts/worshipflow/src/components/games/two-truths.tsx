@@ -21,7 +21,7 @@ interface Answered {
  * the lie is wrong (and where the truth actually lies).
  */
 export function TwoTruthsGame() {
-  const { presentOnScreen } = useGameBroadcast();
+  const { presentGameView } = useGameBroadcast();
   const [round, setRound] = useState(0);
   const [answers, setAnswers] = useState<Answered[]>([]);
   const [picked, setPicked] = useState<number | null>(null);
@@ -55,27 +55,31 @@ export function TwoTruthsGame() {
 
   function sendStatementsToScreen() {
     if (!current) return;
-    const block = current.statements
-      .map((s, i) => `${String.fromCharCode(65 + i)}. ${s}`)
-      .join("\n");
-    presentOnScreen(
-      "Two Truths and a Lie",
-      current.subject,
-      `Subject: ${current.subject}\n\n${block}\n\nWhich one is the lie?`,
-      { fontSize: 44, alignment: "left" },
-    );
+    presentGameView("Two Truths and a Lie", current.subject, {
+      kind: "two-truths",
+      subject: current.subject,
+      statements: current.statements,
+      lieIndex: current.lieIndex,
+      revealed: false,
+      explanation: current.explanation,
+      reference: current.reference,
+      round: idx + 1,
+      total: rounds.length,
+    });
   }
   function sendAnswerToScreen() {
     if (!current) return;
-    const lieLetter = String.fromCharCode(65 + current.lieIndex);
-    const lieText = current.statements[current.lieIndex] ?? "";
-    const tail = current.reference ? `\n\n— ${current.reference}` : "";
-    presentOnScreen(
-      "Two Truths and a Lie — Answer",
-      current.subject,
-      `Subject: ${current.subject}\n\nThe lie was ${lieLetter}: "${lieText}"\n\n${current.explanation}${tail}`,
-      { fontSize: 44 },
-    );
+    presentGameView("Two Truths and a Lie — Answer", current.subject, {
+      kind: "two-truths",
+      subject: current.subject,
+      statements: current.statements,
+      lieIndex: current.lieIndex,
+      revealed: true,
+      explanation: current.explanation,
+      reference: current.reference,
+      round: idx + 1,
+      total: rounds.length,
+    });
   }
 
   if (finished) {

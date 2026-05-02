@@ -287,6 +287,7 @@ export const ScreenStateContentType = {
   custom_text: "custom_text",
   image: "image",
   video: "video",
+  game: "game",
 } as const;
 
 export type ScreenStateLowerThirdPosition =

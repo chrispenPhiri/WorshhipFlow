@@ -706,7 +706,7 @@ components:
           type: boolean
         contentType:
           type: string
-          enum: [none, verse, song, custom_text, image, video]
+          enum: [none, verse, song, custom_text, image, video, game]
         title:
           type: string
         content:

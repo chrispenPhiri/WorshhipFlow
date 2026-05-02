@@ -11,7 +11,7 @@ export function CharadesGame() {
   const [idx, setIdx] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [showHint, setShowHint] = useState(false);
-  const { presentOnScreen } = useGameBroadcast();
+  const { presentGameView } = useGameBroadcast();
 
   const current = deck[idx % deck.length];
 
@@ -19,12 +19,12 @@ export function CharadesGame() {
   // wants the audience (NOT the actor) to see what the actor is acting out.
   const sendCardToScreen = () => {
     if (!current) return;
-    presentOnScreen(
-      "Bible Charades",
-      current.prompt,
-      `${current.prompt}\n\n(${current.category})`,
-      { fontSize: 80 },
-    );
+    presentGameView("Bible Charades", current.prompt, {
+      kind: "charades",
+      prompt: current.prompt,
+      category: current.category,
+      hint: current.hint,
+    });
   };
 
   const next = () => {

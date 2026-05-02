@@ -3,6 +3,8 @@ import { useGetScreenState, getGetScreenStateQueryKey, useUpdateScreenState } fr
 import { useQueryClient } from "@tanstack/react-query";
 import { LiveWallpaperLayer } from "@/components/live-wallpaper";
 import { subscribeScreenChanges } from "@/lib/local-api";
+import { GameStageView } from "@/components/game-stage-view";
+import { tryDecodeGamePayload } from "@/lib/game-stage-payload";
 
 const CHANNEL_NAME = "wf-broadcast-cmd";
 
@@ -1051,6 +1053,42 @@ export default function BroadcastPage() {
               </div>
             </div>
           );
+        }
+
+        // Game payloads get a dedicated structured renderer at stage scale
+        // (coloured option blocks, letter slots, lives, etc.).  Falls back
+        // to plain text if the payload isn't decodable.
+        if (contentType === "game") {
+          const gamePayload = tryDecodeGamePayload(screenState!.content);
+          if (gamePayload) {
+            // Game card scales with operator-set font size + textScale, so
+            // the projection responds to zoom/style changes the same way
+            // the verse/song renderers do.  Use the raw numeric source
+            // (contentStyle.fontSize is a CSS px string and would always
+            // miss the type-narrow check below).
+            const rawFs = textStyle?.fontSize ?? 64;
+            const baseFs = Math.max(12, rawFs * textScale);
+            return (
+              <div
+                key={contentKey}
+                className="absolute z-20 flex"
+                style={containerStyle}
+                data-testid="broadcast-game-stage"
+              >
+                <div style={{ width: `${textWidthPct}%`, maxWidth: "100%" }}>
+                  <GameStageView
+                    payload={gamePayload}
+                    baseFontSize={baseFs}
+                    textStyle={{
+                      fontFamily: contentStyle.fontFamily as string | undefined,
+                      textColor: contentStyle.color as string | undefined,
+                      accentColor: screenState?.textStyle?.accentColor,
+                    }}
+                  />
+                </div>
+              </div>
+            );
+          }
         }
 
         return (

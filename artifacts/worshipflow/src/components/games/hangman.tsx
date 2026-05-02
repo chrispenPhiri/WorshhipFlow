@@ -19,7 +19,7 @@ export function HangmanGame() {
   const [target, setTarget] = useState<HangmanWord>(() => pickWord());
   const [picked, setPicked] = useState<Set<string>>(() => new Set());
   const [showHint, setShowHint] = useState(false);
-  const { presentOnScreen } = useGameBroadcast();
+  const { presentGameView } = useGameBroadcast();
 
   function pickWord(): HangmanWord {
     const w = HANGMAN_WORDS[Math.floor(Math.random() * HANGMAN_WORDS.length)];
@@ -61,23 +61,29 @@ export function HangmanGame() {
   }, [target, picked, finished]);
 
   function sendPuzzleToScreen() {
-    presentOnScreen(
-      "Bible Hangman",
-      `${target.category}`,
-      `${display}\n\nCategory: ${target.category}` +
-        (wrongPicks.length > 0 ? `\nWrong: ${wrongPicks.join(" ")}` : "") +
-        `\nLives: ${"♥".repeat(remaining)}${"♡".repeat(MAX_WRONG - remaining)}`,
-      { fontSize: 72 },
-    );
+    presentGameView("Bible Hangman", target.category, {
+      kind: "hangman",
+      display,
+      category: target.category,
+      wrongLetters: wrongPicks,
+      livesUsed: MAX_WRONG - remaining,
+      livesMax: MAX_WRONG,
+      revealed: false,
+      hint: target.hint,
+    });
   }
   function sendAnswerToScreen() {
-    presentOnScreen(
-      "Bible Hangman — Answer",
-      target.word,
-      `${target.word}\n\n${target.category}` +
-        (target.hint ? `\n${target.hint}` : ""),
-      { fontSize: 80 },
-    );
+    presentGameView("Bible Hangman — Answer", target.word, {
+      kind: "hangman",
+      display,
+      category: target.category,
+      wrongLetters: wrongPicks,
+      livesUsed: MAX_WRONG - remaining,
+      livesMax: MAX_WRONG,
+      revealed: true,
+      word: target.word,
+      hint: target.hint,
+    });
   }
 
   return (

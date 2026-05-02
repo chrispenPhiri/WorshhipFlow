@@ -12,7 +12,7 @@ import { useGameBroadcast } from "@/lib/game-broadcast";
  * picks are forgiving: any word can be removed from the answer row.
  */
 export function VerseScrambleGame() {
-  const { presentOnScreen } = useGameBroadcast();
+  const { presentGameView } = useGameBroadcast();
   const [round, setRound] = useState(0);
   const [verse, setVerse] = useState<ScrambleVerse>(() => pickVerse());
   const [picked, setPicked] = useState<number[]>([]);     // indices into the *original* word list
@@ -58,24 +58,24 @@ export function VerseScrambleGame() {
     setPicked((p) => p.filter((_, i) => i !== positionInPicked));
   }
 
-  // Broadcast helpers — keep label inside the screen content so the
-  // audience always sees what they're looking at.
+  // Broadcast helpers — send the structured payload so the projection
+  // can render scrambled word-tiles (or the assembled verse) at scale.
   function sendScrambledToScreen() {
-    const scrambled = shuffledOrder.map((i) => words[i]).join("   ");
-    presentOnScreen(
-      "Verse Scramble",
-      verse.reference,
-      `${scrambled}\n\n— ${verse.reference} —`,
-      { fontSize: 60 },
-    );
+    presentGameView("Verse Scramble", verse.reference, {
+      kind: "verse-scramble",
+      words: shuffledOrder.map((i) => words[i]!),
+      reference: verse.reference,
+      revealed: false,
+      hint: verse.hint,
+    });
   }
   function sendSolutionToScreen() {
-    presentOnScreen(
-      "Verse Scramble — Answer",
-      verse.reference,
-      `"${correctText}"\n\n— ${verse.reference} (KJV)`,
-      { fontSize: 56 },
-    );
+    presentGameView("Verse Scramble — Answer", verse.reference, {
+      kind: "verse-scramble",
+      words,
+      reference: verse.reference,
+      revealed: true,
+    });
   }
 
   return (

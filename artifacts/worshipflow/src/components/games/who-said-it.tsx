@@ -19,7 +19,7 @@ export function WhoSaidItGame() {
   const [round, setRound] = useState(0);
   const [answers, setAnswers] = useState<Answered[]>([]);
   const [picked, setPicked] = useState<string | null>(null);
-  const { presentOnScreen } = useGameBroadcast();
+  const { presentGameView } = useGameBroadcast();
 
   const rounds = useMemo<QuoteRound[]>(() =>
     shuffle(WHO_SAID_IT).slice(0, ROUNDS),
@@ -53,22 +53,31 @@ export function WhoSaidItGame() {
   // Project the current quote (without the answer) for the audience.
   const sendQuoteToScreen = () => {
     if (!current) return;
-    presentOnScreen(
-      "Who Said It?",
-      `Quote ${idx + 1}`,
-      `"${current.quote}"\n\nWho said it?`,
-      { fontSize: 56 },
-    );
+    const correctIdx = current.options.indexOf(current.speaker);
+    presentGameView("Who Said It?", `Quote ${idx + 1}`, {
+      kind: "who-said-it",
+      quote: current.quote,
+      options: current.options,
+      correctIndex: correctIdx,
+      revealed: false,
+      reference: current.reference,
+      questionNum: idx + 1,
+      totalNum: rounds.length,
+    });
   };
   const sendAnswerToScreen = () => {
     if (!current) return;
-    const tail = current.reference ? `\n\n— ${current.reference}` : "";
-    presentOnScreen(
-      "Who Said It? — Answer",
-      current.speaker,
-      `"${current.quote}"\n\nSpoken by: ${current.speaker}${tail}`,
-      { fontSize: 52 },
-    );
+    const correctIdx = current.options.indexOf(current.speaker);
+    presentGameView("Who Said It? — Answer", current.speaker, {
+      kind: "who-said-it",
+      quote: current.quote,
+      options: current.options,
+      correctIndex: correctIdx,
+      revealed: true,
+      reference: current.reference,
+      questionNum: idx + 1,
+      totalNum: rounds.length,
+    });
   };
 
   if (finished) {

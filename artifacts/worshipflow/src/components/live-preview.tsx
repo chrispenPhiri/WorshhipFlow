@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { subscribeScreenChanges } from "@/lib/local-api";
+import { GameStageView } from "@/components/game-stage-view";
+import { tryDecodeGamePayload } from "@/lib/game-stage-payload";
 
 export function LivePreview() {
   const queryClient = useQueryClient();
@@ -277,11 +279,42 @@ export function LivePreview() {
         }}
       >
         {screenState.isBlack && <div className="absolute inset-0 bg-black z-50" />}
-        {!screenState.isClear && screenState.content && (
-          <div style={{ ...getPreviewStyle(), width: `${layout.textWidthPct ?? 100}%` }} className="whitespace-pre-wrap">
-            {screenState.content}
-          </div>
-        )}
+        {!screenState.isClear && screenState.content && (() => {
+          // Game payloads get the same rich stage view, just shrunk to
+          // fit the preview pane.  Anything else falls through to the
+          // legacy plain-text preview.
+          if (screenState.contentType === "game") {
+            const payload = tryDecodeGamePayload(screenState.content);
+            if (payload) {
+              const ts = screenState.textStyle;
+              // Preview pane is roughly 1/5 the broadcast.  Floor at 8px
+              // so the card stays readable even on tiny operator screens.
+              const rawSize = ts?.fontSize ?? 64;
+              const baseFs = Math.max(8, Math.round((rawSize * (layout.textScale ?? 1)) / 5));
+              return (
+                <div
+                  style={{ width: `${layout.textWidthPct ?? 100}%`, height: "100%" }}
+                  data-testid="preview-game-stage"
+                >
+                  <GameStageView
+                    payload={payload}
+                    baseFontSize={baseFs}
+                    textStyle={{
+                      fontFamily: ts?.fontFamily,
+                      textColor: ts?.textColor,
+                      accentColor: ts?.accentColor,
+                    }}
+                  />
+                </div>
+              );
+            }
+          }
+          return (
+            <div style={{ ...getPreviewStyle(), width: `${layout.textWidthPct ?? 100}%` }} className="whitespace-pre-wrap">
+              {screenState.content}
+            </div>
+          );
+        })()}
         {screenState.tickerEnabled && (
           <div className="absolute bottom-0 left-0 right-0 h-4 bg-zinc-900 border-t border-zinc-800 text-white text-[8px] flex items-center px-1 overflow-hidden">
             <div className="whitespace-nowrap animate-[marquee_10s_linear_infinite]">{screenState.tickerText}</div>

@@ -21,7 +21,7 @@ export function TrueOrFalseGame() {
   const [round, setRound] = useState(0);
   const [answers, setAnswers] = useState<Answered[]>([]);
   const [picked, setPicked] = useState<boolean | null>(null);
-  const { presentOnScreen } = useGameBroadcast();
+  const { presentGameView } = useGameBroadcast();
 
   const statements = useMemo<TrueFalseStatement[]>(() => {
     const pool = difficulty === "Mixed"
@@ -63,23 +63,29 @@ export function TrueOrFalseGame() {
 
   function sendStatementToScreen() {
     if (!current) return;
-    presentOnScreen(
-      "True or False?",
-      `Round ${idx + 1}`,
-      `"${current.statement}"\n\nTrue   |   False`,
-      { fontSize: 56 },
-    );
+    presentGameView("True or False?", `Round ${idx + 1}`, {
+      kind: "true-false",
+      statement: current.statement,
+      answer: current.answer,
+      revealed: false,
+      explanation: current.explanation,
+      reference: current.reference,
+      round: idx + 1,
+      total: statements.length,
+    });
   }
   function sendAnswerToScreen() {
     if (!current) return;
-    const verdict = current.answer ? "TRUE" : "FALSE";
-    const tail = current.reference ? `\n\n— ${current.reference}` : "";
-    presentOnScreen(
-      "True or False — Answer",
-      `Round ${idx + 1}`,
-      `"${current.statement}"\n\n✓ ${verdict}\n${current.explanation}${tail}`,
-      { fontSize: 48 },
-    );
+    presentGameView("True or False — Answer", `Round ${idx + 1}`, {
+      kind: "true-false",
+      statement: current.statement,
+      answer: current.answer,
+      revealed: true,
+      explanation: current.explanation,
+      reference: current.reference,
+      round: idx + 1,
+      total: statements.length,
+    });
   }
 
   if (finished) {

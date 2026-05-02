@@ -22,7 +22,7 @@ export function TriviaGame() {
   const [round, setRound] = useState(0); // increments to reseed questions
   const [answers, setAnswers] = useState<AnsweredQuestion[]>([]);
   const [picked, setPicked] = useState<number | null>(null);
-  const { presentOnScreen } = useGameBroadcast();
+  const { presentGameView } = useGameBroadcast();
 
   const questions = useMemo<TriviaQuestion[]>(() => {
     const pool = difficulty === "Mixed" ? TRIVIA : TRIVIA.filter(q => q.difficulty === difficulty);
@@ -60,29 +60,34 @@ export function TriviaGame() {
   // body with A / B / C / D prefixes — same as on the operator screen.
   const sendQuestionToScreen = () => {
     if (!current) return;
-    const optsBlock = current.options
-      .map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`)
-      .join("\n");
-    presentOnScreen(
-      "Bible Trivia",
-      `Question ${idx + 1}`,
-      `${current.question}\n\n${optsBlock}`,
-      { fontSize: 48, alignment: "left" },
-    );
+    presentGameView("Bible Trivia", `Question ${idx + 1}`, {
+      kind: "trivia",
+      question: current.question,
+      options: current.options,
+      correctIndex: current.answerIndex,
+      revealed: false,
+      reference: current.reference,
+      explanation: current.explanation,
+      difficulty: current.difficulty,
+      questionNum: idx + 1,
+      totalNum: questions.length,
+    });
   };
 
   const sendAnswerToScreen = () => {
     if (!current) return;
-    const correct = current.options[current.answerIndex] ?? "";
-    const tail =
-      (current.reference ? `\n\n— ${current.reference}` : "") +
-      (current.explanation ? `\n${current.explanation}` : "");
-    presentOnScreen(
-      "Bible Trivia — Answer",
-      `Q${idx + 1}`,
-      `${current.question}\n\n✓ ${correct}${tail}`,
-      { fontSize: 52 },
-    );
+    presentGameView("Bible Trivia — Answer", `Q${idx + 1}`, {
+      kind: "trivia",
+      question: current.question,
+      options: current.options,
+      correctIndex: current.answerIndex,
+      revealed: true,
+      reference: current.reference,
+      explanation: current.explanation,
+      difficulty: current.difficulty,
+      questionNum: idx + 1,
+      totalNum: questions.length,
+    });
   };
 
   if (finished) {

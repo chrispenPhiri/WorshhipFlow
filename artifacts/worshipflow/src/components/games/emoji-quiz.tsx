@@ -16,7 +16,7 @@ interface Answered {
 }
 
 export function EmojiQuizGame() {
-  const { presentOnScreen } = useGameBroadcast();
+  const { presentGameView } = useGameBroadcast();
   const [round, setRound] = useState(0);
   const [answers, setAnswers] = useState<Answered[]>([]);
   const [picked, setPicked] = useState<string | null>(null);
@@ -62,22 +62,33 @@ export function EmojiQuizGame() {
 
   function sendPuzzleToScreen() {
     if (!current) return;
-    presentOnScreen(
-      "Bible Emoji Quiz",
-      `Puzzle ${idx + 1}`,
-      `${current.emojis}\n\nWhat Bible ${current.category.toLowerCase()} is this?`,
-      { fontSize: 120 },
-    );
+    const correctIdx = currentOptions.indexOf(current.answer);
+    presentGameView("Bible Emoji Quiz", `Puzzle ${idx + 1}`, {
+      kind: "emoji-quiz",
+      emojis: current.emojis,
+      category: current.category,
+      options: currentOptions,
+      correctIndex: correctIdx,
+      revealed: false,
+      hint: current.hint,
+      round: idx + 1,
+      total: rounds.length,
+    });
   }
 
   function sendAnswerToScreen() {
     if (!current) return;
-    presentOnScreen(
-      "Bible Emoji Quiz — Answer",
-      current.answer,
-      `${current.emojis}\n\n${current.answer}`,
-      { fontSize: 96 },
-    );
+    const correctIdx = currentOptions.indexOf(current.answer);
+    presentGameView("Bible Emoji Quiz — Answer", current.answer, {
+      kind: "emoji-quiz",
+      emojis: current.emojis,
+      category: current.category,
+      options: currentOptions,
+      correctIndex: correctIdx,
+      revealed: true,
+      round: idx + 1,
+      total: rounds.length,
+    });
   }
 
   if (finished) {

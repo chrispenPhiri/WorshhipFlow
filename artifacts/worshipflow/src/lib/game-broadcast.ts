@@ -1,20 +1,22 @@
 /**
  * Shared "send game content to projection screen" hook.
  *
- * Mirrors the pattern used by the Daily Inspiration page (see
- * `pages/inspiration.tsx`): we re-use the existing `custom_text` content
- * type — no new screen-state fields, no broadcast-renderer changes — and
- * prepend a category label so the audience clearly sees what game is on
- * screen (e.g. "Bible Trivia", "Bible Charades").
+ * Two flavours:
  *
- * Each game component imports `useGameBroadcast()` and calls
- * `presentOnScreen(label, title, content)` whenever the operator clicks
- * the per-game "Send to screen" button.
+ *  - `presentOnScreen(label, title, content)` is the legacy plain-text
+ *    path.  It writes a `custom_text` content type with a label prefix.
+ *    Kept around so non-game callers (e.g. Daily Inspiration) keep
+ *    working unchanged.
  *
- * Why a shared helper instead of inlining `updateScreen` in every game:
- * a) all games get identical stage formatting (centred, large font,
- *    visible label), b) future tweaks (e.g. switching to a dedicated
- *    `game` content type) only need to happen in one place.
+ *  - `presentGameView(label, title, payload)` is the rich path.  It
+ *    encodes a structured `GameStagePayload` into `content` (as JSON),
+ *    sets `contentType: "game"`, and lets the broadcast / live-preview
+ *    render the actual game UI (option blocks, letter slots, lives,
+ *    coloured cards) at stage scale via <GameStageView>.
+ *
+ * Each game component picks one flavour per "Send to screen" button.
+ * The screen-state schema is unchanged — we just overload the meaning
+ * of `content` based on `contentType`.
  */
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -24,6 +26,7 @@ import {
   getGetScreenStateQueryKey,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
+import { encodeGamePayload, type GameStagePayload } from "@/lib/game-stage-payload";
 
 interface PresentOpts {
   /** Override the default font size (px). Useful for big single emojis. */
@@ -89,5 +92,50 @@ export function useGameBroadcast() {
     toast({ title: "Sent to screen", description: `${label} — ${title}` });
   }
 
-  return { presentOnScreen };
+  /**
+   * Project a structured game payload onto the broadcast screen.  The
+   * broadcast renderer recognises `contentType === "game"` and feeds the
+   * decoded payload to <GameStageView>, which renders the same coloured
+   * cards / option blocks the operator sees, just blown up to stage
+   * scale.  Layout / textStyle / background settings are preserved.
+   */
+  function presentGameView(
+    label: string,
+    title: string,
+    payload: GameStagePayload,
+  ): void {
+    const baseStyle = screenState?.textStyle ?? {
+      fontFamily: "Georgia",
+      fontSize: 64,
+      textColor: "#ffffff",
+      accentColor: "#f59e0b",
+      alignment: "center" as const,
+      animation: "fade_in" as const,
+    };
+    updateScreen({
+      data: {
+        isBlack: screenState?.isBlack ?? false,
+        isClear: false,
+        contentType: "game" as const,
+        title: `${label} — ${title}`,
+        content: encodeGamePayload(payload),
+        textStyle: {
+          ...baseStyle,
+          // Game stage view uses its own internal sizing scale; we keep
+          // a sensible base so the preview pane (which falls back to
+          // text rendering) doesn't display tiny text either.
+          fontSize: baseStyle.fontSize ?? 64,
+          alignment: baseStyle.alignment ?? "center",
+          fontFamily: baseStyle.fontFamily ?? "Georgia",
+          animation: baseStyle.animation ?? "fade_in",
+        },
+        background: screenState?.background ?? { type: "color", value: "#000000" },
+        tickerEnabled: screenState?.tickerEnabled ?? false,
+        comparisonMode: false,
+      },
+    });
+    toast({ title: "Sent to screen", description: `${label} — ${title}` });
+  }
+
+  return { presentOnScreen, presentGameView };
 }

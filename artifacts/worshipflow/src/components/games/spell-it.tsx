@@ -13,7 +13,7 @@ import { useGameBroadcast } from "@/lib/game-broadcast";
  * in place.  Players can untap any picked letter to backtrack.
  */
 export function SpellItGame() {
-  const { presentOnScreen } = useGameBroadcast();
+  const { presentGameView } = useGameBroadcast();
   const [round, setRound] = useState(0);
   const [target, setTarget] = useState<SpellWord>(() => pickWord());
   const [picked, setPicked] = useState<number[]>([]);   // indices into the pool
@@ -61,20 +61,23 @@ export function SpellItGame() {
   }
 
   function sendClueToScreen() {
-    presentOnScreen(
-      "Bible Spell-It",
-      target.word,
-      `${target.clue}\n\nLetters: ${target.word.length}\nCategory: ${target.category}`,
-      { fontSize: 56 },
-    );
+    presentGameView("Bible Spell-It", target.word, {
+      kind: "spell-it",
+      clue: target.clue,
+      category: target.category,
+      wordLength: target.word.length,
+      revealed: false,
+    });
   }
   function sendAnswerToScreen() {
-    presentOnScreen(
-      "Bible Spell-It — Answer",
-      target.word,
-      `${target.clue}\n\n${target.word}`,
-      { fontSize: 80 },
-    );
+    presentGameView("Bible Spell-It — Answer", target.word, {
+      kind: "spell-it",
+      clue: target.clue,
+      category: target.category,
+      wordLength: target.word.length,
+      revealed: true,
+      word: target.word,
+    });
   }
 
   // Each blank slot in the answer row.  When the picked row is fully
