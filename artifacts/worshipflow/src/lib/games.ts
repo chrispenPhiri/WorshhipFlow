@@ -185,3 +185,116 @@ export function shuffle<T>(arr: T[]): T[] {
 export function pickRandom<T>(arr: T[], n: number): T[] {
   return shuffle(arr).slice(0, n);
 }
+
+// ─── VERSE SCRAMBLE ───────────────────────────────────────────────────────
+//
+// Show a familiar verse with its words shuffled and have the group put it
+// back in order.  Verses kept short so the scramble is solvable in a group
+// setting without paper.  KJV per project preference.
+
+export interface ScrambleVerse {
+  id: string;
+  reference: string;
+  verse: string;        // KJV text
+  hint?: string;        // theme / book to nudge the group
+}
+
+export const VERSE_SCRAMBLE: ScrambleVerse[] = [
+  { id: "vs1",  reference: "John 3:16",        verse: "For God so loved the world",                                            hint: "The most-quoted verse" },
+  { id: "vs2",  reference: "Psalm 23:1",       verse: "The Lord is my shepherd I shall not want",                              hint: "A psalm of David" },
+  { id: "vs3",  reference: "Proverbs 3:5",     verse: "Trust in the Lord with all thine heart",                                hint: "A famous proverb" },
+  { id: "vs4",  reference: "Philippians 4:13", verse: "I can do all things through Christ which strengtheneth me",             hint: "Paul to the Philippians" },
+  { id: "vs5",  reference: "Romans 8:28",      verse: "All things work together for good to them that love God",               hint: "Pauline promise" },
+  { id: "vs6",  reference: "Matthew 5:9",      verse: "Blessed are the peacemakers for they shall be called the children of God", hint: "From the Beatitudes" },
+  { id: "vs7",  reference: "John 14:6",        verse: "I am the way the truth and the life",                                   hint: "Jesus speaking" },
+  { id: "vs8",  reference: "Genesis 1:1",      verse: "In the beginning God created the heaven and the earth",                 hint: "The very first verse" },
+  { id: "vs9",  reference: "Psalm 119:105",    verse: "Thy word is a lamp unto my feet and a light unto my path",              hint: "About Scripture" },
+  { id: "vs10", reference: "Joshua 1:9",       verse: "Be strong and of a good courage be not afraid",                          hint: "God to Joshua" },
+  { id: "vs11", reference: "Isaiah 40:31",     verse: "They that wait upon the Lord shall renew their strength",               hint: "An Isaiah promise" },
+  { id: "vs12", reference: "Matthew 6:33",     verse: "Seek ye first the kingdom of God and his righteousness",                hint: "Sermon on the Mount" },
+  { id: "vs13", reference: "Jeremiah 29:11",   verse: "For I know the thoughts that I think toward you saith the Lord",        hint: "A prophet's promise" },
+  { id: "vs14", reference: "John 11:35",       verse: "Jesus wept",                                                              hint: "The shortest verse" },
+  { id: "vs15", reference: "Galatians 5:22",   verse: "The fruit of the Spirit is love joy peace",                              hint: "Fruit of the Spirit (start)" },
+  { id: "vs16", reference: "Hebrews 11:1",     verse: "Now faith is the substance of things hoped for",                         hint: "On faith" },
+  { id: "vs17", reference: "1 John 4:8",       verse: "He that loveth not knoweth not God for God is love",                     hint: "Three little words at the end" },
+  { id: "vs18", reference: "Psalm 46:10",      verse: "Be still and know that I am God",                                        hint: "A psalm of stillness" },
+];
+
+// ─── BIBLE EMOJI QUIZ ─────────────────────────────────────────────────────
+//
+// Pure visual fun — guess the Bible person/event/parable from a row of
+// emojis.  Each puzzle gives 4 multiple-choice options so the group
+// always has a path to a winning guess.
+
+export interface EmojiPuzzle {
+  id: string;
+  emojis: string;
+  answer: string;
+  options: string[];                // 4 options including the answer
+  category: "Story" | "Person" | "Parable" | "Object";
+  hint?: string;
+}
+
+export const EMOJI_QUIZ: EmojiPuzzle[] = [
+  { id: "e1",  emojis: "🌊🛶🦒🐘🦓",       answer: "Noah's Ark",                  options: ["Noah's Ark", "Crossing the Red Sea", "Jonah's Whale", "Garden of Eden"], category: "Story" },
+  { id: "e2",  emojis: "🌊✋",              answer: "Crossing the Red Sea",        options: ["Walking on Water", "Crossing the Red Sea", "Baptism of Jesus", "Jesus Calms the Storm"], category: "Story", hint: "Moses raised his rod" },
+  { id: "e3",  emojis: "👨‍🦳🪨🏹",          answer: "David and Goliath",           options: ["Cain and Abel", "Samson", "David and Goliath", "Joshua and Jericho"], category: "Story" },
+  { id: "e4",  emojis: "🌳🍎🐍",            answer: "Garden of Eden",              options: ["Tower of Babel", "Garden of Eden", "Jonah and the Vine", "The Lost Sheep"], category: "Story" },
+  { id: "e5",  emojis: "🐋🌊🙇",            answer: "Jonah and the Whale",         options: ["Peter Walking on Water", "Jonah and the Whale", "Paul Shipwrecked", "The Net of Fish"], category: "Story" },
+  { id: "e6",  emojis: "🦁🦁🙏",            answer: "Daniel in the Lions' Den",    options: ["Samson", "Daniel in the Lions' Den", "David's Sheep", "The Good Shepherd"], category: "Story", hint: "He prayed three times a day" },
+  { id: "e7",  emojis: "🍞🐟🐟",            answer: "Feeding the 5,000",           options: ["The Last Supper", "Feeding the 5,000", "Manna from Heaven", "The Loaves of Showbread"], category: "Story" },
+  { id: "e8",  emojis: "👶🐑⭐",             answer: "The Nativity",                options: ["The Nativity", "The Baptism", "The Last Supper", "The Ascension"], category: "Story" },
+  { id: "e9",  emojis: "✝️📿",              answer: "The Crucifixion",             options: ["The Resurrection", "The Crucifixion", "The Ascension", "Pentecost"], category: "Story" },
+  { id: "e10", emojis: "🪨🪦💨",            answer: "The Resurrection",            options: ["The Crucifixion", "The Resurrection", "Lazarus Raised", "The Ascension"], category: "Story", hint: "Three days later" },
+  { id: "e11", emojis: "🔥🌳",              answer: "Burning Bush",                options: ["Burning Bush", "Pillar of Fire", "Pentecost", "Elijah on Carmel"], category: "Object", hint: "Moses was a shepherd at the time" },
+  { id: "e12", emojis: "🏗️🌍🗣️",          answer: "Tower of Babel",              options: ["Solomon's Temple", "Tower of Babel", "Walls of Jericho", "Noah's Ark"], category: "Story" },
+  { id: "e13", emojis: "🎺🧱🚶",            answer: "Walls of Jericho",            options: ["Walls of Jericho", "Tower of Babel", "Pentecost", "Solomon's Temple"], category: "Story", hint: "Marched seven times" },
+  { id: "e14", emojis: "🐑🥖🍷",            answer: "The Last Supper",             options: ["Feeding the 5,000", "Wedding at Cana", "The Last Supper", "Passover"], category: "Story" },
+  { id: "e15", emojis: "💧🍷",              answer: "Wedding at Cana",             options: ["The Last Supper", "Wedding at Cana", "Baptism of Jesus", "Passover"], category: "Story", hint: "Jesus' first miracle" },
+  { id: "e16", emojis: "👑👶✂️",            answer: "Solomon's Wisdom",            options: ["Solomon's Wisdom", "Moses Spared", "Samuel's Birth", "John the Baptist"], category: "Story", hint: "Two mothers, one child" },
+  { id: "e17", emojis: "🐟🐟🐟🥅",          answer: "The Miraculous Catch",        options: ["Feeding the 5,000", "The Miraculous Catch", "Jonah's Storm", "Paul's Shipwreck"], category: "Story" },
+  { id: "e18", emojis: "👨‍🦱💇✂️",         answer: "Samson and Delilah",          options: ["Esau and Jacob", "Samson and Delilah", "John the Baptist", "David and Bathsheba"], category: "Story", hint: "His strength was in his hair" },
+  { id: "e19", emojis: "👨‍🦰🥣🍲",          answer: "Esau Sells Birthright",       options: ["Esau Sells Birthright", "Joseph and the Famine", "Manna in the Wilderness", "Wedding at Cana"], category: "Story", hint: "For a bowl of stew" },
+  { id: "e20", emojis: "👨🌈🐑🐑🐑",        answer: "Joseph's Coat",               options: ["Joseph's Coat", "David the Shepherd", "The Good Shepherd", "Jacob's Ladder"], category: "Object" },
+];
+
+// ─── BIBLE HANGMAN ────────────────────────────────────────────────────────
+//
+// Classic word-guessing — pick letters one at a time, six wrong guesses
+// before "game over".  Words are uppercased Bible nouns/names; categories
+// are shown alongside as a gentle nudge.
+
+export interface HangmanWord {
+  id: string;
+  word: string;          // letters only (A-Z, possibly with a space for "RED SEA")
+  category: "Person" | "Place" | "Object" | "Event";
+  hint?: string;
+}
+
+export const HANGMAN_WORDS: HangmanWord[] = [
+  { id: "h1",  word: "GOLIATH",      category: "Person", hint: "Felled by a stone" },
+  { id: "h2",  word: "JERICHO",      category: "Place",  hint: "Walls fell down" },
+  { id: "h3",  word: "BETHLEHEM",    category: "Place",  hint: "Birthplace of Jesus" },
+  { id: "h4",  word: "MOSES",        category: "Person", hint: "Led the Exodus" },
+  { id: "h5",  word: "PHARAOH",      category: "Person", hint: "Egyptian king" },
+  { id: "h6",  word: "MANGER",       category: "Object", hint: "A baby's first bed" },
+  { id: "h7",  word: "MIRACLE",      category: "Object", hint: "Beyond explanation" },
+  { id: "h8",  word: "RESURRECTION", category: "Event",  hint: "Third day" },
+  { id: "h9",  word: "CRUCIFIXION",  category: "Event",  hint: "Calvary" },
+  { id: "h10", word: "PENTECOST",    category: "Event",  hint: "Tongues of fire" },
+  { id: "h11", word: "ABRAHAM",      category: "Person", hint: "Father of nations" },
+  { id: "h12", word: "GENESIS",      category: "Object", hint: "Book of beginnings" },
+  { id: "h13", word: "REVELATION",   category: "Object", hint: "Last book" },
+  { id: "h14", word: "TABERNACLE",   category: "Object", hint: "Portable house of God" },
+  { id: "h15", word: "GETHSEMANE",   category: "Place",  hint: "Garden of prayer" },
+  { id: "h16", word: "NAZARETH",     category: "Place",  hint: "Hometown of Jesus" },
+  { id: "h17", word: "BABYLON",      category: "Place",  hint: "Place of exile" },
+  { id: "h18", word: "ZACCHAEUS",    category: "Person", hint: "Climbed a tree" },
+  { id: "h19", word: "MAGDALENE",    category: "Person", hint: "Mary the witness" },
+  { id: "h20", word: "PARABLE",      category: "Object", hint: "A teaching story" },
+  { id: "h21", word: "DISCIPLE",     category: "Person", hint: "A learner" },
+  { id: "h22", word: "NEHEMIAH",     category: "Person", hint: "Rebuilt the wall" },
+  { id: "h23", word: "ANGEL",        category: "Person", hint: "Heavenly messenger" },
+  { id: "h24", word: "PSALMS",       category: "Object", hint: "150 songs" },
+  { id: "h25", word: "MOUNTAIN",     category: "Place",  hint: "Sermon delivered here" },
+];

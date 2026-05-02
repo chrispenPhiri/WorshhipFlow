@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, XCircle, RotateCcw, ArrowRight, Trophy, Quote } from "lucide-react";
+import { CheckCircle2, XCircle, RotateCcw, ArrowRight, Trophy, Quote, Send } from "lucide-react";
 import { WHO_SAID_IT, shuffle, type QuoteRound } from "@/lib/games";
+import { useGameBroadcast } from "@/lib/game-broadcast";
 
 const ROUNDS = 8;
 
@@ -18,6 +19,7 @@ export function WhoSaidItGame() {
   const [round, setRound] = useState(0);
   const [answers, setAnswers] = useState<Answered[]>([]);
   const [picked, setPicked] = useState<string | null>(null);
+  const { presentOnScreen } = useGameBroadcast();
 
   const rounds = useMemo<QuoteRound[]>(() =>
     shuffle(WHO_SAID_IT).slice(0, ROUNDS),
@@ -46,6 +48,27 @@ export function WhoSaidItGame() {
     setAnswers([]);
     setPicked(null);
     setRound(r => r + 1);
+  };
+
+  // Project the current quote (without the answer) for the audience.
+  const sendQuoteToScreen = () => {
+    if (!current) return;
+    presentOnScreen(
+      "Who Said It?",
+      `Quote ${idx + 1}`,
+      `"${current.quote}"\n\nWho said it?`,
+      { fontSize: 56 },
+    );
+  };
+  const sendAnswerToScreen = () => {
+    if (!current) return;
+    const tail = current.reference ? `\n\n— ${current.reference}` : "";
+    presentOnScreen(
+      "Who Said It? — Answer",
+      current.speaker,
+      `"${current.quote}"\n\nSpoken by: ${current.speaker}${tail}`,
+      { fontSize: 52 },
+    );
   };
 
   if (finished) {
@@ -169,6 +192,16 @@ export function WhoSaidItGame() {
           )}
         </CardContent>
       </Card>
+
+      {/* Send-to-screen controls */}
+      <div className="flex items-center gap-2 flex-wrap justify-center">
+        <Button size="sm" variant="outline" onClick={sendQuoteToScreen} className="gap-1.5" data-testid="button-whosaid-send-quote">
+          <Send className="w-3.5 h-3.5" /> Show quote on screen
+        </Button>
+        <Button size="sm" variant="outline" onClick={sendAnswerToScreen} className="gap-1.5" data-testid="button-whosaid-send-answer">
+          <Send className="w-3.5 h-3.5" /> Reveal speaker on screen
+        </Button>
+      </div>
     </div>
   );
 }

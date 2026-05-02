@@ -342,7 +342,7 @@ const SECTIONS: Section[] = [
     icon: Gamepad2,
     title: "Bible Games",
     to: "/games",
-    summary: "Four offline Bible games for youth nights, fellowship meetings, family time, or as a service warm-up.",
+    summary: "Seven offline Bible games for youth nights, fellowship meetings, family time, or as a service warm-up — most can be projected on the main screen.",
     steps: [
       {
         heading: "Pick a game",
@@ -354,13 +354,25 @@ const SECTIONS: Section[] = [
               <li><strong>Books of the Bible</strong> — put the OT or NT books in correct order with instant feedback.</li>
               <li><strong>Who Said It?</strong> — match famous quotes to the Bible figure who spoke them.</li>
               <li><strong>Bible Charades</strong> — draw a random card and act out the person, event, or parable.</li>
+              <li><strong>Verse Scramble</strong> — tap the words in the right order to rebuild a familiar verse (KJV).</li>
+              <li><strong>Bible Emoji Quiz</strong> — guess the Bible story or person from a row of emojis.</li>
+              <li><strong>Bible Hangman</strong> — classic letter-by-letter word guessing with six lives.</li>
             </ul>
           </>
         ),
       },
       {
         heading: "Play with a group",
-        body: <p>Trivia and Who Said It? give a final score and a per-question review with the correct answers and references. Books of the Bible scores accuracy of placement. Charades has no scoring — it is a card deck designed for playing in person.</p>,
+        body: <p>Trivia, Who Said It? and Bible Emoji Quiz give a final score and a per-question review with answers and references. Books of the Bible scores accuracy of placement. Charades, Verse Scramble, and Hangman are card-style rounds designed for playing together in person.</p>,
+      },
+      {
+        heading: "Show the game on the projector",
+        body: (
+          <>
+            <p>Most games have a <strong>Show on screen</strong> button (and a <strong>Reveal answer on screen</strong> button) so the whole group can read the question, puzzle, or charade card on the projection.</p>
+            <p className="mt-1 text-sm text-muted-foreground">For Charades, the prompt only sends to the screen <em>after</em> you reveal it — so the actor can stay in the dark while the audience plays guesser.</p>
+          </>
+        ),
       },
       {
         heading: "Restart anytime",
@@ -370,6 +382,7 @@ const SECTIONS: Section[] = [
     tips: [
       <>Every game works fully <strong>offline</strong>.</>,
       <>For Charades, only the actor should look at the card — tap to reveal it.</>,
+      <>The <strong>Show on screen</strong> buttons re-use the same projector, so anything game-related will replace the current verse/song.</>,
     ],
   },
   {

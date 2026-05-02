@@ -2,16 +2,30 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Shuffle, Eye, EyeOff, Lightbulb } from "lucide-react";
+import { Shuffle, Eye, EyeOff, Lightbulb, Send } from "lucide-react";
 import { CHARADES, shuffle, type CharadeCard } from "@/lib/games";
+import { useGameBroadcast } from "@/lib/game-broadcast";
 
 export function CharadesGame() {
   const [deck, setDeck] = useState<CharadeCard[]>(() => shuffle(CHARADES));
   const [idx, setIdx] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [showHint, setShowHint] = useState(false);
+  const { presentOnScreen } = useGameBroadcast();
 
   const current = deck[idx % deck.length];
+
+  // Project the revealed prompt to the screen — useful when the operator
+  // wants the audience (NOT the actor) to see what the actor is acting out.
+  const sendCardToScreen = () => {
+    if (!current) return;
+    presentOnScreen(
+      "Bible Charades",
+      current.prompt,
+      `${current.prompt}\n\n(${current.category})`,
+      { fontSize: 80 },
+    );
+  };
 
   const next = () => {
     setRevealed(false);
@@ -91,6 +105,17 @@ export function CharadesGame() {
             data-testid="button-hide-charade"
           >
             <EyeOff className="w-3.5 h-3.5" /> Hide card
+          </Button>
+        )}
+        {revealed && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={sendCardToScreen}
+            className="gap-1.5"
+            data-testid="button-charade-send"
+          >
+            <Send className="w-3.5 h-3.5" /> Show on screen
           </Button>
         )}
         <Button onClick={next} className="gap-2" data-testid="button-next-charade">

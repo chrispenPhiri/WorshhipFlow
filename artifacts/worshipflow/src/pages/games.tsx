@@ -3,14 +3,26 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Gamepad2, Brain, BookOpen, Quote, Drama, ArrowLeft,
+  Shuffle, Smile, SpellCheck,
 } from "lucide-react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { TriviaGame } from "@/components/games/trivia";
 import { BooksOfBibleGame } from "@/components/games/books-of-bible";
 import { WhoSaidItGame } from "@/components/games/who-said-it";
 import { CharadesGame } from "@/components/games/charades";
+import { VerseScrambleGame } from "@/components/games/verse-scramble";
+import { EmojiQuizGame } from "@/components/games/emoji-quiz";
+import { HangmanGame } from "@/components/games/hangman";
 
-type ActiveGame = null | "trivia" | "books" | "whosaid" | "charades";
+type ActiveGame =
+  | null
+  | "trivia"
+  | "books"
+  | "whosaid"
+  | "charades"
+  | "scramble"
+  | "emoji"
+  | "hangman";
 
 interface GameMeta {
   id: Exclude<ActiveGame, null>;
@@ -54,6 +66,30 @@ const GAMES: GameMeta[] = [
     badge: "30 cards",
     colour: "text-fuchsia-400",
   },
+  {
+    id: "scramble",
+    title: "Verse Scramble",
+    description: "Tap the words in the right order to rebuild a familiar verse. Send the puzzle to the projection screen.",
+    icon: Shuffle,
+    badge: "18 verses",
+    colour: "text-violet-400",
+  },
+  {
+    id: "emoji",
+    title: "Bible Emoji Quiz",
+    description: "Guess the Bible story, person, or parable from a row of emojis. Big, fun, and great on the projector.",
+    icon: Smile,
+    badge: "20 puzzles",
+    colour: "text-rose-400",
+  },
+  {
+    id: "hangman",
+    title: "Bible Hangman",
+    description: "Classic letter-by-letter word guessing with Bible names, places, and events. Six lives per round.",
+    icon: SpellCheck,
+    badge: "25 words",
+    colour: "text-cyan-400",
+  },
 ];
 
 export default function GamesPage() {
@@ -79,6 +115,9 @@ export default function GamesPage() {
         {active === "books" && <BooksOfBibleGame />}
         {active === "whosaid" && <WhoSaidItGame />}
         {active === "charades" && <CharadesGame />}
+        {active === "scramble" && <VerseScrambleGame />}
+        {active === "emoji" && <EmojiQuizGame />}
+        {active === "hangman" && <HangmanGame />}
       </div>
     );
   }

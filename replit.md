@@ -48,7 +48,7 @@ The application is built as a pnpm monorepo using Node.js 24 and TypeScript 5.9.
     *   **Sermon Notes:** Rich CRUD editor with search and presentation capabilities.
     *   **Daily Inspiration:** Displays Verse of the Day, Bible facts, and a Christian liturgical calendar. Content includes screen labelling for context.
     *   **Teachings:** Offers 42 ready-to-use lessons categorized by audience and topic, with sections like Key Verse, Teaching Points, Discussion Questions, Activity, and Closing Prayer. Supports user-added custom teachings and AI-generated drafts (using Replit AI Integrations OpenAI proxy).
-    *   **Bible Games:** Four offline games: Bible Trivia, Books of the Bible (ordering), Who Said It?, and Bible Charades.
+    *   **Bible Games:** Seven offline games — Bible Trivia, Books of the Bible (ordering), Who Said It?, Bible Charades, Verse Scramble (KJV), Bible Emoji Quiz, and Bible Hangman. Most games include "Show on screen" and "Reveal answer on screen" buttons that project the puzzle/question/answer onto the broadcast window via the existing `custom_text` content type — no schema changes were needed (see `lib/game-broadcast.ts`).
     *   **How To:** In-app, searchable user guide with quick-jump tiles.
     *   **Settings:** Application-wide settings for church name, default font, etc.
 

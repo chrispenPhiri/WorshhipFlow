@@ -3,10 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, XCircle, RotateCcw, ArrowRight, Trophy } from "lucide-react";
+import { CheckCircle2, XCircle, RotateCcw, ArrowRight, Trophy, Send } from "lucide-react";
 import {
   TRIVIA, shuffle, type TriviaQuestion, type TriviaDifficulty,
 } from "@/lib/games";
+import { useGameBroadcast } from "@/lib/game-broadcast";
 
 const QUESTIONS_PER_GAME = 10;
 
@@ -21,6 +22,7 @@ export function TriviaGame() {
   const [round, setRound] = useState(0); // increments to reseed questions
   const [answers, setAnswers] = useState<AnsweredQuestion[]>([]);
   const [picked, setPicked] = useState<number | null>(null);
+  const { presentOnScreen } = useGameBroadcast();
 
   const questions = useMemo<TriviaQuestion[]>(() => {
     const pool = difficulty === "Mixed" ? TRIVIA : TRIVIA.filter(q => q.difficulty === difficulty);
@@ -51,6 +53,36 @@ export function TriviaGame() {
     setAnswers([]);
     setPicked(null);
     setRound(r => r + 1);
+  };
+
+  // Project the current question to the broadcast window so the
+  // congregation/group can read along.  We bake the four options into the
+  // body with A / B / C / D prefixes — same as on the operator screen.
+  const sendQuestionToScreen = () => {
+    if (!current) return;
+    const optsBlock = current.options
+      .map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`)
+      .join("\n");
+    presentOnScreen(
+      "Bible Trivia",
+      `Question ${idx + 1}`,
+      `${current.question}\n\n${optsBlock}`,
+      { fontSize: 48, alignment: "left" },
+    );
+  };
+
+  const sendAnswerToScreen = () => {
+    if (!current) return;
+    const correct = current.options[current.answerIndex] ?? "";
+    const tail =
+      (current.reference ? `\n\n— ${current.reference}` : "") +
+      (current.explanation ? `\n${current.explanation}` : "");
+    presentOnScreen(
+      "Bible Trivia — Answer",
+      `Q${idx + 1}`,
+      `${current.question}\n\n✓ ${correct}${tail}`,
+      { fontSize: 52 },
+    );
   };
 
   if (finished) {
@@ -198,6 +230,17 @@ export function TriviaGame() {
           )}
         </CardContent>
       </Card>
+
+      {/* Send-to-screen controls — mirrors the per-game pattern so the
+          audience can read the question along with the operator. */}
+      <div className="flex items-center gap-2 flex-wrap justify-center">
+        <Button size="sm" variant="outline" onClick={sendQuestionToScreen} className="gap-1.5" data-testid="button-trivia-send-question">
+          <Send className="w-3.5 h-3.5" /> Show question on screen
+        </Button>
+        <Button size="sm" variant="outline" onClick={sendAnswerToScreen} className="gap-1.5" data-testid="button-trivia-send-answer">
+          <Send className="w-3.5 h-3.5" /> Reveal answer on screen
+        </Button>
+      </div>
     </div>
   );
 }
