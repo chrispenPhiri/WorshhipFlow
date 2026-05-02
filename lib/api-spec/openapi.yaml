@@ -913,6 +913,26 @@ components:
           description: "Letter spacing in 0.01em units (e.g. 4 = 0.04em)."
         bibleRefUppercase:
           type: boolean
+        bibleRefShow:
+          type: boolean
+        bibleBookShow:
+          type: boolean
+        bibleBookFontSize:
+          type: integer
+        bibleBookColor:
+          type: string
+        bibleBookBgColor:
+          type: string
+        bibleBookBold:
+          type: boolean
+        bibleBookPadding:
+          type: integer
+        bibleBookRadius:
+          type: integer
+        bibleBookLetterSpacing:
+          type: integer
+        bibleBookUppercase:
+          type: boolean
       required:
         - isBlack
         - isClear

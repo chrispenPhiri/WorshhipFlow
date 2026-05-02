@@ -459,6 +459,25 @@ export default function MediaPage() {
     textOverlayAlign: (screenState?.textOverlayAlign ?? "left") as "left" | "center" | "right",
     textOverlayFontFamily: screenState?.textOverlayFontFamily ?? "inherit",
     textOverlayShadow: screenState?.textOverlayShadow ?? false,
+    bibleRefShow: screenState?.bibleRefShow ?? true,
+    bibleRefFontSize: screenState?.bibleRefFontSize ?? 28,
+    bibleRefColor: screenState?.bibleRefColor ?? "#ffffff",
+    bibleRefBgColor: screenState?.bibleRefBgColor ?? "rgba(0,0,0,0.55)",
+    bibleRefBold: screenState?.bibleRefBold ?? true,
+    bibleRefShowTranslation: screenState?.bibleRefShowTranslation ?? true,
+    bibleRefPadding: screenState?.bibleRefPadding ?? 10,
+    bibleRefRadius: screenState?.bibleRefRadius ?? 6,
+    bibleRefLetterSpacing: screenState?.bibleRefLetterSpacing ?? 4,
+    bibleRefUppercase: screenState?.bibleRefUppercase ?? false,
+    bibleBookShow: screenState?.bibleBookShow ?? true,
+    bibleBookFontSize: screenState?.bibleBookFontSize ?? 28,
+    bibleBookColor: screenState?.bibleBookColor ?? "#ffffff",
+    bibleBookBgColor: screenState?.bibleBookBgColor ?? "rgba(0,0,0,0.52)",
+    bibleBookBold: screenState?.bibleBookBold ?? true,
+    bibleBookPadding: screenState?.bibleBookPadding ?? 10,
+    bibleBookRadius: screenState?.bibleBookRadius ?? 6,
+    bibleBookLetterSpacing: screenState?.bibleBookLetterSpacing ?? 18,
+    bibleBookUppercase: screenState?.bibleBookUppercase ?? true,
   });
 
   const updateOverlay = (patch: Partial<ReturnType<typeof safeFullState>>) =>
@@ -2082,6 +2101,221 @@ export default function MediaPage() {
               </Card>
             );
           })()}
+
+          {/* ─── Scripture Labels (book name + verse reference) ─── */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-base"><FileImage className="w-4 h-4" /> Scripture Labels</CardTitle>
+                  <CardDescription className="text-xs">Customize the book-name pill on top and the verse reference pill on the bottom</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <SectionChevron section="bible-labels" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-5" hidden={!openOverlays.has("bible-labels")}>
+              {(() => {
+                const presetSizes = [16, 20, 24, 28, 36, 48, 64];
+                const bgPresets = [
+                  { v: "transparent",       label: "None",   swatch: "transparent" },
+                  { v: "rgba(0,0,0,0.32)",  label: "Dark",   swatch: "rgba(0,0,0,0.32)" },
+                  { v: "rgba(0,0,0,0.55)",  label: "Dark+",  swatch: "rgba(0,0,0,0.55)" },
+                  { v: "rgba(0,0,0,0.85)",  label: "Solid",  swatch: "rgba(0,0,0,0.85)" },
+                  { v: "rgba(255,255,255,0.18)", label: "Light",  swatch: "rgba(255,255,255,0.4)" },
+                  { v: "rgba(180,30,30,0.7)",    label: "Accent", swatch: "rgba(180,30,30,0.85)" },
+                ];
+                return (
+                  <>
+                    {/* ━━━ Book Name (top) ━━━ */}
+                    <div className="space-y-3 rounded-md border border-border/60 p-3 bg-muted/20">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Book Name (top)</label>
+                        <Switch
+                          data-testid="switch-bible-book-show"
+                          checked={screenState?.bibleBookShow ?? true}
+                          onCheckedChange={v => updateOverlay({ bibleBookShow: v })}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between">
+                            <label className="text-sm font-medium">Font Size</label>
+                            <span className="text-xs text-muted-foreground">{screenState?.bibleBookFontSize ?? 28}px</span>
+                          </div>
+                          <Slider data-testid="slider-bible-book-size" min={12} max={96} step={1}
+                            value={[screenState?.bibleBookFontSize ?? 28]}
+                            onValueChange={([v]) => updateOverlay({ bibleBookFontSize: v })} />
+                          <div className="flex flex-wrap gap-1 pt-1">
+                            {presetSizes.map(s => (
+                              <button key={s} type="button"
+                                onClick={() => updateOverlay({ bibleBookFontSize: s })}
+                                className={`text-[10px] px-1.5 py-0.5 rounded border ${(screenState?.bibleBookFontSize ?? 28) === s ? "border-primary bg-primary/10" : "border-border hover:bg-muted/40"}`}
+                              >{s}</button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <ColorInput label="Text Color"
+                            value={screenState?.bibleBookColor ?? "#ffffff"}
+                            onChange={v => updateOverlay({ bibleBookColor: v })} />
+                          <div className="flex items-center gap-2 pt-1">
+                            <label className="text-[11px] text-muted-foreground flex items-center gap-1.5 cursor-pointer">
+                              <Switch className="scale-75" checked={screenState?.bibleBookBold ?? true}
+                                onCheckedChange={v => updateOverlay({ bibleBookBold: v })} /> Bold
+                            </label>
+                            <label className="text-[11px] text-muted-foreground flex items-center gap-1.5 cursor-pointer">
+                              <Switch className="scale-75" checked={screenState?.bibleBookUppercase ?? true}
+                                onCheckedChange={v => updateOverlay({ bibleBookUppercase: v })} /> UPPER
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] text-muted-foreground">Background</label>
+                        <div className="grid grid-cols-6 gap-1.5">
+                          {bgPresets.map(p => (
+                            <button key={p.v} type="button" onClick={() => updateOverlay({ bibleBookBgColor: p.v })}
+                              className={`h-7 rounded border transition-colors flex items-center justify-center ${(screenState?.bibleBookBgColor ?? "rgba(0,0,0,0.52)") === p.v ? "border-primary ring-1 ring-primary" : "border-border hover:bg-muted/40"}`}
+                              style={{ background: p.swatch === "transparent" ? "repeating-conic-gradient(#666 0% 25%, #999 0% 50%) 50% / 6px 6px" : p.swatch }}>
+                              <span className="text-[9px]" style={{ color: p.v.includes("255,255,255") || p.swatch === "transparent" ? "#000" : "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>{p.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                        <Input className="h-7 text-[11px] font-mono mt-1"
+                          value={screenState?.bibleBookBgColor ?? "rgba(0,0,0,0.52)"}
+                          onChange={e => updateOverlay({ bibleBookBgColor: e.target.value })} />
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between">
+                            <label className="text-[11px] font-medium">Padding</label>
+                            <span className="text-[10px] text-muted-foreground">{screenState?.bibleBookPadding ?? 10}px</span>
+                          </div>
+                          <Slider min={2} max={40} step={1} value={[screenState?.bibleBookPadding ?? 10]}
+                            onValueChange={([v]) => updateOverlay({ bibleBookPadding: v })} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between">
+                            <label className="text-[11px] font-medium">Radius</label>
+                            <span className="text-[10px] text-muted-foreground">{screenState?.bibleBookRadius ?? 6}px</span>
+                          </div>
+                          <Slider min={0} max={32} step={1} value={[screenState?.bibleBookRadius ?? 6]}
+                            onValueChange={([v]) => updateOverlay({ bibleBookRadius: v })} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between">
+                            <label className="text-[11px] font-medium">Spacing</label>
+                            <span className="text-[10px] text-muted-foreground">0.{String(screenState?.bibleBookLetterSpacing ?? 18).padStart(2, "0")}em</span>
+                          </div>
+                          <Slider min={0} max={40} step={1} value={[screenState?.bibleBookLetterSpacing ?? 18]}
+                            onValueChange={([v]) => updateOverlay({ bibleBookLetterSpacing: v })} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ━━━ Verse Reference (bottom) ━━━ */}
+                    <div className="space-y-3 rounded-md border border-border/60 p-3 bg-muted/20">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Verse Reference (bottom)</label>
+                        <Switch
+                          data-testid="switch-bible-ref-show"
+                          checked={screenState?.bibleRefShow ?? true}
+                          onCheckedChange={v => updateOverlay({ bibleRefShow: v })}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between">
+                            <label className="text-sm font-medium">Font Size</label>
+                            <span className="text-xs text-muted-foreground">{screenState?.bibleRefFontSize ?? 28}px</span>
+                          </div>
+                          <Slider data-testid="slider-bible-ref-size" min={12} max={96} step={1}
+                            value={[screenState?.bibleRefFontSize ?? 28]}
+                            onValueChange={([v]) => updateOverlay({ bibleRefFontSize: v })} />
+                          <div className="flex flex-wrap gap-1 pt-1">
+                            {presetSizes.map(s => (
+                              <button key={s} type="button"
+                                onClick={() => updateOverlay({ bibleRefFontSize: s })}
+                                className={`text-[10px] px-1.5 py-0.5 rounded border ${(screenState?.bibleRefFontSize ?? 28) === s ? "border-primary bg-primary/10" : "border-border hover:bg-muted/40"}`}
+                              >{s}</button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <ColorInput label="Text Color"
+                            value={screenState?.bibleRefColor ?? "#ffffff"}
+                            onChange={v => updateOverlay({ bibleRefColor: v })} />
+                          <div className="flex flex-wrap items-center gap-2 pt-1">
+                            <label className="text-[11px] text-muted-foreground flex items-center gap-1.5 cursor-pointer">
+                              <Switch className="scale-75" checked={screenState?.bibleRefBold ?? true}
+                                onCheckedChange={v => updateOverlay({ bibleRefBold: v })} /> Bold
+                            </label>
+                            <label className="text-[11px] text-muted-foreground flex items-center gap-1.5 cursor-pointer">
+                              <Switch className="scale-75" checked={screenState?.bibleRefUppercase ?? false}
+                                onCheckedChange={v => updateOverlay({ bibleRefUppercase: v })} /> UPPER
+                            </label>
+                            <label className="text-[11px] text-muted-foreground flex items-center gap-1.5 cursor-pointer">
+                              <Switch className="scale-75" checked={screenState?.bibleRefShowTranslation ?? true}
+                                onCheckedChange={v => updateOverlay({ bibleRefShowTranslation: v })} /> Show abbr
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] text-muted-foreground">Background</label>
+                        <div className="grid grid-cols-6 gap-1.5">
+                          {bgPresets.map(p => (
+                            <button key={p.v} type="button" onClick={() => updateOverlay({ bibleRefBgColor: p.v })}
+                              className={`h-7 rounded border transition-colors flex items-center justify-center ${(screenState?.bibleRefBgColor ?? "rgba(0,0,0,0.55)") === p.v ? "border-primary ring-1 ring-primary" : "border-border hover:bg-muted/40"}`}
+                              style={{ background: p.swatch === "transparent" ? "repeating-conic-gradient(#666 0% 25%, #999 0% 50%) 50% / 6px 6px" : p.swatch }}>
+                              <span className="text-[9px]" style={{ color: p.v.includes("255,255,255") || p.swatch === "transparent" ? "#000" : "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>{p.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                        <Input className="h-7 text-[11px] font-mono mt-1"
+                          value={screenState?.bibleRefBgColor ?? "rgba(0,0,0,0.55)"}
+                          onChange={e => updateOverlay({ bibleRefBgColor: e.target.value })} />
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between">
+                            <label className="text-[11px] font-medium">Padding</label>
+                            <span className="text-[10px] text-muted-foreground">{screenState?.bibleRefPadding ?? 10}px</span>
+                          </div>
+                          <Slider min={2} max={40} step={1} value={[screenState?.bibleRefPadding ?? 10]}
+                            onValueChange={([v]) => updateOverlay({ bibleRefPadding: v })} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between">
+                            <label className="text-[11px] font-medium">Radius</label>
+                            <span className="text-[10px] text-muted-foreground">{screenState?.bibleRefRadius ?? 6}px</span>
+                          </div>
+                          <Slider min={0} max={32} step={1} value={[screenState?.bibleRefRadius ?? 6]}
+                            onValueChange={([v]) => updateOverlay({ bibleRefRadius: v })} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between">
+                            <label className="text-[11px] font-medium">Spacing</label>
+                            <span className="text-[10px] text-muted-foreground">0.{String(screenState?.bibleRefLetterSpacing ?? 4).padStart(2, "0")}em</span>
+                          </div>
+                          <Slider min={0} max={40} step={1} value={[screenState?.bibleRefLetterSpacing ?? 4]}
+                            onValueChange={([v]) => updateOverlay({ bibleRefLetterSpacing: v })} />
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+            </CardContent>
+          </Card>
 
           {/* Scrolling Ticker */}
           <Card>

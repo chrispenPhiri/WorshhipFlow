@@ -527,6 +527,16 @@ export interface ScreenState {
   /** Letter spacing in 0.01em units (e.g. 4 = 0.04em). */
   bibleRefLetterSpacing?: number;
   bibleRefUppercase?: boolean;
+  bibleRefShow?: boolean;
+  bibleBookShow?: boolean;
+  bibleBookFontSize?: number;
+  bibleBookColor?: string;
+  bibleBookBgColor?: string;
+  bibleBookBold?: boolean;
+  bibleBookPadding?: number;
+  bibleBookRadius?: number;
+  bibleBookLetterSpacing?: number;
+  bibleBookUppercase?: boolean;
 }
 
 export type ListSongsParams = {

@@ -152,6 +152,17 @@ export const screenStateTable = pgTable("screen_state", {
   bibleRefRadius: integer("bible_ref_radius").default(6),
   bibleRefLetterSpacing: integer("bible_ref_letter_spacing").default(4),
   bibleRefUppercase: boolean("bible_ref_uppercase").notNull().default(false),
+  bibleRefShow: boolean("bible_ref_show").notNull().default(true),
+  // Scripture book name label customization (the "1 CORINTHIANS" pill at the top of bible verses).
+  bibleBookShow: boolean("bible_book_show").notNull().default(true),
+  bibleBookFontSize: integer("bible_book_font_size").default(28),
+  bibleBookColor: text("bible_book_color").default("#ffffff"),
+  bibleBookBgColor: text("bible_book_bg_color").default("rgba(0,0,0,0.52)"),
+  bibleBookBold: boolean("bible_book_bold").notNull().default(true),
+  bibleBookPadding: integer("bible_book_padding").default(10),
+  bibleBookRadius: integer("bible_book_radius").default(6),
+  bibleBookLetterSpacing: integer("bible_book_letter_spacing").default(18),
+  bibleBookUppercase: boolean("bible_book_uppercase").notNull().default(true),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 

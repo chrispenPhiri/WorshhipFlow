@@ -980,19 +980,29 @@ export default function BroadcastPage() {
         );
       })()}
 
-      {/* ── Book name — top center (centered within content half when side-by-side) ── */}
-      {showContent && contentType === "verse" && bookName && (
-        <div className="absolute z-30 pointer-events-none" style={{ top: 20, ...labelHorizontalCenter }}>
-          <div style={{ background: "rgba(0,0,0,0.52)", borderRadius: "4px", padding: "5px 20px", backdropFilter: "blur(6px)", textAlign: "center", whiteSpace: "nowrap" }}>
-            <span style={{ color: "rgba(255,255,255,0.92)", fontSize: "15px", fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase" }}>
-              {bookName}
-            </span>
+      {/* ── Book name — top center (B-cust) ─────────────────────────────────── */}
+      {showContent && contentType === "verse" && bookName && (screenState?.bibleBookShow ?? true) && (() => {
+        const bSize = screenState?.bibleBookFontSize ?? 28;
+        const bColor = screenState?.bibleBookColor ?? "#ffffff";
+        const bBg = screenState?.bibleBookBgColor ?? "rgba(0,0,0,0.52)";
+        const bBold = screenState?.bibleBookBold ?? true;
+        const bPad = screenState?.bibleBookPadding ?? 10;
+        const bRad = screenState?.bibleBookRadius ?? 6;
+        const bLs = (screenState?.bibleBookLetterSpacing ?? 18) / 100;
+        const bUpper = screenState?.bibleBookUppercase ?? true;
+        return (
+          <div className="absolute z-30 pointer-events-none" style={{ top: 20, ...labelHorizontalCenter }}>
+            <div style={{ background: bBg, borderRadius: `${bRad}px`, padding: `${bPad}px ${bPad * 2}px`, backdropFilter: "blur(6px)", textAlign: "center", whiteSpace: "nowrap" }}>
+              <span style={{ color: bColor, fontSize: `${bSize}px`, fontWeight: bBold ? 700 : 500, letterSpacing: `${bLs}em`, textTransform: bUpper ? "uppercase" : "none", lineHeight: 1.1 }} data-testid="text-bible-book">
+                {bookName}
+              </span>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── Scripture reference + translation — bottom center (B-cust) ─────── */}
-      {showContent && contentType === "verse" && verseRef && (() => {
+      {showContent && contentType === "verse" && verseRef && (screenState?.bibleRefShow ?? true) && (() => {
         const refSize = screenState?.bibleRefFontSize ?? 28;
         const refColor = screenState?.bibleRefColor ?? "#ffffff";
         const refBg = screenState?.bibleRefBgColor ?? "rgba(0,0,0,0.55)";

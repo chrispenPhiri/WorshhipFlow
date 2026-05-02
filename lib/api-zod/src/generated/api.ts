@@ -684,6 +684,16 @@ export const GetScreenStateResponse = zod.object({
     .optional()
     .describe("Letter spacing in 0.01em units (e.g. 4 = 0.04em)."),
   bibleRefUppercase: zod.boolean().optional(),
+  bibleRefShow: zod.boolean().optional(),
+  bibleBookShow: zod.boolean().optional(),
+  bibleBookFontSize: zod.number().optional(),
+  bibleBookColor: zod.string().optional(),
+  bibleBookBgColor: zod.string().optional(),
+  bibleBookBold: zod.boolean().optional(),
+  bibleBookPadding: zod.number().optional(),
+  bibleBookRadius: zod.number().optional(),
+  bibleBookLetterSpacing: zod.number().optional(),
+  bibleBookUppercase: zod.boolean().optional(),
 });
 
 /**
@@ -904,6 +914,16 @@ export const UpdateScreenStateBody = zod.object({
     .optional()
     .describe("Letter spacing in 0.01em units (e.g. 4 = 0.04em)."),
   bibleRefUppercase: zod.boolean().optional(),
+  bibleRefShow: zod.boolean().optional(),
+  bibleBookShow: zod.boolean().optional(),
+  bibleBookFontSize: zod.number().optional(),
+  bibleBookColor: zod.string().optional(),
+  bibleBookBgColor: zod.string().optional(),
+  bibleBookBold: zod.boolean().optional(),
+  bibleBookPadding: zod.number().optional(),
+  bibleBookRadius: zod.number().optional(),
+  bibleBookLetterSpacing: zod.number().optional(),
+  bibleBookUppercase: zod.boolean().optional(),
 });
 
 export const UpdateScreenStateResponse = zod.object({
@@ -1121,4 +1141,14 @@ export const UpdateScreenStateResponse = zod.object({
     .optional()
     .describe("Letter spacing in 0.01em units (e.g. 4 = 0.04em)."),
   bibleRefUppercase: zod.boolean().optional(),
+  bibleRefShow: zod.boolean().optional(),
+  bibleBookShow: zod.boolean().optional(),
+  bibleBookFontSize: zod.number().optional(),
+  bibleBookColor: zod.string().optional(),
+  bibleBookBgColor: zod.string().optional(),
+  bibleBookBold: zod.boolean().optional(),
+  bibleBookPadding: zod.number().optional(),
+  bibleBookRadius: zod.number().optional(),
+  bibleBookLetterSpacing: zod.number().optional(),
+  bibleBookUppercase: zod.boolean().optional(),
 });
