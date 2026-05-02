@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 
 export interface ScreenInfo {
   index: number;
@@ -44,6 +44,9 @@ export function useBroadcast() {
   const [permissionState, setPermissionState] = useState<"idle" | "requesting" | "granted" | "denied">("idle");
   const [settings, setSettingsState] = useState<BroadcastSettings>(loadSettings);
   const [broadcastWin, setBroadcastWin] = useState<Window | null>(null);
+  // Track the screen the broadcast window is currently on
+  const [activeScreen, setActiveScreen] = useState<ScreenInfo | null>(null);
+  const screensRef = useRef<ScreenInfo[]>([]);
 
   const updateSettings = useCallback((patch: Partial<BroadcastSettings>) => {
     setSettingsState((prev) => {
@@ -73,6 +76,7 @@ export function useBroadcast() {
         })
       );
       setScreens(mapped);
+      screensRef.current = mapped;
       setPermissionState("granted");
       return mapped;
     } catch {
@@ -83,6 +87,14 @@ export function useBroadcast() {
 
   const openBroadcast = useCallback(
     async (targetScreen?: ScreenInfo) => {
+      // If the broadcast window is already open and alive, just focus it
+      if (broadcastWin && !broadcastWin.closed) {
+        try {
+          broadcastWin.focus();
+          return broadcastWin;
+        } catch {}
+      }
+
       const base = window.location.origin + import.meta.env.BASE_URL;
       const params = new URLSearchParams();
       if (settings.autoFullscreen) params.set("fullscreen", "1");
@@ -98,7 +110,6 @@ export function useBroadcast() {
           "wf-broadcast",
           `left=${left},top=${top},width=${width},height=${height},menubar=no,toolbar=no,location=no,status=no`
         );
-        // Move to exact position after open (some browsers shift the window)
         if (win) {
           setTimeout(() => {
             try { win!.moveTo(left, top); win!.resizeTo(width, height); } catch {}
@@ -108,22 +119,51 @@ export function useBroadcast() {
         win = window.open(url, "wf-broadcast", "noopener,noreferrer");
       }
 
-      if (win) setBroadcastWin(win);
+      if (win) {
+        setBroadcastWin(win);
+        setActiveScreen(targetScreen ?? null);
+      }
       return win;
     },
-    [settings]
+    [settings, broadcastWin]
   );
+
+  /**
+   * Auto-detect screens and launch broadcast on the first secondary display.
+   * Falls back to a new tab if only one screen is found or the API is unsupported.
+   */
+  const autoLaunchBroadcast = useCallback(async (): Promise<{ win: Window | null; screen: ScreenInfo | null }> => {
+    let available = screensRef.current;
+
+    // Try to detect if we haven't yet (or refresh the list)
+    if (typeof (window as any).getScreenDetails === "function") {
+      const detected = await detectScreens();
+      available = detected ?? available;
+    }
+
+    // Prefer first non-primary screen; fall back to any screen
+    const secondary = available.find(s => !s.isPrimary) ?? available[0] ?? null;
+
+    const win = await openBroadcast(secondary ?? undefined);
+    return { win, screen: secondary };
+  }, [detectScreens, openBroadcast]);
 
   const isWindowManagementSupported = typeof (window as any).getScreenDetails === "function";
 
+  // Derived: is a secondary screen currently detected?
+  const secondaryScreen = screens.find(s => !s.isPrimary) ?? null;
+
   return {
     screens,
+    secondaryScreen,
     permissionState,
     settings,
     updateSettings,
     detectScreens,
     openBroadcast,
+    autoLaunchBroadcast,
     broadcastWin,
+    activeScreen,
     isWindowManagementSupported,
   };
 }

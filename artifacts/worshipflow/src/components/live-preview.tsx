@@ -1,21 +1,26 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useGetScreenState, useUpdateScreenState, getGetScreenStateQueryKey } from "@workspace/api-client-react";
 import { Button } from "./ui/button";
 import { Slider } from "./ui/slider";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle, ExternalLink, Monitor, MonitorSpeaker, ChevronDown, Loader2,
-  ZoomIn, AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, Maximize2
+  ZoomIn, AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical, Maximize2,
+  CheckCircle2, Tv2
 } from "lucide-react";
 import { useBroadcast } from "@/hooks/use-broadcast";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
 
 export function LivePreview() {
   const queryClient = useQueryClient();
   const [layoutOpen, setLayoutOpen] = useState(false);
+  const [launching, setLaunching] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const { toast } = useToast();
 
   const { data: screenState, isLoading, error } = useGetScreenState({
     query: { queryKey: getGetScreenStateQueryKey(), refetchInterval: 2000 }
@@ -25,8 +30,19 @@ export function LivePreview() {
     mutation: { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetScreenStateQueryKey() }) }
   });
 
-  const { screens, permissionState, detectScreens, openBroadcast, isWindowManagementSupported } = useBroadcast();
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const {
+    screens, secondaryScreen, permissionState,
+    detectScreens, openBroadcast, autoLaunchBroadcast,
+    isWindowManagementSupported, broadcastWin,
+  } = useBroadcast();
+
+  // Auto-detect screens on mount if the API is supported
+  useEffect(() => {
+    if (isWindowManagementSupported && screens.length === 0 && permissionState === "idle") {
+      detectScreens().catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isWindowManagementSupported]);
 
   if (isLoading) return <div className="animate-pulse h-48 bg-muted rounded-md" />;
   if (error) return <div className="text-destructive flex items-center gap-2"><AlertCircle className="w-4 h-4" /> Error loading preview</div>;
@@ -51,6 +67,25 @@ export function LivePreview() {
 
   const handleClear = () => updateScreen({ data: { isBlack: screenState.isBlack ?? false, isClear: true, contentType: screenState.contentType ?? "none", tickerEnabled: screenState.tickerEnabled ?? false } });
   const handleBlackScreen = () => updateScreen({ data: { isBlack: !(screenState.isBlack ?? false), isClear: screenState.isClear ?? false, contentType: screenState.contentType ?? "none", tickerEnabled: screenState.tickerEnabled ?? false } });
+
+  const handleAutoLaunch = async () => {
+    setLaunching(true);
+    try {
+      const { screen } = await autoLaunchBroadcast();
+      if (screen && !screen.isPrimary) {
+        toast({
+          title: "Broadcast launched",
+          description: `Opened on ${screen.label} (${screen.width}×${screen.height})`,
+        });
+      } else {
+        toast({ title: "Broadcast opened", description: "No secondary display found — opened in a new tab." });
+      }
+    } catch {
+      toast({ title: "Could not open broadcast", variant: "destructive" });
+    } finally {
+      setLaunching(false);
+    }
+  };
 
   const handleOpenDropdown = async () => {
     if (isWindowManagementSupported && screens.length === 0) await detectScreens();
@@ -77,9 +112,11 @@ export function LivePreview() {
 
   const vAlign = layout.verticalAlign ?? "center";
   const hAlign = layout.horizontalAlign ?? "center";
-
   const previewJustify = vAlign === "top" ? "start" : vAlign === "bottom" ? "end" : "center";
   const previewAlign = hAlign === "left" ? "start" : hAlign === "right" ? "end" : "center";
+
+  // Is the broadcast window alive?
+  const broadcastLive = broadcastWin && !broadcastWin.closed;
 
   return (
     <div className="flex flex-col gap-3 h-full">
@@ -97,48 +134,94 @@ export function LivePreview() {
           <Button variant="outline" size="sm" onClick={handleClear}>Clear</Button>
         </div>
 
-        {isWindowManagementSupported ? (
+        {/* ── Split broadcast button ── */}
+        <div className="flex items-stretch rounded-md overflow-hidden border border-primary/40 h-8">
+          {/* Main: auto-launch */}
+          <button
+            onClick={handleAutoLaunch}
+            disabled={launching}
+            title={secondaryScreen ? `Launch on ${secondaryScreen.label}` : "Open broadcast (auto-detect)"}
+            className="flex items-center gap-1.5 px-2.5 text-xs font-medium text-primary bg-primary/5 hover:bg-primary/15 transition-colors disabled:opacity-60 border-r border-primary/20"
+          >
+            {launching ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : broadcastLive ? (
+              <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+            ) : secondaryScreen ? (
+              <Tv2 className="w-3.5 h-3.5" />
+            ) : (
+              <MonitorSpeaker className="w-3.5 h-3.5" />
+            )}
+            {broadcastLive ? "Live" : "Broadcast"}
+          </button>
+
+          {/* Chevron: manual picker */}
           <DropdownMenu open={pickerOpen} onOpenChange={setPickerOpen}>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5 text-primary border-primary/40 hover:bg-primary/10" onClick={handleOpenDropdown}>
-                {permissionState === "requesting" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MonitorSpeaker className="w-3.5 h-3.5" />}
-                Broadcast<ChevronDown className="w-3 h-3 opacity-60" />
-              </Button>
+              <button
+                onClick={handleOpenDropdown}
+                title="Choose display manually"
+                className="px-1.5 text-primary bg-primary/5 hover:bg-primary/15 transition-colors"
+              >
+                <ChevronDown className="w-3 h-3" />
+              </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Choose display</DropdownMenuLabel>
               <DropdownMenuSeparator />
+
               {screens.length === 0 && permissionState !== "requesting" && (
                 <DropdownMenuItem onClick={() => handleOpenOnScreen(undefined)}>
                   <ExternalLink className="w-4 h-4 mr-2" /> Open in new tab
                 </DropdownMenuItem>
               )}
+
               {screens.map((s, i) => (
                 <DropdownMenuItem key={i} onClick={() => handleOpenOnScreen(i)}>
                   <Monitor className="w-4 h-4 mr-2 shrink-0" />
                   <div className="min-w-0">
-                    <div className="truncate">{s.label}</div>
-                    <div className="text-xs text-muted-foreground">{s.width}×{s.height}{s.isPrimary ? " · Primary" : ""}</div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate">{s.label}</span>
+                      {!s.isPrimary && <span className="text-[10px] bg-primary/20 text-primary px-1 rounded">2nd</span>}
+                    </div>
+                    <div className="text-xs text-muted-foreground">{s.width}×{s.height}{s.isPrimary ? " · Primary" : " · Secondary"}</div>
                   </div>
                 </DropdownMenuItem>
               ))}
-              <DropdownMenuSeparator />
+
+              {screens.length > 0 && <DropdownMenuSeparator />}
               <DropdownMenuItem onClick={() => handleOpenOnScreen(undefined)}>
                 <ExternalLink className="w-4 h-4 mr-2" /> Open in new tab
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        ) : (
-          <Button variant="outline" size="sm" onClick={() => openBroadcast()} className="gap-1.5 text-primary border-primary/40 hover:bg-primary/10">
-            <ExternalLink className="w-3.5 h-3.5" /> Broadcast
-          </Button>
-        )}
+        </div>
       </div>
+
+      {/* ── Screen status ── */}
+      {isWindowManagementSupported && (
+        <div className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-md ${secondaryScreen ? "bg-green-500/10 text-green-400" : "bg-muted/50 text-muted-foreground"}`}>
+          {permissionState === "requesting" ? (
+            <><Loader2 className="w-3 h-3 animate-spin" /> Detecting displays…</>
+          ) : secondaryScreen ? (
+            <><CheckCircle2 className="w-3 h-3" /> <span className="font-medium">{secondaryScreen.label}</span> ready ({secondaryScreen.width}×{secondaryScreen.height})</>
+          ) : permissionState === "denied" ? (
+            <><AlertCircle className="w-3 h-3 text-amber-500" /> <span className="text-amber-400">Display permission denied</span></>
+          ) : (
+            <><Monitor className="w-3 h-3" /> No secondary display detected</>
+          )}
+        </div>
+      )}
 
       {/* ── Screen preview (16:9) ── */}
       <div
         className="relative w-full aspect-video bg-black rounded overflow-hidden border border-border shadow-lg"
-        style={{ display: "flex", alignItems: previewJustify, justifyContent: previewAlign, padding: `${(layout.paddingY ?? 8) / 3}% ${(layout.paddingX ?? 8) / 3}%` }}
+        style={{
+          display: "flex",
+          alignItems: previewJustify,
+          justifyContent: previewAlign,
+          padding: `${(layout.paddingY ?? 8) / 3}% ${(layout.paddingX ?? 8) / 3}%`
+        }}
       >
         {screenState.isBlack && <div className="absolute inset-0 bg-black z-50" />}
 
@@ -156,18 +239,23 @@ export function LivePreview() {
             <div className="whitespace-nowrap animate-[marquee_10s_linear_infinite]">{screenState.tickerText}</div>
           </div>
         )}
+
+        {/* Live indicator */}
+        {broadcastLive && (
+          <div className="absolute top-1.5 right-1.5 flex items-center gap-1 bg-green-500/90 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            LIVE
+          </div>
+        )}
       </div>
 
       {/* ── Current info ── */}
       <div className="text-xs text-muted-foreground space-y-0.5">
         <p>Now: <span className="font-medium text-foreground">{screenState.title || "None"}</span></p>
         <p className="capitalize">Type: {screenState.contentType}</p>
-        {isWindowManagementSupported && screens.length > 1 && (
-          <p className="text-primary/70">{screens.length} displays detected</p>
-        )}
       </div>
 
-      {/* ── Stage / Layout controls ── */}
+      {/* ── Stage Controls ── */}
       <div>
         <button
           onClick={() => setLayoutOpen(v => !v)}
@@ -260,26 +348,17 @@ export function LivePreview() {
                 <label className="text-xs text-muted-foreground">H Padding</label>
                 <span className="text-xs font-mono">{layout.paddingX ?? 8}%</span>
               </div>
-              <Slider
-                value={[layout.paddingX ?? 8]}
-                onValueChange={([v]) => updateLayout({ paddingX: v })}
-                min={0} max={30} step={1}
-              />
+              <Slider value={[layout.paddingX ?? 8]} onValueChange={([v]) => updateLayout({ paddingX: v })} min={0} max={30} step={1} />
             </div>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-xs text-muted-foreground">V Padding</label>
                 <span className="text-xs font-mono">{layout.paddingY ?? 8}%</span>
               </div>
-              <Slider
-                value={[layout.paddingY ?? 8]}
-                onValueChange={([v]) => updateLayout({ paddingY: v })}
-                min={0} max={30} step={1}
-              />
+              <Slider value={[layout.paddingY ?? 8]} onValueChange={([v]) => updateLayout({ paddingY: v })} min={0} max={30} step={1} />
             </div>
           </div>
 
-          {/* Reset */}
           <button
             onClick={() => updateLayout({ textScale: 1, verticalAlign: "center", horizontalAlign: "center", paddingX: 8, paddingY: 8, textWidthPct: 100 })}
             className="w-full text-xs text-muted-foreground hover:text-foreground py-1 transition-colors"
