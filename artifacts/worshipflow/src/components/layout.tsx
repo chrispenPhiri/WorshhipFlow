@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ChevronsLeft, ChevronsRight, LogOut, Menu, Tv, User as UserIcon } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, LogOut, Menu, Tv, User as UserIcon, BookOpen } from "lucide-react";
 import { LivePreview } from "./live-preview";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -10,6 +10,7 @@ import {
   DEFAULT_NAV_ITEMS, effectiveIconId, getIconComponent, useMenuCustomization,
 } from "@/lib/menu-customization";
 import { useAuth } from "@/lib/auth/context";
+import { useBibleOnlyMode, isPathAllowedInBibleOnly } from "@/lib/bible-only-mode";
 
 /**
  * Three viewport modes drive the layout shape:
@@ -97,10 +98,20 @@ function UserMenu({ collapsed }: { collapsed: boolean }) {
 }
 
 export function Layout({ children }: { children: ReactNode }) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [collapsed, setCollapsed] = useLocalStorage<boolean>("wf-sidebar-collapsed", false);
   const { overrides } = useMenuCustomization();
+  const { enabled: bibleOnly } = useBibleOnlyMode();
   const mode = useViewportMode();
+
+  // When Bible-only mode is on, redirect any non-allowed page back to the
+  // Bible. The Settings page stays accessible so the operator can turn the
+  // mode off again without resorting to localStorage edits.
+  useEffect(() => {
+    if (bibleOnly && !isPathAllowedInBibleOnly(location)) {
+      setLocation("/");
+    }
+  }, [bibleOnly, location, setLocation]);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -121,7 +132,11 @@ export function Layout({ children }: { children: ReactNode }) {
   // the sidebar inside a sheet so collapsed state is irrelevant there.
   const sidebarCollapsed = collapsed;
 
-  const navItems = DEFAULT_NAV_ITEMS.map((item) => ({
+  const visibleNavItems = bibleOnly
+    ? DEFAULT_NAV_ITEMS.filter((item) => isPathAllowedInBibleOnly(item.href))
+    : DEFAULT_NAV_ITEMS;
+
+  const navItems = visibleNavItems.map((item) => ({
     ...item,
     Icon: getIconComponent(effectiveIconId(item, overrides)),
   }));
@@ -285,6 +300,15 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {/* ── Main content ──────────────────────────────────────────────── */}
       <main className="flex-1 overflow-y-auto min-w-0">
+        {bibleOnly && (
+          <div
+            className="flex items-center justify-center gap-2 px-4 py-1.5 text-xs bg-primary/10 text-primary border-b border-primary/20"
+            data-testid="banner-bible-only"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            Bible-only mode is on. Open Settings to turn it off.
+          </div>
+        )}
         <div className="p-4 sm:p-6 lg:p-8 h-full min-h-full">
           {children}
         </div>

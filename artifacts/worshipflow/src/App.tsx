@@ -21,6 +21,9 @@ import TeachingsPage from "@/pages/teachings";
 import GamesPage from "@/pages/games";
 import HowToPage from "@/pages/how-to";
 import AuthPage from "@/pages/auth";
+import PrayerWallPage from "@/pages/prayer-wall";
+import CountdownPage from "@/pages/countdown";
+import HymnNumberPage from "@/pages/hymn-number";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +58,9 @@ function ProtectedApp() {
         <Route path="/inspiration" component={InspirationPage} />
         <Route path="/teachings" component={TeachingsPage} />
         <Route path="/sunday-school" component={TeachingsPage} />
+        <Route path="/prayer-wall" component={PrayerWallPage} />
+        <Route path="/countdown" component={CountdownPage} />
+        <Route path="/hymn-number" component={HymnNumberPage} />
         <Route path="/games" component={GamesPage} />
         <Route path="/how-to" component={HowToPage} />
         <Route path="/settings" component={SettingsPage} />

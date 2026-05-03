@@ -14,6 +14,11 @@ import {
   Bell, Award, Bookmark, Clock, MapPin, Globe, Lightbulb, Compass, Feather,
   Crown, ScrollText, Speaker, Users, MessageCircle, Hand, ListMusic, FileText,
   PlayCircle, Drum,
+  // Expanded "lifelike" church-and-worship palette
+  HandHeart, HeartHandshake, BookHeart, BookmarkCheck, Cake, Gift, Users2,
+  Megaphone, Coffee, Building2, Anchor, Sprout, Handshake, Wind, Droplet,
+  Wheat, Grape, Trees, Soup, Wine, Flag, Mountain, Eye, Music2, Quote, Album,
+  Tent,
   type LucideIcon,
 } from "lucide-react";
 
@@ -26,18 +31,21 @@ export interface NavItemDef {
 /** The fixed list of routes that appear in the sidebar.  Order is fixed —
  *  customisation only changes the icon, not the position or destination. */
 export const DEFAULT_NAV_ITEMS: readonly NavItemDef[] = [
-  { href: "/",            label: "Bible",             defaultIconId: "Book" },
-  { href: "/songs",       label: "Songs",             defaultIconId: "Music" },
-  { href: "/custom",      label: "Custom Text",       defaultIconId: "Type" },
-  { href: "/themes",      label: "Themes",            defaultIconId: "Palette" },
-  { href: "/media",       label: "Media & Broadcast", defaultIconId: "Video" },
-  { href: "/schedule",    label: "Schedule",          defaultIconId: "Calendar" },
-  { href: "/notes",       label: "Sermon Notes",      defaultIconId: "BookOpen" },
-  { href: "/inspiration", label: "Daily Inspiration", defaultIconId: "Sparkles" },
-  { href: "/teachings",   label: "Teachings",         defaultIconId: "GraduationCap" },
-  { href: "/games",       label: "Bible Games",       defaultIconId: "Gamepad2" },
-  { href: "/how-to",      label: "How To",            defaultIconId: "HelpCircle" },
-  { href: "/settings",    label: "Settings",          defaultIconId: "Settings" },
+  { href: "/",             label: "Bible",             defaultIconId: "Book" },
+  { href: "/songs",        label: "Songs",             defaultIconId: "Music" },
+  { href: "/custom",       label: "Custom Text",       defaultIconId: "Type" },
+  { href: "/themes",       label: "Themes",            defaultIconId: "Palette" },
+  { href: "/media",        label: "Media & Broadcast", defaultIconId: "Video" },
+  { href: "/schedule",     label: "Schedule",          defaultIconId: "Calendar" },
+  { href: "/notes",        label: "Sermon Notes",      defaultIconId: "BookOpen" },
+  { href: "/inspiration",  label: "Daily Inspiration", defaultIconId: "Sparkles" },
+  { href: "/teachings",    label: "Teachings",         defaultIconId: "GraduationCap" },
+  { href: "/prayer-wall",  label: "Prayer Wall",       defaultIconId: "HandHeart" },
+  { href: "/hymn-number",  label: "Hymn Number",       defaultIconId: "Music2" },
+  { href: "/countdown",    label: "Countdown",         defaultIconId: "Clock" },
+  { href: "/games",        label: "Bible Games",       defaultIconId: "Gamepad2" },
+  { href: "/how-to",       label: "How To",            defaultIconId: "HelpCircle" },
+  { href: "/settings",     label: "Settings",          defaultIconId: "Settings" },
 ] as const;
 
 /** Curated palette of icons users can pick from when customising the menu.
@@ -48,14 +56,17 @@ export const ICON_REGISTRY: Record<string, LucideIcon> = {
   Book, Music, Type, Palette, Video, Calendar, BookOpen, Sparkles,
   GraduationCap, Gamepad2, HelpCircle, Settings,
   // Faith / worship
-  Cross, Church, Heart, Crown, Hand, Flame, Star, ScrollText, Feather,
+  Cross, Church, Heart, HandHeart, HeartHandshake, BookHeart, Crown, Hand,
+  Flame, Star, ScrollText, Feather, Quote, Anchor, Eye, Wind, Droplet,
+  Sprout, Wheat, Grape, Trees, Mountain, Tent, Wine,
+  // Community / outreach
+  Users, Users2, MessageCircle, Handshake, Megaphone, Gift, Cake, Soup,
+  Coffee, Building2, Flag, MapPin, Globe, Compass, Lightbulb,
   // Time / day-to-day
-  Sun, Moon, Cloud, Clock, Bell, Bookmark, Award,
+  Sun, Moon, Cloud, Clock, Bell, Bookmark, BookmarkCheck, Award,
   // AV / production
   Mic, Headphones, Speaker, Tv, MonitorPlay, Camera, Image: ImageIcon,
-  PlayCircle, Drum, ListMusic, FileText,
-  // People / places
-  Users, MessageCircle, MapPin, Globe, Compass, Lightbulb,
+  PlayCircle, Drum, ListMusic, Music2, Album, FileText,
 };
 
 /** Stable list of icon ids in display order for the picker. */
