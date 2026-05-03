@@ -26,6 +26,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { SongImportDialog } from "@/components/song-import-dialog";
 
 const CATEGORIES = ["hymn", "worship", "gospel", "contemporary", "christmas", "shona", "ndebele", "other"] as const;
 
@@ -244,9 +245,11 @@ export default function SongsPage() {
           </div>
         </div>
 
+        <div className="flex items-center gap-2">
+        <SongImportDialog />
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
-            <Button><Plus className="w-4 h-4 mr-2" /> Add Song</Button>
+            <Button data-testid="button-add-song"><Plus className="w-4 h-4 mr-2" /> Add Song</Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
@@ -355,6 +358,7 @@ export default function SongsPage() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Search */}
