@@ -41,18 +41,25 @@ export default function CountdownPage() {
 
   // While active, push a refreshed countdown to the projection screen
   // every minute (and at the moment the operator hits "Show on screen").
+  // When the timer hits zero we always emit a final "00:00" frame before
+  // deactivating, so the screen never freezes on the previous minute mark.
   useEffect(() => {
     if (!state.active || state.targetMs <= 0) return;
     const remaining = Math.max(0, state.targetMs - now);
+
+    if (remaining === 0) {
+      // Force a final frame regardless of dedup, then stop.
+      presentOnScreen(state.label, "Countdown", formatLarge(0));
+      lastBroadcastMinuteRef.current = -1;
+      setState((s) => ({ ...s, active: false }));
+      toast({ title: "Countdown complete" });
+      return;
+    }
+
     const minute = Math.floor(remaining / 60_000);
     if (minute !== lastBroadcastMinuteRef.current) {
       lastBroadcastMinuteRef.current = minute;
       presentOnScreen(state.label, "Countdown", formatLarge(remaining));
-    }
-    if (remaining === 0) {
-      setState((s) => ({ ...s, active: false }));
-      lastBroadcastMinuteRef.current = -1;
-      toast({ title: "Countdown complete" });
     }
   }, [state.active, state.targetMs, state.label, now, presentOnScreen, setState, toast]);
 

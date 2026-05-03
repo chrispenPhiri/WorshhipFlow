@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Settings as SettingsIcon, Palette, Type, RotateCcw, Check, LayoutGrid } from "lucide-react";
+import { Settings as SettingsIcon, Palette, Type, RotateCcw, Check, LayoutGrid, BookOpen } from "lucide-react";
+import { useBibleOnlyMode } from "@/lib/bible-only-mode";
 import { BIBLE_TRANSLATIONS, FONTS } from "@/lib/constants";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -143,8 +144,60 @@ export default function SettingsPage() {
 
       <ControlAppearanceCard />
 
+      <BibleOnlyModeCard />
+
       <MainMenuCustomizationCard />
     </div>
+  );
+}
+
+/**
+ * Toggle for "Bible-only mode" — collapses the sidebar to just Bible +
+ * Settings and redirects any other route back to the Bible. Useful when
+ * the operator wants a focused, distraction-free reading view (kiosk-
+ * style) while still keeping a way back to flip the toggle off.
+ */
+function BibleOnlyModeCard() {
+  const { enabled, setEnabled } = useBibleOnlyMode();
+  const { toast } = useToast();
+
+  const onToggle = (next: boolean) => {
+    setEnabled(next);
+    toast({
+      title: next ? "Bible-only mode on" : "Bible-only mode off",
+      description: next
+        ? "Sidebar now shows just Bible and Settings."
+        : "All menu items are visible again.",
+    });
+  };
+
+  return (
+    <Card data-testid="card-bible-only-mode">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <BookOpen className="w-5 h-5" /> Bible-only mode
+        </CardTitle>
+        <CardDescription>
+          Hide every menu item except Bible and Settings — perfect for a
+          focused reading device or a kiosk on the lectern.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-sm">
+            <div className="font-medium">Enable Bible-only mode</div>
+            <div className="text-muted-foreground text-xs">
+              You can switch this back off from this page at any time.
+            </div>
+          </div>
+          <Switch
+            checked={enabled}
+            onCheckedChange={onToggle}
+            data-testid="switch-bible-only-mode"
+          />
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

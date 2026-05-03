@@ -42,8 +42,11 @@ The application is built as a pnpm monorepo using Node.js 24 and TypeScript 5.9.
     *   **Daily Inspiration:** Displays religious content.
     *   **Teachings:** Provides 42 pre-made lessons, user-added custom teachings, and AI-generated drafts.
     *   **Bible Games:** Thirteen offline games (e.g., Trivia, Connections, Fill in the Blank) with "Show on screen" and "Reveal answer on screen" projection capabilities.
+    *   **Prayer Wall:** Capture, search, categorise (Healing/Family/Salvation/Provision/Guidance/Praise/Other), and project the church's prayer requests. Per-request "Project / Mark answered / Delete" plus a "Project all active" bulk action. Persisted in `localStorage` (`wf-prayer-wall`).
+    *   **Hymn Number:** Quick large-display projection for traditional services using a printed hymnal — enter hymnal name + number + optional title, hit "Show on screen" for a giant `№ NNN` card. Last-25 history for one-tap re-show.
+    *   **Service Countdown:** Set a target time + label, pick a `+5/+10/+15/+30/+60 min` preset, then "Show on screen". Ticks locally every second and re-broadcasts the remaining time to the projection screen every minute, auto-stopping at zero. State survives a refresh.
     *   **How To:** In-app user guide.
-    *   **Settings:** Application-wide configuration.
+    *   **Settings:** Application-wide configuration. Now includes a **Bible-only mode** toggle (`lib/bible-only-mode.ts`, persisted in `wf-bible-only-mode`) — when on, the sidebar collapses to just Bible + Settings, every other route redirects back to `/`, and a banner above the main content reminds the operator the mode is active. The **Main-menu icon palette** has been expanded to ~60 hand-picked church/worship Lucide icons (HandHeart, HeartHandshake, BookHeart, Anchor, Sprout, Wheat, Grape, Trees, Tent, Wine, Megaphone, Cake, Soup, Coffee, Building2, Mountain, Eye, Wind, Droplet, Music2, Album, Quote, Flag, Users2, Handshake, Gift, BookmarkCheck, … plus the originals) so each nav entry can have a more lifelike identity.
 *   **Broadcast Window (`/broadcast`):** Dedicated full-screen output window for audience display, synchronized with operator actions via IndexedDB and `BroadcastChannel`. Renders backgrounds and applies layout settings with a focus on performance.
 
 **Key Architectural Patterns:**
