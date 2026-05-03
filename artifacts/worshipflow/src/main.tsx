@@ -3,6 +3,14 @@ import App from "./App";
 import "./index.css";
 import { installLocalApi } from "./lib/local-api";
 import { runOneTimeMigration } from "./lib/local-api/migrate";
+import { requestPersistentSilently } from "./lib/backup/persistent";
+import { isInstalled } from "./lib/install-prompt";
+
+// Ask the browser to mark this origin's storage as "persistent" so the
+// browser won't quietly evict the offline library under disk pressure.
+// Installed PWAs are usually granted automatically. Fire-and-forget — the
+// Settings card lets the user retry manually if the silent grant is denied.
+if (isInstalled()) requestPersistentSilently();
 
 // One-time migration — best-effort hydration of IndexedDB from the live
 // server for users who already had data when this release shipped.  Must

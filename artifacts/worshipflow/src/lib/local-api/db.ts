@@ -99,6 +99,64 @@ export async function del(store: StoreName, id: number | string): Promise<void> 
   await wrap(tx(db, store, "readwrite").delete(id));
 }
 
+export interface StoreReplacement<T extends object = object> {
+  store: StoreName;
+  rows: T[];
+  /** Predicate over EXISTING rows: returning true keeps that row instead of deleting it. */
+  keep?: (row: unknown) => boolean;
+}
+
+/**
+ * Replace one or more object stores in a single multi-store readwrite IDB
+ * transaction. Either every store is fully replaced, or — on any failure
+ * (validation, key constraints, quota) — the whole transaction aborts and
+ * NOTHING is committed. This is the primary primitive for backup-restore so
+ * a malformed `users` store can't leave `songs` already overwritten.
+ *
+ * Each entry's optional `keep(row)` predicate is evaluated against existing
+ * rows in that store before any deletes are scheduled, so callers can preserve
+ * specific rows (e.g. the `_backup:folder` handle in `singletons`).
+ */
+export async function replaceAcrossStores(plan: StoreReplacement[]): Promise<void> {
+  if (plan.length === 0) return;
+  const db = await openDb();
+  const stores = plan.map(p => p.store);
+  const t = db.transaction(stores, "readwrite");
+
+  // Pre-fetch existing rows for every store so `keep` predicates run against
+  // a stable snapshot before any delete/put is queued.
+  const existingByStore = await Promise.all(
+    plan.map(p => wrap<unknown[]>(t.objectStore(p.store).getAll())),
+  );
+
+  for (let i = 0; i < plan.length; i++) {
+    const { store, rows, keep } = plan[i];
+    const s = t.objectStore(store);
+    const keyPath = (s.keyPath as string) || "id";
+    for (const row of existingByStore[i]) {
+      if (keep && keep(row)) continue;
+      const key = (row as Record<string, IDBValidKey>)[keyPath];
+      if (key !== undefined) s.delete(key);
+    }
+    for (const row of rows) s.put(row);
+  }
+
+  return new Promise((resolve, reject) => {
+    t.oncomplete = () => resolve();
+    t.onerror = () => reject(t.error ?? new Error("Transaction failed"));
+    t.onabort = () => reject(t.error ?? new Error("Transaction aborted"));
+  });
+}
+
+/** Convenience wrapper for replacing a single store atomically. */
+export async function replaceAll<T extends object>(
+  store: StoreName,
+  rows: T[],
+  keep?: (row: unknown) => boolean,
+): Promise<void> {
+  return replaceAcrossStores([{ store, rows, keep }]);
+}
+
 /**
  * Auto-increment IDs are tracked inside the `singletons` store under
  * `key: "_seq:<storeName>"` so we don't need a second IDB store just for
