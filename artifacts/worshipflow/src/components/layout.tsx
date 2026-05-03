@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ChevronsLeft, ChevronsRight, Menu, Tv } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, LogOut, Menu, Tv, User as UserIcon } from "lucide-react";
 import { LivePreview } from "./live-preview";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -9,6 +9,7 @@ import { useLocalStorage } from "@/hooks/use-local-storage";
 import {
   DEFAULT_NAV_ITEMS, effectiveIconId, getIconComponent, useMenuCustomization,
 } from "@/lib/menu-customization";
+import { useAuth } from "@/lib/auth/context";
 
 /**
  * Three viewport modes drive the layout shape:
@@ -34,6 +35,65 @@ function useViewportMode(): "mobile" | "tablet" | "desktop" {
     return () => window.removeEventListener("resize", onResize);
   }, []);
   return mode;
+}
+
+function UserMenu({ collapsed }: { collapsed: boolean }) {
+  const { user, logout } = useAuth();
+  if (!user) return null;
+  if (collapsed) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            onClick={logout}
+            className="h-10 w-10 mx-auto text-sidebar-foreground/80 hover:text-sidebar-foreground"
+            aria-label={`Sign out (${user.displayName})`}
+            data-testid="button-logout"
+          >
+            <LogOut className="h-5 w-5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          Signed in as {user.displayName} — click to sign out
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+  return (
+    <div
+      className="flex items-center gap-2 px-3 py-2 rounded-md bg-sidebar-accent/40"
+      data-testid="user-menu"
+    >
+      <div className="bg-primary/20 text-primary rounded-full w-8 h-8 flex items-center justify-center shrink-0">
+        <UserIcon className="w-4 h-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-medium truncate" data-testid="text-current-username">
+          {user.displayName}
+        </div>
+        <div className="text-[11px] text-muted-foreground truncate">@{user.username}</div>
+      </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            onClick={logout}
+            className="h-7 w-7 text-sidebar-foreground/70 hover:text-destructive shrink-0"
+            aria-label="Sign out"
+            data-testid="button-logout"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="top">Sign out</TooltipContent>
+      </Tooltip>
+    </div>
+  );
 }
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -192,6 +252,10 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
 
           {renderNav(!sidebarCollapsed)}
+
+          <div className={`border-t border-border ${sidebarCollapsed ? "px-2" : "px-3"} py-3`}>
+            <UserMenu collapsed={sidebarCollapsed} />
+          </div>
         </aside>
       )}
 
@@ -211,6 +275,9 @@ export function Layout({ children }: { children: ReactNode }) {
             </SheetHeader>
             <div className="flex-1 overflow-y-auto py-2">
               {renderNav(true, () => setMenuOpen(false))}
+            </div>
+            <div className="border-t border-border p-3">
+              <UserMenu collapsed={false} />
             </div>
           </SheetContent>
         </Sheet>

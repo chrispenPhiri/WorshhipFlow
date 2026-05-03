@@ -14,9 +14,9 @@
  */
 
 const DB_NAME = "wf-local-api";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
-export type StoreName = "songs" | "notes" | "schedules" | "singletons";
+export type StoreName = "songs" | "notes" | "schedules" | "singletons" | "users";
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -26,6 +26,7 @@ function openDb(): Promise<IDBDatabase> {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
+      // v1 stores
       if (!db.objectStoreNames.contains("songs")) {
         db.createObjectStore("songs", { keyPath: "id" });
       }
@@ -38,6 +39,11 @@ function openDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains("singletons")) {
         db.createObjectStore("singletons", { keyPath: "key" });
       }
+      // v2 — local user accounts (username/password stored as PBKDF2 hash)
+      if (!db.objectStoreNames.contains("users")) {
+        const users = db.createObjectStore("users", { keyPath: "id" });
+        users.createIndex("usernameLower", "usernameLower", { unique: true });
+      }
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -47,6 +53,22 @@ function openDb(): Promise<IDBDatabase> {
 
 function tx(db: IDBDatabase, store: StoreName, mode: IDBTransactionMode): IDBObjectStore {
   return db.transaction(store, mode).objectStore(store);
+}
+
+/** Look up a single record via a named index. */
+export async function getByIndex<T>(
+  store: StoreName,
+  indexName: string,
+  key: IDBValidKey,
+): Promise<T | undefined> {
+  const db = await openDb();
+  return wrap<T | undefined>(tx(db, store, "readonly").index(indexName).get(key));
+}
+
+/** Count rows in a store (used to detect first-run / empty user list). */
+export async function count(store: StoreName): Promise<number> {
+  const db = await openDb();
+  return wrap<number>(tx(db, store, "readonly").count());
 }
 
 function wrap<T>(req: IDBRequest<T>): Promise<T> {
