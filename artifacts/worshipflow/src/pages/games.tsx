@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Gamepad2, Brain, BookOpen, Quote, Drama, ArrowLeft,
   Shuffle, Smile, SpellCheck, CheckCheck, Type as TypeIcon, UserCircle2,
+  Grid3x3, PencilLine, Filter,
 } from "lucide-react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { TriviaGame } from "@/components/games/trivia";
@@ -16,6 +17,9 @@ import { HangmanGame } from "@/components/games/hangman";
 import { TrueOrFalseGame } from "@/components/games/true-or-false";
 import { SpellItGame } from "@/components/games/spell-it";
 import { TwoTruthsGame } from "@/components/games/two-truths";
+import { ConnectionsGame } from "@/components/games/connections";
+import { FillBlankGame } from "@/components/games/fill-blank";
+import { OddOneOutGame } from "@/components/games/odd-one-out";
 
 type ActiveGame =
   | null
@@ -28,7 +32,10 @@ type ActiveGame =
   | "hangman"
   | "trueorfalse"
   | "spell"
-  | "twotruths";
+  | "twotruths"
+  | "connections"
+  | "fillblank"
+  | "oddoneout";
 
 interface GameMeta {
   id: Exclude<ActiveGame, null>;
@@ -120,6 +127,30 @@ const GAMES: GameMeta[] = [
     badge: "10 figures",
     colour: "text-pink-400",
   },
+  {
+    id: "connections",
+    title: "Bible Connections",
+    description: "Sort 16 Bible items into 4 hidden groups of 4. NYT-style, four mistakes allowed per puzzle.",
+    icon: Grid3x3,
+    badge: "8 puzzles",
+    colour: "text-teal-400",
+  },
+  {
+    id: "fillblank",
+    title: "Fill in the Blank",
+    description: "A familiar KJV verse with one word missing. Pick the right word from four choices.",
+    icon: PencilLine,
+    badge: "22 verses",
+    colour: "text-yellow-400",
+  },
+  {
+    id: "oddoneout",
+    title: "Odd One Out",
+    description: "Four Bible items — three belong together, one doesn't. Tap the odd one and learn the link.",
+    icon: Filter,
+    badge: "20 rounds",
+    colour: "text-indigo-400",
+  },
 ];
 
 export default function GamesPage() {
@@ -151,6 +182,9 @@ export default function GamesPage() {
         {active === "trueorfalse" && <TrueOrFalseGame />}
         {active === "spell" && <SpellItGame />}
         {active === "twotruths" && <TwoTruthsGame />}
+        {active === "connections" && <ConnectionsGame />}
+        {active === "fillblank" && <FillBlankGame />}
+        {active === "oddoneout" && <OddOneOutGame />}
       </div>
     );
   }

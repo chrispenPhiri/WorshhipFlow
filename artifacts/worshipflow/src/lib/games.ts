@@ -397,6 +397,195 @@ export const SPELL_WORDS: SpellWord[] = [
   { id: "sp25", word: "TEMPLE",    clue: "Solomon built the first one in Jerusalem.",                               category: "Place",   decoys: ["A", "S", "R"] },
 ];
 
+// ─── BIBLE CONNECTIONS ────────────────────────────────────────────────────
+//
+// NYT-style "Connections" for Bible content.  Each puzzle gives 16 items
+// that belong to 4 secret categories of 4.  The player taps 4 they think
+// belong together and submits.  Wrong guesses cost a life (4 lives total).
+// Difficulty rises across the four categories: Easy → Medium → Hard → Tricky.
+
+export type ConnectionsDifficulty = "Easy" | "Medium" | "Hard" | "Tricky";
+
+export interface ConnectionsCategory {
+  /** Short name of the group, revealed on success. */
+  name: string;
+  difficulty: ConnectionsDifficulty;
+  items: string[];   // exactly 4
+}
+
+export interface ConnectionsPuzzle {
+  id: string;
+  title: string;
+  /** Exactly 4 categories, each with exactly 4 items — total 16 unique items. */
+  categories: ConnectionsCategory[];
+}
+
+export const CONNECTIONS: ConnectionsPuzzle[] = [
+  {
+    id: "cn1",
+    title: "Sunday-school starter",
+    categories: [
+      { name: "12 Disciples", difficulty: "Easy",   items: ["Peter", "John", "Andrew", "Thomas"] },
+      { name: "Old Testament Prophets", difficulty: "Medium", items: ["Isaiah", "Jeremiah", "Ezekiel", "Daniel"] },
+      { name: "Books of the Pentateuch", difficulty: "Hard", items: ["Genesis", "Exodus", "Numbers", "Deuteronomy"] },
+      { name: "Plagues on Egypt", difficulty: "Tricky", items: ["Frogs", "Locusts", "Hail", "Darkness"] },
+    ],
+  },
+  {
+    id: "cn2",
+    title: "Walking, talking, seeing",
+    categories: [
+      { name: "Mountains in Scripture", difficulty: "Easy",   items: ["Sinai", "Ararat", "Carmel", "Olives"] },
+      { name: "Bodies of water Jesus visited", difficulty: "Medium", items: ["Jordan", "Galilee", "Gennesaret", "Tiberias"] },
+      { name: "Cities in Acts", difficulty: "Hard", items: ["Antioch", "Corinth", "Ephesus", "Philippi"] },
+      { name: "Bible gardens & vineyards", difficulty: "Tricky", items: ["Eden", "Gethsemane", "Vineyard of Naboth", "King's Garden"] },
+    ],
+  },
+  {
+    id: "cn3",
+    title: "Numbers, names, food",
+    categories: [
+      { name: "Foods in the Bible", difficulty: "Easy",   items: ["Manna", "Locusts", "Honey", "Quail"] },
+      { name: "Sons of Jacob (a few)", difficulty: "Medium", items: ["Reuben", "Judah", "Joseph", "Benjamin"] },
+      { name: "Numbers tied to a story (40)", difficulty: "Hard", items: ["Days of rain", "Years in wilderness", "Days of fasting", "Days after resurrection"] },
+      { name: "Pauline epistles", difficulty: "Tricky", items: ["Romans", "Galatians", "Philippians", "Titus"] },
+    ],
+  },
+  {
+    id: "cn4",
+    title: "Women, kings, miracles",
+    categories: [
+      { name: "Women in the Bible", difficulty: "Easy",   items: ["Sarah", "Rebekah", "Esther", "Deborah"] },
+      { name: "Kings of Israel / Judah", difficulty: "Medium", items: ["Saul", "David", "Solomon", "Hezekiah"] },
+      { name: "Miracles of Jesus", difficulty: "Hard", items: ["Walking on water", "Calming the storm", "Feeding 5000", "Raising Lazarus"] },
+      { name: "Things Jesus is called", difficulty: "Tricky", items: ["Lamb", "Vine", "Door", "Bread"] },
+    ],
+  },
+  {
+    id: "cn5",
+    title: "Cast of the Exodus",
+    categories: [
+      { name: "Egyptian setting", difficulty: "Easy",   items: ["Pharaoh", "Nile", "Pyramids", "Goshen"] },
+      { name: "Israel's leaders in the Exodus", difficulty: "Medium", items: ["Moses", "Aaron", "Miriam", "Joshua"] },
+      { name: "Items in the Tabernacle", difficulty: "Hard", items: ["Ark", "Lampstand", "Showbread Table", "Altar"] },
+      { name: "Things written on stone / metal", difficulty: "Tricky", items: ["Ten Commandments", "Belshazzar's wall (writing)", "Aaron's breastplate names", "Pilate's titulus"] },
+    ],
+  },
+  {
+    id: "cn6",
+    title: "Friends and foes",
+    categories: [
+      { name: "David's family / circle", difficulty: "Easy",   items: ["Jesse", "Jonathan", "Bathsheba", "Solomon"] },
+      { name: "Jesus' opponents", difficulty: "Medium", items: ["Pharisees", "Sadducees", "Herod", "Caiaphas"] },
+      { name: "Paul's helpers", difficulty: "Hard", items: ["Silas", "Timothy", "Barnabas", "Luke"] },
+      { name: "Bible villains", difficulty: "Tricky", items: ["Goliath", "Jezebel", "Haman", "Judas"] },
+    ],
+  },
+  {
+    id: "cn7",
+    title: "Stories you can picture",
+    categories: [
+      { name: "Animals in famous stories", difficulty: "Easy",   items: ["Lion", "Whale", "Donkey", "Dove"] },
+      { name: "Bible objects of wood", difficulty: "Medium", items: ["Ark of Noah", "Cross", "Manger", "Ark of the Covenant"] },
+      { name: "Things that fell from heaven", difficulty: "Hard", items: ["Manna", "Fire on Carmel", "Stars (Revelation)", "Holy Spirit (as a dove)"] },
+      { name: "Things Jesus touched to heal", difficulty: "Tricky", items: ["Eyes of the blind", "Ear of the deaf", "Leper's skin", "Peter's mother-in-law's hand"] },
+    ],
+  },
+  {
+    id: "cn8",
+    title: "Last words first",
+    categories: [
+      { name: "Books named after a person", difficulty: "Easy",   items: ["Ruth", "Esther", "Job", "Daniel"] },
+      { name: "Fruits of the Spirit", difficulty: "Medium", items: ["Love", "Joy", "Peace", "Patience"] },
+      { name: "Beatitudes — 'Blessed are the…'", difficulty: "Hard", items: ["Poor in spirit", "Meek", "Merciful", "Peacemakers"] },
+      { name: "I AM sayings of Jesus", difficulty: "Tricky", items: ["The Light of the World", "The Good Shepherd", "The True Vine", "The Resurrection and the Life"] },
+    ],
+  },
+];
+
+// ─── FILL IN THE BLANK ────────────────────────────────────────────────────
+//
+// Show a familiar KJV verse with one (or two) consecutive words replaced
+// by a blank, then offer four choices.  This is *different* from Verse
+// Scramble: scramble reorders every word, this hides one.
+
+export interface FillBlankRound {
+  id: string;
+  reference: string;
+  /** KJV text with `___` marking the missing word(s). */
+  verse: string;
+  /** The exact word/phrase that fills the blank. */
+  answer: string;
+  /** Four choices including the correct one (in any order). */
+  options: string[];
+  difficulty: TriviaDifficulty;
+}
+
+export const FILL_BLANK: FillBlankRound[] = [
+  { id: "fb1",  reference: "John 3:16",        verse: "For God so ___ the world",                                              answer: "loved",       options: ["loved", "made", "saved", "blessed"], difficulty: "Easy" },
+  { id: "fb2",  reference: "Psalm 23:1",       verse: "The Lord is my ___",                                                    answer: "shepherd",    options: ["shepherd", "father", "rock", "light"], difficulty: "Easy" },
+  { id: "fb3",  reference: "Genesis 1:1",      verse: "In the ___ God created the heaven and the earth",                       answer: "beginning",   options: ["beginning", "morning", "garden", "spirit"], difficulty: "Easy" },
+  { id: "fb4",  reference: "John 11:35",       verse: "Jesus ___",                                                              answer: "wept",        options: ["wept", "rose", "spake", "prayed"], difficulty: "Easy" },
+  { id: "fb5",  reference: "Philippians 4:13", verse: "I can do all things through ___ which strengtheneth me",                 answer: "Christ",      options: ["Christ", "God", "faith", "Spirit"], difficulty: "Easy" },
+  { id: "fb6",  reference: "Romans 6:23",      verse: "For the wages of sin is ___",                                            answer: "death",       options: ["death", "shame", "judgment", "exile"], difficulty: "Medium" },
+  { id: "fb7",  reference: "Proverbs 3:5",     verse: "Trust in the Lord with all thine ___",                                   answer: "heart",       options: ["heart", "mind", "strength", "soul"], difficulty: "Easy" },
+  { id: "fb8",  reference: "Matthew 5:9",      verse: "Blessed are the ___ for they shall be called the children of God",       answer: "peacemakers", options: ["peacemakers", "meek", "merciful", "humble"], difficulty: "Medium" },
+  { id: "fb9",  reference: "Matthew 6:33",     verse: "But seek ye first the ___ of God, and his righteousness",                answer: "kingdom",     options: ["kingdom", "wisdom", "promise", "favour"], difficulty: "Medium" },
+  { id: "fb10", reference: "Isaiah 40:31",     verse: "They that wait upon the Lord shall renew their ___",                     answer: "strength",    options: ["strength", "hope", "spirit", "courage"], difficulty: "Medium" },
+  { id: "fb11", reference: "Joshua 1:9",       verse: "Be strong and of a good ___, be not afraid",                             answer: "courage",     options: ["courage", "spirit", "comfort", "cheer"], difficulty: "Medium" },
+  { id: "fb12", reference: "Psalm 119:105",    verse: "Thy word is a ___ unto my feet, and a light unto my path",               answer: "lamp",        options: ["lamp", "rod", "guide", "staff"], difficulty: "Medium" },
+  { id: "fb13", reference: "John 14:6",        verse: "I am the way, the truth, and the ___",                                   answer: "life",        options: ["life", "light", "vine", "door"], difficulty: "Easy" },
+  { id: "fb14", reference: "Galatians 5:22",   verse: "But the fruit of the Spirit is love, joy, ___",                          answer: "peace",       options: ["peace", "patience", "kindness", "gentleness"], difficulty: "Medium" },
+  { id: "fb15", reference: "Hebrews 11:1",     verse: "Now ___ is the substance of things hoped for, the evidence of things not seen", answer: "faith",  options: ["faith", "love", "grace", "hope"], difficulty: "Hard" },
+  { id: "fb16", reference: "1 John 4:8",       verse: "He that loveth not knoweth not God; for God is ___",                     answer: "love",        options: ["love", "light", "spirit", "near"], difficulty: "Easy" },
+  { id: "fb17", reference: "Romans 8:28",      verse: "All things work together for ___ to them that love God",                 answer: "good",        options: ["good", "joy", "peace", "glory"], difficulty: "Hard" },
+  { id: "fb18", reference: "Matthew 11:28",    verse: "Come unto me, all ye that labour and are heavy laden, and I will give you ___", answer: "rest",  options: ["rest", "peace", "life", "joy"], difficulty: "Medium" },
+  { id: "fb19", reference: "Psalm 46:10",      verse: "Be still, and know that I am ___",                                       answer: "God",         options: ["God", "near", "Lord", "thine"], difficulty: "Easy" },
+  { id: "fb20", reference: "Jeremiah 29:11",   verse: "For I know the ___ that I think toward you, saith the Lord",             answer: "thoughts",    options: ["thoughts", "plans", "ways", "promises"], difficulty: "Hard" },
+  { id: "fb21", reference: "Acts 1:8",         verse: "But ye shall receive ___, after that the Holy Ghost is come upon you",   answer: "power",       options: ["power", "joy", "wisdom", "tongues"], difficulty: "Hard" },
+  { id: "fb22", reference: "Ephesians 2:8",    verse: "For by ___ are ye saved through faith",                                  answer: "grace",       options: ["grace", "love", "mercy", "Christ"], difficulty: "Medium" },
+];
+
+// ─── ODD ONE OUT ──────────────────────────────────────────────────────────
+//
+// Four items — three share a Bible connection, one doesn't.  Tap the odd
+// one and the round explains the link the other three had in common.
+
+export interface OddOneOutRound {
+  id: string;
+  category: "People" | "Places" | "Books" | "Events" | "Things";
+  items: string[];          // exactly 4
+  oddIndex: number;         // 0..3
+  /** What the *other* three have in common. */
+  connection: string;
+  /** Why the odd item doesn't fit. */
+  explanation: string;
+  difficulty: TriviaDifficulty;
+}
+
+export const ODD_ONE_OUT: OddOneOutRound[] = [
+  { id: "oo1",  category: "People",   items: ["Peter", "John", "Andrew", "Paul"],                     oddIndex: 3, connection: "Original 12 disciples chosen by Jesus.", explanation: "Paul was called later, on the road to Damascus.",                                          difficulty: "Easy" },
+  { id: "oo2",  category: "Books",    items: ["Matthew", "Mark", "Luke", "Acts"],                      oddIndex: 3, connection: "Synoptic Gospels.",                       explanation: "Acts is a history of the early church, also written by Luke but not a Gospel.",            difficulty: "Easy" },
+  { id: "oo3",  category: "Places",   items: ["Bethlehem", "Nazareth", "Capernaum", "Athens"],         oddIndex: 3, connection: "Towns where Jesus lived or ministered.",   explanation: "Athens is in Greece — Paul preached there, but Jesus did not.",                            difficulty: "Easy" },
+  { id: "oo4",  category: "People",   items: ["Sarah", "Rebekah", "Rachel", "Mary"],                   oddIndex: 3, connection: "Wives of Old-Testament patriarchs.",       explanation: "Mary (mother of Jesus) is from the New Testament.",                                       difficulty: "Medium" },
+  { id: "oo5",  category: "Events",   items: ["Walking on water", "Feeding the 5000", "Raising Lazarus", "Stoning of Stephen"], oddIndex: 3, connection: "Miracles of Jesus.", explanation: "Stephen's death is in Acts 7, after Jesus' ascension.",                                  difficulty: "Easy" },
+  { id: "oo6",  category: "Things",   items: ["Ark of the Covenant", "Lampstand", "Altar of incense", "Throne of Solomon"], oddIndex: 3, connection: "Items in the Tabernacle.", explanation: "Solomon's throne was in the palace, not the Tabernacle or Temple proper.",              difficulty: "Hard" },
+  { id: "oo7",  category: "People",   items: ["Isaiah", "Jeremiah", "Ezekiel", "Nehemiah"],            oddIndex: 3, connection: "Major Old-Testament prophets.",            explanation: "Nehemiah was a governor and rebuilder, not a prophet — his book is historical.",         difficulty: "Medium" },
+  { id: "oo8",  category: "Places",   items: ["Sinai", "Ararat", "Carmel", "Patmos"],                  oddIndex: 3, connection: "Mountains in the Bible.",                  explanation: "Patmos is an island where John received Revelation — not a mountain.",                    difficulty: "Hard" },
+  { id: "oo9",  category: "Things",   items: ["Sling", "Sword", "Bow", "Trumpet"],                     oddIndex: 3, connection: "Weapons used by warriors in Scripture.",   explanation: "Trumpets were signal instruments — Jericho's walls fell at their sound, but they're not weapons.", difficulty: "Medium" },
+  { id: "oo10", category: "People",   items: ["Abraham", "Isaac", "Jacob", "Joseph"],                  oddIndex: 3, connection: "Three patriarchs of Israel.",              explanation: "Joseph was Jacob's son — the patriarchs are Abraham, Isaac and Jacob.",                   difficulty: "Hard" },
+  { id: "oo11", category: "Books",    items: ["Romans", "1 Corinthians", "Galatians", "Hebrews"],      oddIndex: 3, connection: "Epistles clearly written by Paul.",        explanation: "Hebrews is anonymous — its author has long been debated.",                                difficulty: "Hard" },
+  { id: "oo12", category: "People",   items: ["Goliath", "Jezebel", "Haman", "Daniel"],                oddIndex: 3, connection: "Famous biblical villains.",               explanation: "Daniel is a hero of faith.",                                                              difficulty: "Easy" },
+  { id: "oo13", category: "Events",   items: ["Burning bush", "Parting the Red Sea", "Manna from heaven", "Coat of many colours"], oddIndex: 3, connection: "Events from the Exodus story under Moses.", explanation: "The coat of many colours was given to Joseph by Jacob — generations earlier.",        difficulty: "Medium" },
+  { id: "oo14", category: "Places",   items: ["Eden", "Gethsemane", "Garden Tomb", "Babylon"],         oddIndex: 3, connection: "Gardens / garden settings in Scripture.",  explanation: "Babylon is a city / empire, not a garden.",                                               difficulty: "Medium" },
+  { id: "oo15", category: "Things",   items: ["Frogs", "Locusts", "Hail", "Floods"],                   oddIndex: 3, connection: "Plagues on Egypt.",                       explanation: "There was no flood plague — those were rivers turning to blood, frogs, lice, flies, etc.", difficulty: "Hard" },
+  { id: "oo16", category: "People",   items: ["Mary Magdalene", "Mary of Bethany", "Mary mother of Jesus", "Martha"], oddIndex: 3, connection: "Women named Mary in the Gospels.", explanation: "Martha was Mary of Bethany's sister — different name.",                              difficulty: "Easy" },
+  { id: "oo17", category: "Books",    items: ["Genesis", "Exodus", "Leviticus", "Joshua"],             oddIndex: 3, connection: "Books of the Pentateuch (Law of Moses).",  explanation: "Joshua follows Deuteronomy and starts the Historical Books.",                            difficulty: "Medium" },
+  { id: "oo18", category: "People",   items: ["Solomon", "David", "Hezekiah", "Pilate"],               oddIndex: 3, connection: "Kings of Israel or Judah.",               explanation: "Pilate was the Roman governor of Judea, not a king.",                                     difficulty: "Easy" },
+  { id: "oo19", category: "Things",   items: ["Loaves", "Fishes", "Wine", "Manna"],                    oddIndex: 3, connection: "Foods miraculously provided by Jesus.",    explanation: "Manna was provided by God in the wilderness, centuries before Jesus.",                    difficulty: "Hard" },
+  { id: "oo20", category: "Events",   items: ["Pentecost", "Saul's conversion", "Stephen's death", "John's baptism of Jesus"], oddIndex: 3, connection: "Events recorded in the book of Acts.", explanation: "Jesus' baptism is in the Gospels, before Acts begins.",                              difficulty: "Hard" },
+];
+
 // ─── TWO TRUTHS AND A LIE ─────────────────────────────────────────────────
 //
 // Each round names a Bible figure and gives three statements about them —
