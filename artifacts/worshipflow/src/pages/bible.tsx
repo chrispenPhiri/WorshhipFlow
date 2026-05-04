@@ -15,6 +15,10 @@ import {
   Search as SearchIcon, Columns2, Clock, Trash2, Sparkles
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { DigitalLibrary } from "@/components/bible/digital-library";
+import { AmbientSoundscapes } from "@/components/bible/ambient-soundscapes";
+import { CharacterPerspective } from "@/components/bible/character-perspective";
+import { VerseToArt } from "@/components/bible/verse-to-art";
 
 interface BibleVerse { verse: number; text: string; }
 interface BibleResult { reference: string; verses: BibleVerse[]; }
@@ -247,6 +251,24 @@ export default function BiblePage() {
   // Verse-only recent items (others are surfaced from their own pages too)
   const recentBibleItems = recentItems.slice(0, 6);
 
+  /* ── Digital Library send-to-screen handler ── */
+  const sendLibraryText = (text: string, ref: string, abbr: string) => {
+    const screenData = { ...safeBase, title: `${ref}|${abbr}`, content: text, comparisonMode: false, secondaryTitle: "", secondaryContent: "" };
+    updateScreen({ data: screenData });
+    addRecent({ id: `lib-${ref}-${abbr}`, type: "verse", title: ref, subtitle: abbr, payload: { screenData } });
+    toast({ title: "Sent to screen", description: `${ref}` });
+  };
+
+  /* ── Character Perspective send handler ── */
+  const sendCharacterVerses = (verses: BibleVerse[], ref: string) => sendVerses(verses, ref);
+
+  /* ── Verse-to-Art: set background handler ── */
+  const setArtAsBackground = (dataUrl: string) => {
+    const screenData = { ...safeBase, background: { type: "image" as const, value: dataUrl } };
+    updateScreen({ data: screenData });
+    toast({ title: "Background updated", description: "Verse art set as screen background." });
+  };
+
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center gap-3">
@@ -416,6 +438,23 @@ export default function BiblePage() {
         </CardContent>
       </Card>
 
+      {/* ── Immersive tools ── */}
+      <div className="space-y-2">
+        <DigitalLibrary
+          book={book}
+          chapter={chapter}
+          fromVerse={fromVerse}
+          toVerse={toVerse}
+          onSendToScreen={sendLibraryText}
+        />
+        <AmbientSoundscapes book={book} />
+        <CharacterPerspective
+          verses={result?.verses ?? []}
+          reference={result?.reference ?? `${book} ${chapter}`}
+          onSendVerses={sendCharacterVerses}
+        />
+      </div>
+
       {/* ── Results ── */}
       {result && (
         <div className="space-y-4">
@@ -574,6 +613,18 @@ export default function BiblePage() {
                     <Layers className="w-4 h-4" /> Send all
                   </Button>
                 </div>
+
+                {/* ── Verse-to-Art ── */}
+                {currentVerse && (
+                  <div className="pt-2 border-t border-border">
+                    <VerseToArt
+                      verse={currentVerse.text}
+                      reference={`${result.reference.split(":")[0]}:${currentVerse.verse}`}
+                      book={book}
+                      onSetAsBackground={setArtAsBackground}
+                    />
+                  </div>
+                )}
               </CardContent>
             </Card>
           ) : (

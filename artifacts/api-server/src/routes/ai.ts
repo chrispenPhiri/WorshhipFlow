@@ -124,4 +124,23 @@ Never be condescending. Be warm, clear, and encouraging.`,
   );
 });
 
+/* ── Verse-to-Art ───────────────────────────────────────────── */
+router.post("/verse-art", async (req, res) => {
+  const { verse, reference, book } = req.body as { verse: string; reference: string; book?: string };
+  if (!verse?.trim()) {
+    res.status(400).json({ error: "verse is required" });
+    return;
+  }
+  try {
+    const { generateImageBuffer } = await import("@workspace/integrations-openai-ai-server/image");
+    const bookCtx = book ? ` Set in the world of the book of ${book}.` : "";
+    const prompt = `A dramatic, reverential biblical illustration depicting ${reference}: "${verse.slice(0, 280)}".${bookCtx} Style: oil painting, classical biblical art in the tradition of Rembrandt and Gustave Doré. Rich warm tones, spiritual atmosphere, ancient Middle Eastern setting, soft divine light. No text, no letters, no words anywhere in the image.`;
+    const buffer = await generateImageBuffer(prompt, "1024x1024");
+    res.json({ b64_json: buffer.toString("base64") });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Image generation failed";
+    res.status(500).json({ error: msg });
+  }
+});
+
 export default router;
