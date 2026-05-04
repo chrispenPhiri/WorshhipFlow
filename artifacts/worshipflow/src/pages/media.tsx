@@ -104,12 +104,24 @@ export default function MediaPage() {
   const [draggingOver, setDraggingOver] = useState(false);
 
   // Camera layout settings
-  const [camLayout, setCamLayout] = useState<"fullscreen" | "pip-topright" | "pip-topleft" | "pip-bottomright" | "pip-bottomleft" | "side-left" | "side-right">("fullscreen");
+  const [camLayout, setCamLayout] = useState<"fullscreen" | "pip-topright" | "pip-topleft" | "pip-bottomright" | "pip-bottomleft" | "side-left" | "side-right" | "quad">("fullscreen");
   const [camShape, setCamShape] = useState<"rect" | "circle" | "rounded">("rect");
   const [camPipSize, setCamPipSize] = useState(30);
   // Side-by-side: CSS background applied to the OTHER (text) half so it isn't pure black.
   // Stored on background.value when type=camera + side layout.
   const [camSideBg, setCamSideBg] = useState<string>("linear-gradient(135deg,#1e1b4b 0%,#0f0a2e 100%)");
+  // Camera border
+  const [camBorderWidth, setCamBorderWidth] = useState(0);
+  const [camBorderColor, setCamBorderColor] = useState("#ffffff");
+  // Quad-cam: up to 4 device-slot IDs (empty string = not configured)
+  const [quadSlots, setQuadSlots] = useState<[string,string,string,string]>(["","","",""]);
+  const quadVideoRefs = [
+    useRef<HTMLVideoElement>(null),
+    useRef<HTMLVideoElement>(null),
+    useRef<HTMLVideoElement>(null),
+    useRef<HTMLVideoElement>(null),
+  ];
+  const [quadStreams, setQuadStreams] = useState<(MediaStream | null)[]>([null,null,null,null]);
   // Search query for the Icons & Flags tab
   const [iconSearch, setIconSearch] = useState("");
   // How clicking an icon/flag sends it to the presentation screen
@@ -609,11 +621,18 @@ export default function MediaPage() {
           // For any non-fullscreen layout (PiP or side-by-side), value is the CSS
           // background that fills the area not covered by the camera. Fullscreen
           // ignores value (sentinel "camera").
-          value: camLayout !== "fullscreen" ? camSideBg : "camera",
+          value: camLayout !== "fullscreen" && camLayout !== "quad" ? camSideBg : "camera",
           overlay: overlay[0],
           cameraLayout: camLayout,
           cameraShape: camShape,
           cameraPipSize: camPipSize,
+          cameraBrightness: camBrightness,
+          cameraContrast: camContrast,
+          cameraSaturate: camSaturate,
+          cameraMirror: camMirror,
+          cameraBorderWidth: camBorderWidth,
+          cameraBorderColor: camBorderColor,
+          cameraDeviceIds: camLayout === "quad" ? quadSlots.filter(Boolean) : undefined,
         },
       }
     });
@@ -1070,6 +1089,7 @@ export default function MediaPage() {
                       <div className="grid grid-cols-2 gap-1.5">
                         {([
                           { value: "fullscreen",       label: "Fullscreen" },
+                          { value: "quad",             label: "⊞ 4-Cam Quad" },
                           { value: "pip-topright",     label: "PiP Top-Right" },
                           { value: "pip-topleft",      label: "PiP Top-Left" },
                           { value: "pip-bottomright",  label: "PiP Bottom-Right" },
@@ -1083,6 +1103,35 @@ export default function MediaPage() {
                           </button>
                         ))}
                       </div>
+
+                      {/* Quad camera slot pickers */}
+                      {camLayout === "quad" && (
+                        <div className="pt-2 border-t border-border/50 space-y-2">
+                          <label className="text-sm font-medium">Camera Slots (2×2 Grid)</label>
+                          {([0, 1, 2, 3] as const).map(i => (
+                            <div key={i} className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground w-12 shrink-0">Cam {i + 1}</span>
+                              <select
+                                value={quadSlots[i]}
+                                onChange={e => {
+                                  const n = [...quadSlots] as [string,string,string,string];
+                                  n[i] = e.target.value;
+                                  setQuadSlots(n);
+                                }}
+                                className="flex-1 h-8 rounded border border-input bg-background text-xs px-2 text-foreground"
+                              >
+                                <option value="">— None —</option>
+                                {cameras.map((d: MediaDeviceInfo) => (
+                                  <option key={d.deviceId} value={d.deviceId}>{d.label || `Camera ${d.deviceId.slice(0, 6)}`}</option>
+                                ))}
+                              </select>
+                            </div>
+                          ))}
+                          {cameras.length === 0 && (
+                            <p className="text-[11px] text-muted-foreground">Grant camera access to see device list.</p>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {isPip && (
@@ -1201,6 +1250,35 @@ export default function MediaPage() {
                         <RotateCcw className="w-3.5 h-3.5" /> Reset Adjustments
                       </Button>
                     )}
+
+                    {/* Camera Border */}
+                    <div className="pt-2 border-t border-border/50 space-y-3">
+                      <label className="text-sm font-medium">Border</label>
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between">
+                          <label className="text-xs text-muted-foreground">Border Width</label>
+                          <span className="text-xs text-muted-foreground">{camBorderWidth}px</span>
+                        </div>
+                        <SliderWithButtons min={0} max={16} step={1} value={[camBorderWidth]} onValueChange={([v]) => setCamBorderWidth(v)} />
+                      </div>
+                      {camBorderWidth > 0 && (
+                        <div className="flex items-center gap-2">
+                          <input type="color" value={camBorderColor} onChange={e => setCamBorderColor(e.target.value)}
+                            className="h-8 w-10 rounded border border-input bg-transparent p-0.5 cursor-pointer shrink-0" />
+                          <Input className="h-8 text-xs font-mono" value={camBorderColor}
+                            onChange={e => setCamBorderColor(e.target.value)} />
+                        </div>
+                      )}
+                      {camBorderWidth > 0 && (
+                        <div className="flex gap-1.5 flex-wrap">
+                          {["#ffffff", "#000000", "#fbbf24", "#ef4444", "#3b82f6", "#22c55e"].map(c => (
+                            <button key={c} onClick={() => setCamBorderColor(c)}
+                              className={`w-6 h-6 rounded-full border-2 transition-all ${camBorderColor === c ? "border-primary scale-110" : "border-transparent"}`}
+                              style={{ backgroundColor: c }} title={c} />
+                          ))}
+                        </div>
+                      )}
+                    </div>
 
                     {/* Filter presets */}
                     <div className="space-y-1.5 pt-2 border-t border-border/50">

@@ -160,18 +160,21 @@ export function Layout({ children }: { children: ReactNode }) {
             : "text-sidebar-foreground hover:bg-sidebar-accent/60"
         }`;
 
-        /* Colored icon pill — visible only when not active */
+        /* Colored icon pill */
         const iconPill = (
           <span
-            className="flex items-center justify-center rounded-lg shrink-0 transition-all duration-150"
+            className="flex items-center justify-center rounded-xl shrink-0 transition-all duration-150"
             style={{
-              width: 32, height: 32,
-              backgroundColor: isActive ? `${item.color}33` : `${item.color}22`,
+              width: 34, height: 34,
+              background: isActive
+                ? `linear-gradient(135deg, ${item.color}60 0%, ${item.color}40 100%)`
+                : `linear-gradient(135deg, ${item.color}42 0%, ${item.color}28 100%)`,
               color: item.color,
+              boxShadow: isActive ? `0 0 0 1.5px ${item.color}55` : undefined,
             }}
           >
             {emojiMode
-              ? <span style={{ fontSize: 16, lineHeight: 1, userSelect: "none" }}>{item.emoji}</span>
+              ? <span style={{ fontSize: 17, lineHeight: 1, userSelect: "none" }}>{item.emoji}</span>
               : <item.Icon style={{ width: 17, height: 17 }} />
             }
           </span>

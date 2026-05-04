@@ -454,8 +454,10 @@ function TimerOverlay({ mode, startedAt, accumulatedMs, durationSec, position, f
 }
 
 // ── Camera PiP / side-by-side overlay ────────────────────────────────────────
-function CameraOverlay({ stream, layout, shape, pipSize }: {
+function CameraOverlay({ stream, layout, shape, pipSize, brightness = 100, contrast = 100, saturate = 100, mirror = false, borderWidth = 0, borderColor = "#ffffff" }: {
   stream: MediaStream | null; layout: string; shape: string; pipSize: number;
+  brightness?: number; contrast?: number; saturate?: number; mirror?: boolean;
+  borderWidth?: number; borderColor?: string;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
 
@@ -472,6 +474,10 @@ function CameraOverlay({ stream, layout, shape, pipSize }: {
     shape === "circle" ? "50%" :
     shape === "rounded" ? "16px" : "0";
 
+  const filterStyle = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturate}%)`;
+  const transformStyle = mirror ? "scaleX(-1)" : undefined;
+  const borderStyle = borderWidth > 0 ? `${borderWidth}px solid ${borderColor}` : undefined;
+
   // Side-by-side layouts handled differently (takes half the screen)
   if (layout === "side-left" || layout === "side-right") {
     const isLeft = layout === "side-left";
@@ -480,8 +486,11 @@ function CameraOverlay({ stream, layout, shape, pipSize }: {
         position: "absolute", zIndex: 25, top: 0, bottom: 0,
         left: isLeft ? 0 : "50%", right: isLeft ? "50%" : 0,
         pointerEvents: "none",
+        border: borderStyle,
+        boxSizing: "border-box",
       }}>
-        <video ref={ref} autoPlay muted playsInline className="w-full h-full object-cover" />
+        <video ref={ref} autoPlay muted playsInline className="w-full h-full object-cover"
+          style={{ filter: filterStyle, transform: transformStyle }} />
       </div>
     );
   }
@@ -501,16 +510,80 @@ function CameraOverlay({ stream, layout, shape, pipSize }: {
       width: `${sizeVw}vw`, aspectRatio: "16/9",
       overflow: "hidden", borderRadius,
       boxShadow: "0 8px 40px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.4)",
-      border: shape !== "circle" ? "2px solid rgba(255,255,255,0.12)" : "none",
+      border: borderStyle ?? (shape !== "circle" ? "2px solid rgba(255,255,255,0.12)" : "none"),
       ...pos,
     }}>
-      <video ref={ref} autoPlay muted playsInline className="w-full h-full object-cover" />
+      <video ref={ref} autoPlay muted playsInline className="w-full h-full object-cover"
+        style={{ filter: filterStyle, transform: transformStyle }} />
+    </div>
+  );
+}
+
+// ── Quad camera: 2×2 grid ─────────────────────────────────────────────────────
+function QuadCameraLayer({ deviceIds, brightness = 100, contrast = 100, saturate = 100, mirror = false, borderWidth = 0, borderColor = "#ffffff" }: {
+  deviceIds: string[];
+  brightness?: number; contrast?: number; saturate?: number; mirror?: boolean;
+  borderWidth?: number; borderColor?: string;
+}) {
+  const [streams, setStreams] = useState<(MediaStream | null)[]>([null, null, null, null]);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([null, null, null, null]);
+
+  useEffect(() => {
+    const active: MediaStream[] = [];
+    const ids = deviceIds.slice(0, 4);
+    ids.forEach((deviceId, i) => {
+      if (!deviceId) return;
+      const constraints: MediaStreamConstraints = { video: { deviceId: { exact: deviceId } }, audio: false };
+      navigator.mediaDevices.getUserMedia(constraints)
+        .then(stream => {
+          active.push(stream);
+          setStreams(prev => { const n = [...prev]; n[i] = stream; return n; });
+          const el = videoRefs.current[i];
+          if (el) { el.srcObject = stream; el.play().catch(() => {}); }
+        })
+        .catch(() => {});
+    });
+    return () => { active.forEach(s => s.getTracks().forEach(t => t.stop())); setStreams([null, null, null, null]); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deviceIds.join(",")]);
+
+  useEffect(() => {
+    streams.forEach((stream, i) => {
+      const el = videoRefs.current[i];
+      if (el && stream && el.srcObject !== stream) {
+        el.srcObject = stream;
+        el.play().catch(() => {});
+      }
+    });
+  }, [streams]);
+
+  const filterStyle = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturate}%)`;
+  const transformStyle = mirror ? "scaleX(-1)" : undefined;
+  const cellBorder = borderWidth > 0 ? `${borderWidth}px solid ${borderColor}` : undefined;
+
+  const slots = [0, 1, 2, 3];
+  return (
+    <div style={{ position: "absolute", inset: 0, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: borderWidth > 0 ? 2 : 0, background: "#000", zIndex: 5 }}>
+      {slots.map(i => (
+        <div key={i} style={{ position: "relative", overflow: "hidden", border: cellBorder, boxSizing: "border-box" }}>
+          {streams[i]
+            ? <video ref={el => { videoRefs.current[i] = el; }} autoPlay muted playsInline
+                style={{ width: "100%", height: "100%", objectFit: "cover", filter: filterStyle, transform: transformStyle }} />
+            : <div style={{ width: "100%", height: "100%", background: "#111", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ color: "#555", fontSize: 12 }}>Cam {i + 1}</span>
+              </div>
+          }
+          <div style={{ position: "absolute", top: 6, left: 8, background: "rgba(0,0,0,0.55)", color: "#fff", fontSize: 10, padding: "1px 5px", borderRadius: 3 }}>
+            {i + 1}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
 
 function BackgroundLayer({ background, cameraStream }: {
-  background?: { type: string; value: string; overlay?: number; fit?: string; loop?: boolean; cameraLayout?: string } | null;
+  background?: { type: string; value: string; overlay?: number; fit?: string; loop?: boolean; cameraLayout?: string; cameraBrightness?: number; cameraContrast?: number; cameraSaturate?: number; cameraMirror?: boolean } | null;
   cameraStream: MediaStream | null;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -579,9 +652,16 @@ function BackgroundLayer({ background, cameraStream }: {
       );
     }
     // Fullscreen camera
+    const camFilter = (() => {
+      const b = background.cameraBrightness ?? 100;
+      const c = background.cameraContrast ?? 100;
+      const s = background.cameraSaturate ?? 100;
+      return (b !== 100 || c !== 100 || s !== 100) ? `brightness(${b}%) contrast(${c}%) saturate(${s}%)` : undefined;
+    })();
+    const camTransform = background.cameraMirror ? "scaleX(-1)" : undefined;
     return (
       <div className="absolute inset-0 bg-black">
-        {cameraStream && <video ref={cameraRef} className="w-full h-full object-cover" autoPlay muted playsInline />}
+        {cameraStream && <video ref={cameraRef} className="w-full h-full object-cover" autoPlay muted playsInline style={{ filter: camFilter, transform: camTransform }} />}
         {overlayStyle && <div className="absolute inset-0" style={overlayStyle} />}
       </div>
     );
@@ -932,7 +1012,8 @@ export default function BroadcastPage() {
 
   // ── Camera layout ────────────────────────────────────────────────────────
   const camLayout = bg?.cameraLayout ?? "fullscreen";
-  const showCameraOverlay = bg?.type === "camera" && camLayout !== "fullscreen" && cameraStream;
+  const showCameraOverlay = bg?.type === "camera" && camLayout !== "fullscreen" && camLayout !== "quad" && cameraStream;
+  const showQuadCamera = bg?.type === "camera" && camLayout === "quad";
 
   // Horizontal centering for top/bottom labels — centers within the content half
   // (not the viewport) when a side-by-side camera layout is active.
@@ -960,13 +1041,32 @@ export default function BroadcastPage() {
       {/* Background */}
       <BackgroundLayer background={bg} cameraStream={cameraStream} />
 
-      {/* Camera PiP / Side overlay (non-fullscreen layouts) */}
+      {/* Quad camera 2×2 grid */}
+      {showQuadCamera && (
+        <QuadCameraLayer
+          deviceIds={bg?.cameraDeviceIds ?? []}
+          brightness={bg?.cameraBrightness}
+          contrast={bg?.cameraContrast}
+          saturate={bg?.cameraSaturate}
+          mirror={bg?.cameraMirror}
+          borderWidth={bg?.cameraBorderWidth}
+          borderColor={bg?.cameraBorderColor}
+        />
+      )}
+
+      {/* Camera PiP / Side overlay (non-fullscreen, non-quad layouts) */}
       {showCameraOverlay && (
         <CameraOverlay
           stream={cameraStream}
           layout={camLayout}
           shape={bg?.cameraShape ?? "rect"}
           pipSize={bg?.cameraPipSize ?? 30}
+          brightness={bg?.cameraBrightness}
+          contrast={bg?.cameraContrast}
+          saturate={bg?.cameraSaturate}
+          mirror={bg?.cameraMirror}
+          borderWidth={bg?.cameraBorderWidth}
+          borderColor={bg?.cameraBorderColor}
         />
       )}
 

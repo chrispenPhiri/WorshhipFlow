@@ -5,7 +5,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUpdateScreenState, getGetScreenStateQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Type, Cast, AlignLeft, AlignCenter, AlignRight, Bold, Italic } from "lucide-react";
+import {
+  Type, Cast, AlignLeft, AlignCenter, AlignRight, Bold, Italic,
+  ArrowUp, ArrowDown, ArrowLeft, ArrowRight, AlignVerticalJustifyCenter,
+  MoveVertical,
+} from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SliderWithButtons } from "@/components/slider-with-buttons";
@@ -33,6 +37,12 @@ export default function CustomTextPage() {
   const [bgGradient, setBgGradient]     = useLocalStorage("wf-custom-bg-gradient", DEFAULT_GRADIENT);
   const [bgWallpaper, setBgWallpaper]   = useLocalStorage("wf-custom-bg-wallpaper", "aurora");
   const [bgOverlay, setBgOverlay]       = useLocalStorage<number[]>("wf-custom-bg-overlay", [30]);
+
+  // ── Position / Layout (all persisted) ──────────────────────────────────
+  const [vAlign, setVAlign]             = useLocalStorage<"top" | "center" | "bottom">("wf-custom-valign", "center");
+  const [hAlign, setHAlign]             = useLocalStorage<"left" | "center" | "right">("wf-custom-halign", "center");
+  const [padX, setPadX]                 = useLocalStorage<number>("wf-custom-padx", 8);
+  const [padY, setPadY]                 = useLocalStorage<number>("wf-custom-pady", 8);
 
   const background =
     bgType === "color"
@@ -66,6 +76,12 @@ export default function CustomTextPage() {
           italic,
         },
         background,
+        layout: {
+          verticalAlign: vAlign,
+          horizontalAlign: hAlign,
+          paddingX: padX,
+          paddingY: padY,
+        },
       },
     });
   };
@@ -77,6 +93,14 @@ export default function CustomTextPage() {
       : bgType === "gradient"
       ? { background: bgGradient }
       : {};
+
+  const nudge = (dir: "up" | "down" | "left" | "right") => {
+    const step = 4;
+    if (dir === "up")    setPadY(v => Math.max(0, v - step));
+    if (dir === "down")  setPadY(v => Math.min(45, v + step));
+    if (dir === "left")  setPadX(v => Math.max(0, v - step));
+    if (dir === "right") setPadX(v => Math.min(45, v + step));
+  };
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -134,13 +158,14 @@ export default function CustomTextPage() {
                 textAlign: alignment,
               }}
             />
-            <Button size="lg" onClick={handleSendToScreen} className="w-full gap-2">
+
+            <Button onClick={handleSendToScreen} className="w-full gap-2 mt-auto">
               <Cast className="w-4 h-4" /> Send to Screen
             </Button>
           </CardContent>
         </Card>
 
-        {/* ── Right: typography + background ──────────────────────────────── */}
+        {/* ── Right: Typography + Position + Background ─────────────────────── */}
         <div className="space-y-4">
           {/* Typography */}
           <Card>
@@ -216,6 +241,88 @@ export default function CustomTextPage() {
                     className="flex-1 h-8 text-xs font-mono"
                   />
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Position */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2">
+                <MoveVertical className="w-4 h-4 text-primary" />
+                Position
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Vertical alignment */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Vertical</label>
+                <div className="grid grid-cols-3 gap-1">
+                  {(["top", "center", "bottom"] as const).map(v => (
+                    <button key={v}
+                      onClick={() => setVAlign(v)}
+                      className={`py-1.5 rounded text-xs capitalize border transition-colors ${vAlign === v ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Horizontal alignment */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Horizontal</label>
+                <div className="grid grid-cols-3 gap-1">
+                  {(["left", "center", "right"] as const).map(h => (
+                    <button key={h}
+                      onClick={() => setHAlign(h)}
+                      className={`py-1.5 rounded text-xs capitalize border transition-colors ${hAlign === h ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                      {h}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Nudge arrows */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Nudge Position</label>
+                <div className="grid grid-cols-3 gap-1 w-28 mx-auto">
+                  <div />
+                  <button onClick={() => nudge("up")} className="flex items-center justify-center h-9 rounded border border-border hover:bg-muted/60 transition-colors text-muted-foreground hover:text-foreground">
+                    <ArrowUp className="w-4 h-4" />
+                  </button>
+                  <div />
+                  <button onClick={() => nudge("left")} className="flex items-center justify-center h-9 rounded border border-border hover:bg-muted/60 transition-colors text-muted-foreground hover:text-foreground">
+                    <ArrowLeft className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => { setPadX(8); setPadY(8); }} className="flex items-center justify-center h-9 rounded border border-border hover:bg-muted/60 transition-colors text-muted-foreground hover:text-foreground text-[9px] font-bold">
+                    CTR
+                  </button>
+                  <button onClick={() => nudge("right")} className="flex items-center justify-center h-9 rounded border border-border hover:bg-muted/60 transition-colors text-muted-foreground hover:text-foreground">
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <div />
+                  <button onClick={() => nudge("down")} className="flex items-center justify-center h-9 rounded border border-border hover:bg-muted/60 transition-colors text-muted-foreground hover:text-foreground">
+                    <ArrowDown className="w-4 h-4" />
+                  </button>
+                  <div />
+                </div>
+                <p className="text-[10px] text-muted-foreground text-center">
+                  Pad {padX}% · {padY}%
+                </p>
+              </div>
+
+              {/* Fine-grained sliders */}
+              <div className="space-y-2 pt-1 border-t border-border/50">
+                <div className="flex justify-between text-xs">
+                  <label className="font-medium flex items-center gap-1"><AlignLeft className="w-3 h-3" /> Side Padding</label>
+                  <span className="text-muted-foreground">{padX}%</span>
+                </div>
+                <SliderWithButtons min={0} max={45} step={1} value={[padX]} onValueChange={([v]) => setPadX(v)} />
+                <div className="flex justify-between text-xs">
+                  <label className="font-medium flex items-center gap-1"><AlignVerticalJustifyCenter className="w-3 h-3" /> Top/Bottom Padding</label>
+                  <span className="text-muted-foreground">{padY}%</span>
+                </div>
+                <SliderWithButtons min={0} max={45} step={1} value={[padY]} onValueChange={([v]) => setPadY(v)} />
               </div>
             </CardContent>
           </Card>

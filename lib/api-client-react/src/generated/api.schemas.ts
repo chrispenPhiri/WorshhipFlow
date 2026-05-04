@@ -228,6 +228,7 @@ export const BackgroundCameraLayout = {
   "pip-bottomleft": "pip-bottomleft",
   "side-left": "side-left",
   "side-right": "side-right",
+  quad: "quad",
 } as const;
 
 export type BackgroundCameraShape =
@@ -248,6 +249,13 @@ export interface Background {
   cameraLayout?: BackgroundCameraLayout;
   cameraShape?: BackgroundCameraShape;
   cameraPipSize?: number;
+  cameraBrightness?: number;
+  cameraContrast?: number;
+  cameraSaturate?: number;
+  cameraMirror?: boolean;
+  cameraBorderWidth?: number;
+  cameraBorderColor?: string;
+  cameraDeviceIds?: string[];
 }
 
 export type LayoutVerticalAlign =

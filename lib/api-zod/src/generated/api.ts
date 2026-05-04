@@ -518,10 +518,18 @@ export const GetScreenStateResponse = zod.object({
           "pip-bottomleft",
           "side-left",
           "side-right",
+          "quad",
         ])
         .optional(),
       cameraShape: zod.enum(["rect", "circle", "rounded"]).optional(),
       cameraPipSize: zod.number().optional(),
+      cameraBrightness: zod.number().optional(),
+      cameraContrast: zod.number().optional(),
+      cameraSaturate: zod.number().optional(),
+      cameraMirror: zod.boolean().optional(),
+      cameraBorderWidth: zod.number().optional(),
+      cameraBorderColor: zod.string().optional(),
+      cameraDeviceIds: zod.array(zod.string()).optional(),
     })
     .optional(),
   layout: zod
@@ -749,10 +757,18 @@ export const UpdateScreenStateBody = zod.object({
           "pip-bottomleft",
           "side-left",
           "side-right",
+          "quad",
         ])
         .optional(),
       cameraShape: zod.enum(["rect", "circle", "rounded"]).optional(),
       cameraPipSize: zod.number().optional(),
+      cameraBrightness: zod.number().optional(),
+      cameraContrast: zod.number().optional(),
+      cameraSaturate: zod.number().optional(),
+      cameraMirror: zod.boolean().optional(),
+      cameraBorderWidth: zod.number().optional(),
+      cameraBorderColor: zod.string().optional(),
+      cameraDeviceIds: zod.array(zod.string()).optional(),
     })
     .optional(),
   layout: zod
@@ -977,10 +993,18 @@ export const UpdateScreenStateResponse = zod.object({
           "pip-bottomleft",
           "side-left",
           "side-right",
+          "quad",
         ])
         .optional(),
       cameraShape: zod.enum(["rect", "circle", "rounded"]).optional(),
       cameraPipSize: zod.number().optional(),
+      cameraBrightness: zod.number().optional(),
+      cameraContrast: zod.number().optional(),
+      cameraSaturate: zod.number().optional(),
+      cameraMirror: zod.boolean().optional(),
+      cameraBorderWidth: zod.number().optional(),
+      cameraBorderColor: zod.string().optional(),
+      cameraDeviceIds: zod.array(zod.string()).optional(),
     })
     .optional(),
   layout: zod

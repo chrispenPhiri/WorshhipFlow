@@ -669,12 +669,28 @@ components:
           type: boolean
         cameraLayout:
           type: string
-          enum: [fullscreen, pip-topright, pip-topleft, pip-bottomright, pip-bottomleft, side-left, side-right]
+          enum: [fullscreen, pip-topright, pip-topleft, pip-bottomright, pip-bottomleft, side-left, side-right, quad]
         cameraShape:
           type: string
           enum: [rect, circle, rounded]
         cameraPipSize:
           type: number
+        cameraBrightness:
+          type: number
+        cameraContrast:
+          type: number
+        cameraSaturate:
+          type: number
+        cameraMirror:
+          type: boolean
+        cameraBorderWidth:
+          type: number
+        cameraBorderColor:
+          type: string
+        cameraDeviceIds:
+          type: array
+          items:
+            type: string
       required:
         - type
         - value
