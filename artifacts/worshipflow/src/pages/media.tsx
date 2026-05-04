@@ -875,7 +875,7 @@ export default function MediaPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {cameras.map((c, i) => (
-                          <SelectItem key={c.deviceId} value={c.deviceId} className="text-xs">
+                          <SelectItem key={c.deviceId || `cam-${i}`} value={c.deviceId || `cam-${i}`} className="text-xs">
                             {c.label || `Camera ${i + 1}`}
                           </SelectItem>
                         ))}
