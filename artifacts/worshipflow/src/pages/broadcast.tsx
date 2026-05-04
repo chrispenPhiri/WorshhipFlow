@@ -597,6 +597,8 @@ export default function BroadcastPage() {
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [hideCursor, setHideCursor] = useState(false);
   const [contentKey, setContentKey] = useState(0);
+  const [autoFitFactor, setAutoFitFactor] = useState(1);
+  const autoFitTextRef = useRef<HTMLDivElement>(null);
   const prevContentRef = useRef<string>("");
   const pipWinRef = useRef<Window | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -801,6 +803,24 @@ export default function BroadcastPage() {
     if (id !== prevContentRef.current) { prevContentRef.current = id; setContentKey(k => k + 1); }
   }, [currentTitle, currentContent]);
 
+  // Auto-fit: scale font down when text overflows the available container height
+  useEffect(() => {
+    setAutoFitFactor(1);
+    const raf = requestAnimationFrame(() => {
+      const el = autoFitTextRef.current;
+      if (!el || !el.parentElement) return;
+      const parent = el.parentElement;
+      const availH = parent.clientHeight;
+      if (availH <= 0) return;
+      const contentH = el.scrollHeight;
+      if (contentH <= availH) return;
+      const factor = Math.max(0.12, Math.min(1, (availH / contentH) * 0.93));
+      setAutoFitFactor(factor);
+    });
+    return () => cancelAnimationFrame(raf);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contentKey]);
+
   // Camera lifecycle
   useEffect(() => {
     if (screenState?.background?.type === "camera" && !cameraStream) {
@@ -839,7 +859,7 @@ export default function BroadcastPage() {
   const contentStyle: React.CSSProperties = textStyle
     ? {
         fontFamily: textStyle.fontFamily,
-        fontSize: `${textStyle.fontSize * textScale}px`,
+        fontSize: `${textStyle.fontSize * textScale * autoFitFactor}px`,
         color: textStyle.textColor,
         fontWeight: textStyle.bold ? "bold" : "normal",
         fontStyle: textStyle.italic ? "italic" : "normal",
@@ -847,7 +867,7 @@ export default function BroadcastPage() {
         lineHeight: 1.4,
         ...getAnimationStyle(textStyle.animation),
       }
-    : { color: "#ffffff", fontSize: `${64 * textScale}px`, textAlign: "center" };
+    : { color: "#ffffff", fontSize: `${64 * textScale * autoFitFactor}px`, textAlign: "center" };
 
   const showContent = screenState && !screenState.isBlack && !screenState.isClear && screenState.content;
 
@@ -1098,6 +1118,7 @@ export default function BroadcastPage() {
             style={containerStyle}
           >
             <div
+              ref={autoFitTextRef}
               style={{ ...contentStyle, width: `${textWidthPct}%`, maxWidth: "100%" }}
               className="whitespace-pre-wrap drop-shadow-lg"
             >

@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Settings as SettingsIcon, Palette, Type, RotateCcw, Check, LayoutGrid, BookOpen } from "lucide-react";
+import { Settings as SettingsIcon, Palette, Type, RotateCcw, Check, LayoutGrid, BookOpen, Smile } from "lucide-react";
 import { useBibleOnlyMode } from "@/lib/bible-only-mode";
 import { BIBLE_TRANSLATIONS, FONTS } from "@/lib/constants";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,7 +21,7 @@ import {
 } from "@/lib/control-appearance";
 import {
   DEFAULT_NAV_ITEMS, ICON_CHOICES, effectiveIconId,
-  getIconComponent, useMenuCustomization,
+  getIconComponent, useMenuCustomization, useEmojiMode, effectiveEmoji,
 } from "@/lib/menu-customization";
 import { InstallAppCard } from "@/components/install-app-card";
 
@@ -209,6 +209,7 @@ function BibleOnlyModeCard() {
  */
 function MainMenuCustomizationCard() {
   const { overrides, setIcon, resetItem, resetAll } = useMenuCustomization();
+  const [emojiMode, setEmojiMode] = useEmojiMode();
   const { toast } = useToast();
 
   const hasAnyOverride = Object.keys(overrides).some(k => overrides[k]?.iconId);
@@ -244,7 +245,35 @@ function MainMenuCustomizationCard() {
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {/* Emoji Mode Toggle */}
+        <div className="flex items-center justify-between gap-3 py-2 px-3 rounded-lg border border-border bg-muted/30">
+          <div className="flex items-center gap-2">
+            <Smile className="w-4 h-4 text-muted-foreground" />
+            <div>
+              <p className="text-sm font-medium">Use Emoji Icons</p>
+              <p className="text-[11px] text-muted-foreground">Replace sidebar icons with emoji characters</p>
+            </div>
+          </div>
+          <Switch
+            checked={!!emojiMode}
+            onCheckedChange={setEmojiMode}
+            data-testid="switch-emoji-mode"
+          />
+        </div>
+
+        {/* Preview row when emoji mode is on */}
+        {emojiMode && (
+          <div className="flex flex-wrap gap-1 px-1">
+            {DEFAULT_NAV_ITEMS.slice(0, 8).map(item => (
+              <span key={item.href} className="text-base" title={item.label}>
+                {effectiveEmoji(item, overrides)}
+              </span>
+            ))}
+            <span className="text-xs text-muted-foreground self-center ml-1">…</span>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" data-testid="grid-menu-items">
           {DEFAULT_NAV_ITEMS.map(item => {
             const currentIconId = effectiveIconId(item, overrides);

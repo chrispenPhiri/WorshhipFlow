@@ -1,5 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { Sparkles, Send, Loader2, BookOpen, AlignLeft, Lightbulb, RotateCcw, ChevronDown, ChevronUp, X, User, Bot } from "lucide-react";
+import {
+  Sparkles, Send, Loader2, BookOpen, AlignLeft, Lightbulb, RotateCcw,
+  ChevronDown, ChevronUp, X, User, Bot, Monitor, FileDown,
+} from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +10,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useUpdateScreenState, useGetScreenState, getGetScreenStateQueryKey,
+} from "@workspace/api-client-react";
+import { useToast } from "@/hooks/use-toast";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -38,9 +46,37 @@ async function streamPost(
   }
 }
 
+/** Open a print-friendly window with the AI content. */
+function exportToPDF(title: string, content: string) {
+  const win = window.open("", "_blank");
+  if (!win) return;
+  const escaped = content
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br>");
+  win.document.write(`<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8">
+<title>${title}</title>
+<style>
+  body { font-family: Georgia, serif; max-width: 700px; margin: 48px auto; line-height: 1.75; color: #1a1a1a; padding: 0 24px; }
+  h1 { font-size: 1.6rem; margin-bottom: 0.5rem; color: #1e1b4b; }
+  .meta { font-size: 0.85rem; color: #666; margin-bottom: 2rem; border-bottom: 1px solid #ddd; padding-bottom: 1rem; }
+  .content { font-size: 1rem; }
+  @media print { body { margin: 24px; } }
+</style>
+</head><body>
+<h1>${title}</h1>
+<div class="meta">Exported from Phiri WorshipFlow · ${new Date().toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</div>
+<div class="content">${escaped}</div>
+</body></html>`);
+  win.document.close();
+  setTimeout(() => win.print(), 400);
+}
+
 type ProphetMsg = { role: "user" | "assistant"; content: string };
 
-function ProphetChat() {
+function ProphetChat({ onSendToScreen }: { onSendToScreen?: (content: string, title: string) => void }) {
   const [messages, setMessages] = useState<ProphetMsg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -92,6 +128,8 @@ function ProphetChat() {
     }
   }
 
+  const lastAssistant = [...messages].reverse().find(m => m.role === "assistant" && m.content);
+
   return (
     <div className="flex flex-col gap-4">
       {messages.length === 0 && (
@@ -110,7 +148,7 @@ function ProphetChat() {
       )}
 
       {messages.length > 0 && (
-        <ScrollArea className="h-[420px] pr-2">
+        <ScrollArea className="h-[380px] pr-2">
           <div className="space-y-4 pb-2">
             {messages.map((m, i) => (
               <div key={i} className={`flex gap-3 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -144,6 +182,25 @@ function ProphetChat() {
 
       {error && <p className="text-destructive text-sm">{error}</p>}
 
+      {lastAssistant && onSendToScreen && (
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            size="sm" variant="outline"
+            className="gap-1.5 text-xs"
+            onClick={() => onSendToScreen(lastAssistant.content, "Ask a Prophet")}
+          >
+            <Monitor className="w-3.5 h-3.5" /> Send to screen
+          </Button>
+          <Button
+            size="sm" variant="ghost"
+            className="gap-1.5 text-xs"
+            onClick={() => exportToPDF("Ask a Prophet — AI Response", lastAssistant.content)}
+          >
+            <FileDown className="w-3.5 h-3.5" /> Export PDF
+          </Button>
+        </div>
+      )}
+
       <div className="flex gap-2">
         <Input
           value={input}
@@ -167,7 +224,7 @@ function ProphetChat() {
   );
 }
 
-function AISummary() {
+function AISummary({ onSendToScreen }: { onSendToScreen?: (content: string, title: string) => void }) {
   const [book, setBook] = useState("");
   const [chapter, setChapter] = useState("");
   const [result, setResult] = useState("");
@@ -202,6 +259,7 @@ function AISummary() {
   }
 
   const bullets = result.split(/(?=•)/).filter(Boolean);
+  const summaryTitle = book && chapter ? `${book} ${chapter} — Summary` : "AI Chapter Summary";
 
   return (
     <div className="space-y-4">
@@ -232,7 +290,21 @@ function AISummary() {
 
       {result && (
         <div className="space-y-2 p-4 rounded-xl border border-border bg-muted/20">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{book} {chapter} — Summary</p>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{summaryTitle}</p>
+            <div className="flex gap-1.5">
+              {onSendToScreen && (
+                <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs"
+                  onClick={() => onSendToScreen(result, summaryTitle)}>
+                  <Monitor className="w-3 h-3" /> Send to screen
+                </Button>
+              )}
+              <Button size="sm" variant="ghost" className="gap-1.5 h-7 text-xs"
+                onClick={() => exportToPDF(summaryTitle, result)}>
+                <FileDown className="w-3 h-3" /> PDF
+              </Button>
+            </div>
+          </div>
           {bullets.length > 0 ? (
             <ul className="space-y-3">
               {bullets.map((b, i) => (
@@ -251,7 +323,7 @@ function AISummary() {
   );
 }
 
-function ContextLens() {
+function ContextLens({ onSendToScreen }: { onSendToScreen?: (content: string, title: string) => void }) {
   const [passage, setPassage] = useState("");
   const [extraText, setExtraText] = useState("");
   const [showExtra, setShowExtra] = useState(false);
@@ -287,6 +359,8 @@ function ContextLens() {
       setLoading(false);
     }
   }
+
+  const lensTitle = passage ? `${passage} — Plain English` : "Context Lens";
 
   return (
     <div className="space-y-4">
@@ -328,11 +402,23 @@ function ContextLens() {
 
       {result && (
         <div className="space-y-2 p-4 rounded-xl border border-border bg-muted/20">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{passage} — Plain English</p>
-            <button type="button" onClick={() => setResult("")} className="text-muted-foreground hover:text-foreground">
-              <X className="w-3.5 h-3.5" />
-            </button>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{lensTitle}</p>
+            <div className="flex items-center gap-1.5">
+              {onSendToScreen && (
+                <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs"
+                  onClick={() => onSendToScreen(result, lensTitle)}>
+                  <Monitor className="w-3 h-3" /> Send to screen
+                </Button>
+              )}
+              <Button size="sm" variant="ghost" className="gap-1.5 h-7 text-xs"
+                onClick={() => exportToPDF(lensTitle, result)}>
+                <FileDown className="w-3 h-3" /> PDF
+              </Button>
+              <button type="button" onClick={() => setResult("")} className="text-muted-foreground hover:text-foreground ml-1">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
           <p className="text-sm leading-relaxed whitespace-pre-wrap">{result}</p>
         </div>
@@ -342,6 +428,42 @@ function ContextLens() {
 }
 
 export default function AIPage() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { data: screenState } = useGetScreenState({ query: { queryKey: getGetScreenStateQueryKey() } });
+  const { mutate: updateScreen } = useUpdateScreenState({
+    mutation: { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetScreenStateQueryKey() }) }
+  });
+
+  function sendToScreen(content: string, title: string) {
+    updateScreen({
+      data: {
+        isBlack: screenState?.isBlack ?? false,
+        isClear: false,
+        contentType: "custom_text",
+        title,
+        content,
+        textStyle: {
+          fontFamily: "Georgia",
+          fontSize: 42,
+          textColor: "#ffffff",
+          alignment: "center",
+          animation: "fade_in",
+          bold: false,
+          italic: false,
+        },
+        background: {
+          type: "gradient",
+          value: "linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1c1665 100%)",
+          overlay: 0,
+        },
+        tickerEnabled: screenState?.tickerEnabled ?? false,
+        comparisonMode: false,
+      }
+    });
+    toast({ title: "Sent to screen", description: title });
+  }
+
   return (
     <div className="max-w-3xl mx-auto space-y-6 p-4 pb-12">
       <div>
@@ -370,7 +492,6 @@ export default function AIPage() {
           </TabsTrigger>
         </TabsList>
 
-        {/* ── Ask a Prophet ── */}
         <TabsContent value="prophet" className="mt-4">
           <Card>
             <CardHeader>
@@ -382,12 +503,11 @@ export default function AIPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ProphetChat />
+              <ProphetChat onSendToScreen={sendToScreen} />
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* ── AI Summary ── */}
         <TabsContent value="summary" className="mt-4">
           <Card>
             <CardHeader>
@@ -400,12 +520,11 @@ export default function AIPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <AISummary />
+              <AISummary onSendToScreen={sendToScreen} />
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* ── Context Lens ── */}
         <TabsContent value="lens" className="mt-4">
           <Card>
             <CardHeader>
@@ -418,7 +537,7 @@ export default function AIPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ContextLens />
+              <ContextLens onSendToScreen={sendToScreen} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -431,6 +550,7 @@ export default function AIPage() {
             <div className="text-xs text-muted-foreground space-y-1">
               <p><strong className="text-foreground">About AI Features:</strong> Responses are AI-generated and should be used as a starting point for study, not as a replacement for Scripture or pastoral guidance.</p>
               <p>These features use <strong className="text-foreground">Replit AI Integrations</strong> and require an active internet connection. No data is stored after your session ends.</p>
+              <p className="flex items-center gap-1.5 mt-1"><Monitor className="w-3 h-3 text-primary" /> Use <strong className="text-foreground">Send to screen</strong> to project any AI response on your presentation display. <FileDown className="w-3 h-3 text-primary ml-1" /> Use <strong className="text-foreground">Export PDF</strong> to print or save as a document.</p>
             </div>
           </div>
         </CardContent>

@@ -15,7 +15,7 @@ import {
 import {
   GraduationCap, Send, Search, BookOpen, MessageCircle, Activity, Heart,
   ChevronRight, Sparkles, X, Users, Baby, UserCircle, HeartHandshake, Shield,
-  Smile, Cross, Droplets, Wine, HandHeart, Plus, Pencil, Trash2, Star,
+  Smile, Cross, Droplets, Wine, HandHeart, Plus, Pencil, Trash2, Star, Image as ImageIcon,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRecentlyPresented } from "@/hooks/use-recently-presented";
@@ -161,15 +161,32 @@ export default function TeachingsPage() {
     toast({ title: "Teaching deleted" });
   };
 
+  const CATEGORY_GRADIENTS: Record<string, string> = {
+    "Sunday School": "linear-gradient(135deg, #be185d 0%, #9d174d 50%, #500724 100%)",
+    "Youth":         "linear-gradient(135deg, #0369a1 0%, #075985 50%, #0c4a6e 100%)",
+    "Mothers":       "linear-gradient(135deg, #be123c 0%, #9f1239 50%, #4c0519 100%)",
+    "Fathers":       "linear-gradient(135deg, #1d4ed8 0%, #1e40af 50%, #1e3a8a 100%)",
+    "Adults":        "linear-gradient(135deg, #b45309 0%, #92400e 50%, #451a03 100%)",
+    "Happiness":     "linear-gradient(135deg, #d97706 0%, #b45309 50%, #78350f 100%)",
+    "Funeral":       "linear-gradient(135deg, #374151 0%, #1f2937 50%, #111827 100%)",
+    "Baptism":       "linear-gradient(135deg, #0e7490 0%, #155e75 50%, #083344 100%)",
+    "Holy Communion":"linear-gradient(135deg, #5b21b6 0%, #4c1d95 50%, #2e1065 100%)",
+    "Marriage":      "linear-gradient(135deg, #c026d3 0%, #a21caf 50%, #701a75 100%)",
+    "Healing":       "linear-gradient(135deg, #047857 0%, #065f46 50%, #022c22 100%)",
+  };
+
   /** Send a piece of a teaching to the projection screen with a clear category label. */
   const presentTeaching = (
     title: string,
     bodyContent: string,
-    opts: { lessonId: string; sectionKey: string; categoryLabel: string; alignment?: "left" | "center" }
+    opts: { lessonId: string; sectionKey: string; categoryLabel: string; alignment?: "left" | "center"; useGraphic?: boolean }
   ) => {
     const baseStyle = screenState?.textStyle ?? { fontFamily: "Georgia", fontSize: 48, textColor: "#ffffff", alignment: "center" as const, animation: "fade_in" as const };
-    // Prepend the category and lesson name to the content so the audience knows what they're seeing.
     const screenContent = `${opts.categoryLabel}\n\n${bodyContent}`;
+    const category = (opts.categoryLabel ?? "").split(" · ")[0];
+    const background = opts.useGraphic
+      ? { type: "gradient" as const, value: CATEGORY_GRADIENTS[category] ?? "linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1c1665 100%)", overlay: 0 }
+      : (screenState?.background ?? { type: "color" as const, value: "#000000" });
     const screenData = {
       isBlack: screenState?.isBlack ?? false,
       isClear: false,
@@ -182,7 +199,7 @@ export default function TeachingsPage() {
         alignment: opts.alignment ?? "center",
         fontFamily: baseStyle.fontFamily ?? "Georgia",
       },
-      background: screenState?.background ?? { type: "color", value: "#000000" },
+      background,
       tickerEnabled: screenState?.tickerEnabled ?? false,
       comparisonMode: false,
     };
@@ -194,7 +211,7 @@ export default function TeachingsPage() {
       subtitle: opts.categoryLabel,
       payload: { screenData },
     });
-    toast({ title: "Sent to screen", description: title });
+    toast({ title: opts.useGraphic ? "Graphic sent to screen" : "Sent to screen", description: title });
   };
 
   return (
@@ -453,24 +470,46 @@ export default function TeachingsPage() {
                   <div className="text-sm text-muted-foreground mt-1.5">
                     — {selected.keyVerse.reference}
                   </div>
-                  <Button
-                    size="sm"
-                    className="mt-3 gap-2"
-                    onClick={() =>
-                      presentTeaching(
-                        selected.keyVerse.reference,
-                        `"${selected.keyVerse.text}"\n\n— ${selected.keyVerse.reference}`,
-                        {
-                          lessonId: selected.id,
-                          sectionKey: "verse",
-                          categoryLabel: `${selected.category} · ${selected.title} — Key Verse`,
-                        }
-                      )
-                    }
-                    data-testid="button-present-key-verse"
-                  >
-                    <Send className="w-3.5 h-3.5" aria-hidden="true" /> Send Key Verse to Screen
-                  </Button>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() =>
+                        presentTeaching(
+                          selected.keyVerse.reference,
+                          `"${selected.keyVerse.text}"\n\n— ${selected.keyVerse.reference}`,
+                          {
+                            lessonId: selected.id,
+                            sectionKey: "verse",
+                            categoryLabel: `${selected.category} · ${selected.title} — Key Verse`,
+                          }
+                        )
+                      }
+                      data-testid="button-present-key-verse"
+                    >
+                      <Send className="w-3.5 h-3.5" aria-hidden="true" /> Send to screen
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="gap-2"
+                      onClick={() =>
+                        presentTeaching(
+                          selected.keyVerse.reference,
+                          `"${selected.keyVerse.text}"\n\n— ${selected.keyVerse.reference}`,
+                          {
+                            lessonId: selected.id,
+                            sectionKey: "verse-graphic",
+                            categoryLabel: `${selected.category} · ${selected.title} — Key Verse`,
+                            useGraphic: true,
+                          }
+                        )
+                      }
+                      data-testid="button-present-key-verse-graphic"
+                    >
+                      <ImageIcon className="w-3.5 h-3.5" aria-hidden="true" /> Send as graphic
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -609,9 +648,11 @@ export default function TeachingsPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm italic leading-relaxed">{selected.prayer}</p>
+                  <div className="flex flex-wrap gap-2 mt-3">
                   <Button
                     size="sm"
-                    className="mt-3 gap-2"
+                    variant="outline"
+                    className="gap-2"
                     onClick={() =>
                       presentTeaching("Closing Prayer", `Closing Prayer\n\n${selected.prayer}`, {
                         lessonId: selected.id,
@@ -623,6 +664,22 @@ export default function TeachingsPage() {
                   >
                     <Send className="w-3.5 h-3.5" aria-hidden="true" /> Send Prayer to Screen
                   </Button>
+                  <Button
+                    size="sm"
+                    className="gap-2"
+                    onClick={() =>
+                      presentTeaching("Closing Prayer", `Closing Prayer\n\n${selected.prayer}`, {
+                        lessonId: selected.id,
+                        sectionKey: "prayer-graphic",
+                        categoryLabel: `${selected.category} · ${selected.title} — Prayer`,
+                        useGraphic: true,
+                      })
+                    }
+                    data-testid="button-present-prayer-graphic"
+                  >
+                    <ImageIcon className="w-3.5 h-3.5" aria-hidden="true" /> Send as graphic
+                  </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>

@@ -8,7 +8,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import {
   HelpCircle, Search, Rocket, Book, Music, Type, Palette, Video, Calendar,
   BookOpen, Sparkles, Settings, Monitor, Keyboard, Lightbulb, ChevronRight, GraduationCap,
-  Gamepad2, Plus, Download,
+  Gamepad2, Plus, Download, Bot, Image as ImageIcon, TextCursorInput, Smile,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -462,6 +462,99 @@ const SECTIONS: Section[] = [
     tips: [
       <>The operator window and broadcast window stay in sync even offline — they communicate directly through the browser.</>,
       <>To back up your data, use the browser's export feature or take note of important content elsewhere — local storage is per-device.</>,
+    ],
+  },
+  {
+    id: "ai-features",
+    icon: Bot,
+    title: "AI Features",
+    to: "/ai",
+    summary: "Three AI-powered tools: Ask a Prophet (theological Q&A), AI Chapter Summary, and Context Lens (plain-English explanations). All require internet.",
+    steps: [
+      {
+        heading: "Ask a Prophet",
+        body: <p>Type any theological question and get a rich, contextual answer grounded in Scripture. You can have a multi-turn conversation — the AI keeps track of what was said earlier. Five suggested questions appear at the start to help you get going.</p>,
+      },
+      {
+        heading: "AI Chapter Summary (TL;DR)",
+        body: <p>Enter a book name and chapter number and click <strong>Summarise</strong>. You get a 3-bullet TL;DR — great for understanding Leviticus, Numbers, Revelation, or any long chapter before a service. Eight quick-access chapter chips are provided.</p>,
+      },
+      {
+        heading: "Context Lens (plain-English explanations)",
+        body: <p>Enter any passage reference (e.g. <em>Revelation 3:20</em> or <em>Matthew 13:44-46</em>) and click <strong>Explain</strong>. The AI gives a clear, accessible explanation — ideal for new believers or children's ministry. You can optionally paste the verse text in for extra accuracy.</p>,
+      },
+      {
+        heading: "Send AI content to the screen",
+        body: <p>After any AI response appears, click <strong>Send to screen</strong> to project it on the presentation display — it goes up on a beautiful deep indigo gradient background. Use this to share an AI-generated explanation or summary with your congregation in real time.</p>,
+      },
+      {
+        heading: "Export AI content as PDF",
+        body: <p>Click <strong>Export PDF</strong> next to any AI response to open a clean, print-ready document in a new tab. Use your browser's <em>Print</em> dialog to save as PDF or send to a printer. Great for handouts or study notes.</p>,
+      },
+    ],
+    tips: [
+      <>AI features require an active internet connection. Everything else in the app still works offline.</>,
+      <>AI responses are a starting point for study — always review them against Scripture before sharing with your church.</>,
+    ],
+  },
+  {
+    id: "graphic-presentations",
+    icon: ImageIcon,
+    title: "Send as Graphic",
+    summary: "Project content with category-specific gradient backgrounds at the click of a button — no theme changes needed.",
+    steps: [
+      {
+        heading: "Inspiration graphics",
+        body: <p>On the <strong>Daily Inspiration</strong> page, each Verse of the Day and "Did You Know?" card has a plain <strong>Send to screen</strong> button and a purple <strong>Send as graphic</strong> button. The graphic version uses a beautiful, category-specific gradient: deep indigo for verses, warm amber for facts, and violet for calendar events.</p>,
+      },
+      {
+        heading: "Teaching graphics",
+        body: <p>On the <strong>Teachings</strong> page, the Key Verse and Closing Prayer cards each have a <strong>Send as graphic</strong> button. The gradient color matches the lesson category — rose for Mothers, blue for Fathers, teal for Healing, slate for Funeral, and so on.</p>,
+      },
+      {
+        heading: "Prayer Wall graphics",
+        body: <p>On the <strong>Prayer Wall</strong> page, each prayer request has a <strong>Graphic</strong> button (a single request with its category gradient) and there is a <strong>Full graphic</strong> button at the top to project all active requests together on a deep rose gradient.</p>,
+      },
+    ],
+    tips: [
+      <>Graphic mode sets its own background, overriding whatever theme is currently active — only for that one send.</>,
+      <>After projecting a graphic, the next plain send will restore your current theme background.</>,
+    ],
+  },
+  {
+    id: "auto-fit-text",
+    icon: TextCursorInput,
+    title: "Auto-Fit Text",
+    summary: "The broadcast screen automatically shrinks text that would overflow the display area.",
+    steps: [
+      {
+        heading: "How it works",
+        body: <p>When you send a long passage — such as a multi-verse chapter or a full prayer — the broadcast window measures the text height after rendering. If it overflows the available space, it automatically reduces the font size proportionally so all the text fits within the screen without cutting off.</p>,
+      },
+      {
+        heading: "Manual font size still wins",
+        body: <p>Auto-fit only scales <em>down</em> — it never makes text larger than your configured font size. If you find that text is too small after auto-fit shrinks it, reduce the amount of text or increase the <strong>Text Width</strong> percentage in Settings to give the text more room.</p>,
+      },
+    ],
+    tips: [
+      <>For the cleanest look, prefer to send shorter, focused passages rather than entire chapters at once.</>,
+    ],
+  },
+  {
+    id: "emoji-icons",
+    icon: Smile,
+    title: "Emoji Menu Icons",
+    to: "/settings",
+    summary: "Switch the sidebar icons to emojis for a more colourful, personal look.",
+    steps: [
+      {
+        heading: "Enable emoji mode",
+        body: <p>Go to <strong>Settings → Menu Customisation</strong> and toggle <strong>Use Emoji Icons</strong>. The sidebar icons immediately switch from Lucide icons to their default emoji equivalents — 📖 for Bible, 🎵 for Songs, 🎨 for Themes, and so on.</p>,
+      },
+      {
+        heading: "It's per-device",
+        body: <p>Emoji mode is saved locally on this device and browser. It only affects the operator interface — the projection screen is unaffected.</p>,
+      },
     ],
   },
   {

@@ -7,7 +7,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import {
-  DEFAULT_NAV_ITEMS, effectiveIconId, getIconComponent, useMenuCustomization,
+  DEFAULT_NAV_ITEMS, effectiveIconId, effectiveEmoji, getIconComponent,
+  useMenuCustomization, useEmojiMode,
 } from "@/lib/menu-customization";
 import { useAuth } from "@/lib/auth/context";
 import { useBibleOnlyMode, isPathAllowedInBibleOnly } from "@/lib/bible-only-mode";
@@ -113,6 +114,7 @@ export function Layout({ children }: { children: ReactNode }) {
     }
   }, [bibleOnly, location, setLocation]);
 
+  const [emojiMode] = useEmojiMode();
   const [menuOpen, setMenuOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
 
@@ -140,6 +142,7 @@ export function Layout({ children }: { children: ReactNode }) {
     ...item,
     Icon: getIconComponent(effectiveIconId(item, overrides)),
     color: item.color,
+    emoji: effectiveEmoji(item, overrides),
   }));
 
   /** Render the nav links.  When `showLabels` is false (collapsed desktop
@@ -161,21 +164,16 @@ export function Layout({ children }: { children: ReactNode }) {
         const iconPill = (
           <span
             className="flex items-center justify-center rounded-lg shrink-0 transition-all duration-150"
-            style={
-              isActive
-                ? {
-                    width: 32, height: 32,
-                    backgroundColor: `${item.color}33`,
-                    color: item.color,
-                  }
-                : {
-                    width: 32, height: 32,
-                    backgroundColor: `${item.color}22`,
-                    color: item.color,
-                  }
-            }
+            style={{
+              width: 32, height: 32,
+              backgroundColor: isActive ? `${item.color}33` : `${item.color}22`,
+              color: item.color,
+            }}
           >
-            <item.Icon style={{ width: 17, height: 17 }} />
+            {emojiMode
+              ? <span style={{ fontSize: 16, lineHeight: 1, userSelect: "none" }}>{item.emoji}</span>
+              : <item.Icon style={{ width: 17, height: 17 }} />
+            }
           </span>
         );
 

@@ -6,7 +6,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Send, Sparkles, Sun, Calendar as CalendarIcon, ChevronRight, Lightbulb, Quote } from "lucide-react";
+import { Send, Sparkles, Sun, Calendar as CalendarIcon, ChevronRight, Lightbulb, Quote, Image as ImageIcon } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useRecentlyPresented } from "@/hooks/use-recently-presented";
@@ -42,21 +42,29 @@ export default function InspirationPage() {
     ev.jsDate.getDate() === today.getDate()
   );
 
+  const INSP_GRADIENTS: Record<"verse" | "fact" | "event", string> = {
+    verse: "linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1a237e 100%)",
+    fact:  "linear-gradient(135deg, #78350f 0%, #92400e 50%, #451a03 100%)",
+    event: "linear-gradient(135deg, #2e1065 0%, #4c1d95 50%, #3b0764 100%)",
+  };
+
   /** Send a piece of inspiration content to the projection screen.
    *  The category label (e.g. "Verse of the Day") is prepended to the content
    *  so the audience clearly sees what they are looking at on screen. */
   const presentInspiration = (
     title: string,
     content: string,
-    opts: { kind: "verse" | "fact" | "event"; idKey: string; subtitle?: string }
+    opts: { kind: "verse" | "fact" | "event"; idKey: string; subtitle?: string; useGraphic?: boolean }
   ) => {
     const kindLabel =
       opts.kind === "verse" ? "Verse of the Day"
       : opts.kind === "fact" ? "Did You Know?"
       : "Christian Calendar";
     const baseStyle = screenState?.textStyle ?? { fontFamily: "Georgia", fontSize: 48, textColor: "#ffffff", alignment: "center" as const, animation: "fade_in" as const };
-    // Prepend the category so it appears on screen above the content.
     const screenContent = `${kindLabel}\n\n${content}`;
+    const background = opts.useGraphic
+      ? { type: "gradient" as const, value: INSP_GRADIENTS[opts.kind], overlay: 0 }
+      : (screenState?.background ?? { type: "color" as const, value: "#000000" });
     const screenData = {
       isBlack: screenState?.isBlack ?? false,
       isClear: false,
@@ -69,7 +77,7 @@ export default function InspirationPage() {
         alignment: "center" as const,
         fontFamily: baseStyle.fontFamily ?? "Georgia",
       },
-      background: screenState?.background ?? { type: "color", value: "#000000" },
+      background,
       tickerEnabled: screenState?.tickerEnabled ?? false,
       comparisonMode: false,
     };
@@ -81,7 +89,7 @@ export default function InspirationPage() {
       subtitle: opts.subtitle ?? kindLabel,
       payload: { screenData },
     });
-    toast({ title: "Sent to screen", description: `${kindLabel} — ${title}` });
+    toast({ title: opts.useGraphic ? "Graphic sent to screen" : "Sent to screen", description: `${kindLabel} — ${title}` });
   };
 
   return (
@@ -127,11 +135,20 @@ export default function InspirationPage() {
               </Button>
               <Button
                 size="sm"
+                variant="outline"
                 className="gap-1.5"
                 onClick={() => presentInspiration(verse.reference, `"${verse.text}"\n\n— ${verse.reference}`, { kind: "verse", idKey: verse.reference, subtitle: "Verse of the Day" })}
                 data-testid="button-present-verse"
               >
                 <Send className="w-3.5 h-3.5" /> Send to screen
+              </Button>
+              <Button
+                size="sm"
+                className="gap-1.5"
+                onClick={() => presentInspiration(verse.reference, `"${verse.text}"\n\n— ${verse.reference}`, { kind: "verse", idKey: verse.reference, subtitle: "Verse of the Day", useGraphic: true })}
+                data-testid="button-present-verse-graphic"
+              >
+                <ImageIcon className="w-3.5 h-3.5" /> Send as graphic
               </Button>
             </div>
           </div>
@@ -167,11 +184,20 @@ export default function InspirationPage() {
               </Button>
               <Button
                 size="sm"
+                variant="outline"
                 className="gap-1.5"
                 onClick={() => presentInspiration(fact.topic, `${fact.topic}\n\n${fact.fact}`, { kind: "fact", idKey: `${factIdx}`, subtitle: "Did You Know?" })}
                 data-testid="button-present-fact"
               >
                 <Send className="w-3.5 h-3.5" /> Send to screen
+              </Button>
+              <Button
+                size="sm"
+                className="gap-1.5"
+                onClick={() => presentInspiration(fact.topic, `${fact.topic}\n\n${fact.fact}`, { kind: "fact", idKey: `${factIdx}`, subtitle: "Did You Know?", useGraphic: true })}
+                data-testid="button-present-fact-graphic"
+              >
+                <ImageIcon className="w-3.5 h-3.5" /> Send as graphic
               </Button>
             </div>
           </div>

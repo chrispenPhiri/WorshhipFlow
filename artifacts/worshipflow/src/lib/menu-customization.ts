@@ -14,7 +14,6 @@ import {
   Bell, Award, Bookmark, Clock, MapPin, Globe, Lightbulb, Compass, Feather,
   Crown, ScrollText, Speaker, Users, MessageCircle, Hand, ListMusic, FileText,
   PlayCircle, Drum,
-  // Expanded "lifelike" church-and-worship palette
   HandHeart, HeartHandshake, BookHeart, BookmarkCheck, Cake, Gift, Users2,
   Megaphone, Coffee, Building2, Anchor, Sprout, Handshake, Wind, Droplet,
   Wheat, Grape, Trees, Soup, Wine, Flag, Mountain, Eye, Music2, Quote, Album,
@@ -28,46 +27,41 @@ export interface NavItemDef {
   defaultIconId: string;
   /** Hex color used for the icon pill in the sidebar (inactive state). */
   color: string;
+  /** Default emoji shown in place of the icon when emoji mode is on. */
+  emoji: string;
 }
 
 /** The fixed list of routes that appear in the sidebar.  Order is fixed —
  *  customisation only changes the icon, not the position or destination. */
 export const DEFAULT_NAV_ITEMS: readonly NavItemDef[] = [
-  { href: "/",             label: "Bible",             defaultIconId: "Book",          color: "#f59e0b" },
-  { href: "/songs",        label: "Songs",             defaultIconId: "Music",         color: "#a855f7" },
-  { href: "/custom",       label: "Custom Text",       defaultIconId: "Type",          color: "#06b6d4" },
-  { href: "/themes",       label: "Themes",            defaultIconId: "Palette",       color: "#ec4899" },
-  { href: "/media",        label: "Media & Broadcast", defaultIconId: "Video",         color: "#ef4444" },
-  { href: "/schedule",     label: "Schedule",          defaultIconId: "Calendar",      color: "#22c55e" },
-  { href: "/notes",        label: "Sermon Notes",      defaultIconId: "BookOpen",      color: "#f97316" },
-  { href: "/inspiration",  label: "Daily Inspiration", defaultIconId: "Sparkles",      color: "#eab308" },
-  { href: "/teachings",    label: "Teachings",         defaultIconId: "GraduationCap", color: "#3b82f6" },
-  { href: "/prayer-wall",  label: "Prayer Wall",       defaultIconId: "HandHeart",     color: "#f43f5e" },
-  { href: "/hymn-number",  label: "Hymn Number",       defaultIconId: "Music2",        color: "#8b5cf6" },
-  { href: "/countdown",    label: "Countdown",         defaultIconId: "Clock",         color: "#14b8a6" },
-  { href: "/games",        label: "Bible Games",       defaultIconId: "Gamepad2",      color: "#84cc16" },
-  { href: "/ai",           label: "AI Features",       defaultIconId: "Sparkles",      color: "#6366f1" },
-  { href: "/how-to",       label: "How To",            defaultIconId: "HelpCircle",    color: "#0ea5e9" },
-  { href: "/settings",     label: "Settings",          defaultIconId: "Settings",      color: "#94a3b8" },
+  { href: "/",             label: "Bible",             defaultIconId: "Book",          color: "#f59e0b", emoji: "📖" },
+  { href: "/songs",        label: "Songs",             defaultIconId: "Music",         color: "#a855f7", emoji: "🎵" },
+  { href: "/custom",       label: "Custom Text",       defaultIconId: "Type",          color: "#06b6d4", emoji: "✏️" },
+  { href: "/themes",       label: "Themes",            defaultIconId: "Palette",       color: "#ec4899", emoji: "🎨" },
+  { href: "/media",        label: "Media & Broadcast", defaultIconId: "Video",         color: "#ef4444", emoji: "🎥" },
+  { href: "/schedule",     label: "Schedule",          defaultIconId: "Calendar",      color: "#22c55e", emoji: "📅" },
+  { href: "/notes",        label: "Sermon Notes",      defaultIconId: "BookOpen",      color: "#f97316", emoji: "📝" },
+  { href: "/inspiration",  label: "Daily Inspiration", defaultIconId: "Sparkles",      color: "#eab308", emoji: "✨" },
+  { href: "/teachings",    label: "Teachings",         defaultIconId: "GraduationCap", color: "#3b82f6", emoji: "🎓" },
+  { href: "/prayer-wall",  label: "Prayer Wall",       defaultIconId: "HandHeart",     color: "#f43f5e", emoji: "🙏" },
+  { href: "/hymn-number",  label: "Hymn Number",       defaultIconId: "Music2",        color: "#8b5cf6", emoji: "🎶" },
+  { href: "/countdown",    label: "Countdown",         defaultIconId: "Clock",         color: "#14b8a6", emoji: "⏱️" },
+  { href: "/games",        label: "Bible Games",       defaultIconId: "Gamepad2",      color: "#84cc16", emoji: "🎮" },
+  { href: "/ai",           label: "AI Features",       defaultIconId: "Sparkles",      color: "#6366f1", emoji: "🤖" },
+  { href: "/how-to",       label: "How To",            defaultIconId: "HelpCircle",    color: "#0ea5e9", emoji: "💡" },
+  { href: "/settings",     label: "Settings",          defaultIconId: "Settings",      color: "#94a3b8", emoji: "⚙️" },
 ] as const;
 
-/** Curated palette of icons users can pick from when customising the menu.
- *  Keeping this hand-picked (rather than exposing all of lucide) keeps the
- *  UI tight and keeps every choice on-theme for a worship/church context. */
+/** Curated palette of icons users can pick from when customising the menu. */
 export const ICON_REGISTRY: Record<string, LucideIcon> = {
-  // The defaults — listed first so they appear at the top of the picker.
   Book, Music, Type, Palette, Video, Calendar, BookOpen, Sparkles,
   GraduationCap, Gamepad2, HelpCircle, Settings,
-  // Faith / worship
   Cross, Church, Heart, HandHeart, HeartHandshake, BookHeart, Crown, Hand,
   Flame, Star, ScrollText, Feather, Quote, Anchor, Eye, Wind, Droplet,
   Sprout, Wheat, Grape, Trees, Mountain, Tent, Wine,
-  // Community / outreach
   Users, Users2, MessageCircle, Handshake, Megaphone, Gift, Cake, Soup,
   Coffee, Building2, Flag, MapPin, Globe, Compass, Lightbulb,
-  // Time / day-to-day
   Sun, Moon, Cloud, Clock, Bell, Bookmark, BookmarkCheck, Award,
-  // AV / production
   Mic, Headphones, Speaker, Tv, MonitorPlay, Camera, Image: ImageIcon,
   PlayCircle, Drum, ListMusic, Music2, Album, FileText,
 };
@@ -76,9 +70,10 @@ export const ICON_REGISTRY: Record<string, LucideIcon> = {
 export const ICON_CHOICES: string[] = Object.keys(ICON_REGISTRY);
 
 /** Per-route overrides.  Keyed by `NavItemDef.href`. */
-export type MenuOverrides = Record<string, { iconId?: string }>;
+export type MenuOverrides = Record<string, { iconId?: string; emoji?: string }>;
 
 const STORAGE_KEY = "wf-menu-overrides";
+export const EMOJI_MODE_KEY = "wf-emoji-mode";
 
 /** React hook — read/write the local menu-icon overrides. */
 export function useMenuCustomization() {
@@ -88,7 +83,9 @@ export function useMenuCustomization() {
     setOverrides((prev) => {
       const next = { ...prev };
       if (!iconId) {
-        delete next[href];
+        const { iconId: _removed, ...rest } = next[href] ?? {};
+        if (Object.keys(rest).length === 0) delete next[href];
+        else next[href] = rest;
       } else {
         next[href] = { ...next[href], iconId };
       }
@@ -96,10 +93,21 @@ export function useMenuCustomization() {
     });
   };
 
-  const resetItem = (href: string) => setIcon(href, undefined);
+  const resetItem = (href: string) => {
+    setOverrides((prev) => {
+      const next = { ...prev };
+      delete next[href];
+      return next;
+    });
+  };
   const resetAll = () => setOverrides({});
 
   return { overrides, setIcon, resetItem, resetAll };
+}
+
+/** Hook to read/write the emoji-mode preference. */
+export function useEmojiMode() {
+  return useLocalStorage<boolean>(EMOJI_MODE_KEY, false);
 }
 
 /** Look up the icon component for an icon id, falling back to Book if the
@@ -111,4 +119,9 @@ export function getIconComponent(iconId: string): LucideIcon {
 /** Resolve the effective icon id for a nav item, applying any user override. */
 export function effectiveIconId(item: NavItemDef, overrides: MenuOverrides): string {
   return overrides[item.href]?.iconId ?? item.defaultIconId;
+}
+
+/** Resolve the effective emoji for a nav item, applying any user override. */
+export function effectiveEmoji(item: NavItemDef, overrides: MenuOverrides): string {
+  return overrides[item.href]?.emoji ?? item.emoji;
 }

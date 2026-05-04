@@ -5,9 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { HandHeart, Plus, Trash2, Send, Check, RotateCcw, Search } from "lucide-react";
+import { HandHeart, Plus, Trash2, Send, Check, RotateCcw, Search, Image } from "lucide-react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
-import { useGameBroadcast } from "@/lib/game-broadcast";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useUpdateScreenState, useGetScreenState, getGetScreenStateQueryKey,
+} from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 
 type Status = "active" | "answered";
@@ -23,15 +26,58 @@ interface PrayerRequest {
 
 const CATEGORIES = ["Healing", "Family", "Salvation", "Provision", "Guidance", "Praise", "Other"] as const;
 
+const CATEGORY_GRADIENTS: Record<string, string> = {
+  Healing:    "linear-gradient(135deg, #064e3b 0%, #065f46 50%, #022c22 100%)",
+  Family:     "linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #0c1f57 100%)",
+  Salvation:  "linear-gradient(135deg, #7c2d12 0%, #b45309 50%, #451a03 100%)",
+  Provision:  "linear-gradient(135deg, #14532d 0%, #15803d 50%, #052e16 100%)",
+  Guidance:   "linear-gradient(135deg, #1e1b4b 0%, #4338ca 50%, #0f0a2e 100%)",
+  Praise:     "linear-gradient(135deg, #78350f 0%, #d97706 50%, #451a03 100%)",
+  Other:      "linear-gradient(135deg, #3b0764 0%, #7c3aed 50%, #1e0533 100%)",
+};
+
+const PRAYER_WALL_GRADIENT = "linear-gradient(135deg, #4c0519 0%, #881337 50%, #1c0a10 100%)";
+
 export default function PrayerWallPage() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [items, setItems] = useLocalStorage<PrayerRequest[]>("wf-prayer-wall", []);
   const [name, setName] = useState("");
   const [category, setCategory] = useState<string>("Healing");
   const [body, setBody] = useState("");
   const [filter, setFilter] = useState<"all" | Status>("all");
   const [query, setQuery] = useState("");
-  const { presentOnScreen } = useGameBroadcast();
-  const { toast } = useToast();
+
+  const { data: screenState } = useGetScreenState({ query: { queryKey: getGetScreenStateQueryKey() } });
+  const { mutate: updateScreen } = useUpdateScreenState({
+    mutation: { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetScreenStateQueryKey() }) }
+  });
+
+  function buildScreenData(title: string, header: string, bodyText: string, gradient: string) {
+    return {
+      isBlack: screenState?.isBlack ?? false,
+      isClear: false,
+      contentType: "custom_text" as const,
+      title,
+      content: `${header}\n\n${bodyText}`,
+      textStyle: {
+        fontFamily: "Georgia",
+        fontSize: 48,
+        textColor: "#ffffff",
+        alignment: "center" as const,
+        animation: "fade_in" as const,
+        bold: false,
+        italic: false,
+      },
+      background: {
+        type: "gradient" as const,
+        value: gradient,
+        overlay: 0,
+      },
+      tickerEnabled: screenState?.tickerEnabled ?? false,
+      comparisonMode: false,
+    };
+  }
 
   function add() {
     const trimmed = body.trim();
@@ -60,12 +106,25 @@ export default function PrayerWallPage() {
     );
   }
 
-  function projectOne(p: PrayerRequest) {
+  function projectOne(p: PrayerRequest, useGraphic = false) {
     const header = p.name ? `${p.category} — ${p.name}` : p.category;
-    presentOnScreen("Prayer Request", header, p.body);
+    if (useGraphic) {
+      const gradient = CATEGORY_GRADIENTS[p.category] ?? PRAYER_WALL_GRADIENT;
+      const data = buildScreenData("Prayer Request", header, p.body, gradient);
+      updateScreen({ data });
+      toast({ title: "Sent to screen", description: `${header} (graphic)` });
+    } else {
+      const data = buildScreenData("Prayer Request", header, p.body,
+        screenState?.background?.type === "gradient" || screenState?.background?.type === "color"
+          ? (screenState.background.value ?? "#000000")
+          : "#000000"
+      );
+      updateScreen({ data: { ...data, background: screenState?.background ?? { type: "color", value: "#000000" } } });
+      toast({ title: "Projected", description: header });
+    }
   }
 
-  function projectAllActive() {
+  function projectAllActive(useGraphic = false) {
     const active = items.filter((p) => p.status === "active");
     if (active.length === 0) {
       toast({ title: "Nothing to project", description: "No active prayer requests yet." });
@@ -74,7 +133,19 @@ export default function PrayerWallPage() {
     const lines = active
       .map((p) => `• ${p.body}${p.name ? `  — ${p.name}` : ""}`)
       .join("\n");
-    presentOnScreen("Prayer Wall", "Lifting up our church", lines);
+
+    const data = buildScreenData(
+      "Prayer Wall",
+      "Lifting up our church",
+      lines,
+      useGraphic ? PRAYER_WALL_GRADIENT : "#000000"
+    );
+    updateScreen({
+      data: useGraphic
+        ? data
+        : { ...data, background: screenState?.background ?? { type: "color", value: "#000000" } }
+    });
+    toast({ title: "Prayer wall sent", description: `${active.length} active request${active.length !== 1 ? "s" : ""}` });
   }
 
   const filtered = items.filter((p) => {
@@ -173,8 +244,11 @@ export default function PrayerWallPage() {
             </Button>
           ))}
         </div>
-        <Button size="sm" variant="secondary" onClick={projectAllActive} className="gap-1.5" data-testid="button-prayer-project-all">
-          <Send className="w-3.5 h-3.5" /> Project all active
+        <Button size="sm" variant="secondary" onClick={() => projectAllActive(false)} className="gap-1.5" data-testid="button-prayer-project-all">
+          <Send className="w-3.5 h-3.5" /> Project all
+        </Button>
+        <Button size="sm" variant="default" onClick={() => projectAllActive(true)} className="gap-1.5" data-testid="button-prayer-project-all-graphic">
+          <Image className="w-3.5 h-3.5" /> Full graphic
         </Button>
       </div>
 
@@ -201,12 +275,15 @@ export default function PrayerWallPage() {
                   </p>
                 </div>
                 <div className="flex flex-col gap-1.5 shrink-0">
-                  <Button size="sm" variant="ghost" onClick={() => projectOne(p)} className="gap-1.5 h-7 text-xs" data-testid={`button-prayer-project-${p.id}`}>
+                  <Button size="sm" variant="ghost" onClick={() => projectOne(p, false)} className="gap-1.5 h-7 text-xs" data-testid={`button-prayer-project-${p.id}`}>
                     <Send className="w-3 h-3" /> Project
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => projectOne(p, true)} className="gap-1.5 h-7 text-xs" data-testid={`button-prayer-graphic-${p.id}`}>
+                    <Image className="w-3 h-3" /> Graphic
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => toggleAnswered(p.id)} className="gap-1.5 h-7 text-xs" data-testid={`button-prayer-toggle-${p.id}`}>
                     {p.status === "answered" ? <RotateCcw className="w-3 h-3" /> : <Check className="w-3 h-3" />}
-                    {p.status === "answered" ? "Reopen" : "Mark answered"}
+                    {p.status === "answered" ? "Reopen" : "Answered"}
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => remove(p.id)} className="gap-1.5 h-7 text-xs text-destructive hover:text-destructive" data-testid={`button-prayer-delete-${p.id}`}>
                     <Trash2 className="w-3 h-3" /> Delete
