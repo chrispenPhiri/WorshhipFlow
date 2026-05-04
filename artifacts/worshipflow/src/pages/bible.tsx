@@ -19,6 +19,7 @@ import { DigitalLibrary } from "@/components/bible/digital-library";
 import { AmbientSoundscapes } from "@/components/bible/ambient-soundscapes";
 import { CharacterPerspective } from "@/components/bible/character-perspective";
 import { VerseToArt } from "@/components/bible/verse-to-art";
+import { BiblePhraseSearch } from "@/components/bible/bible-search";
 
 interface BibleVerse { verse: number; text: string; }
 interface BibleResult { reference: string; verses: BibleVerse[]; }
@@ -262,6 +263,14 @@ export default function BiblePage() {
   /* ── Character Perspective send handler ── */
   const sendCharacterVerses = (verses: BibleVerse[], ref: string) => sendVerses(verses, ref);
 
+  /* ── Bible Phrase Search: go-to handler ── */
+  const goToSearchResult = (b: string, ch: string, from: string, to: string) => {
+    setBook(b);
+    setChapter(ch);
+    setFromVerse(from);
+    setToVerse(to);
+  };
+
   /* ── Verse-to-Art: set background handler ── */
   const setArtAsBackground = (dataUrl: string) => {
     const screenData = { ...safeBase, background: { type: "image" as const, value: dataUrl } };
@@ -440,6 +449,13 @@ export default function BiblePage() {
 
       {/* ── Immersive tools ── */}
       <div className="space-y-2">
+        <BiblePhraseSearch
+          book={book}
+          chapter={chapter}
+          currentVerses={result?.verses ?? []}
+          onGoTo={goToSearchResult}
+          onSendToScreen={sendLibraryText}
+        />
         <DigitalLibrary
           book={book}
           chapter={chapter}
