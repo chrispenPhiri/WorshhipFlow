@@ -15,7 +15,8 @@ import {
   Upload, X, FileImage, FileVideo, User, Clock, Scissors, RefreshCw, Layers3,
   Bold, Italic, AlignLeft, AlignCenter, AlignRight,
   Circle, StopCircle, Download, Radio,
-  Timer as TimerIcon, Pause, RotateCw, Hexagon, Shield, Type, Sparkles
+  Timer as TimerIcon, Pause, RotateCw, Hexagon, Shield, Type, Sparkles,
+  Wifi, FlipHorizontal, SlidersHorizontal, MonitorPlay, Tv
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -66,6 +67,13 @@ export default function MediaPage() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>("");
+  const [cameraSource, setCameraSource] = useState<"device" | "ip" | "screen">("device");
+  const [ipCameraUrl, setIpCameraUrl] = useState("");
+  const [camMirror, setCamMirror] = useState(false);
+  const [camBrightness, setCamBrightness] = useState(100);
+  const [camContrast, setCamContrast] = useState(100);
+  const [camSaturate, setCamSaturate] = useState(100);
+  const ipVideoRef = useRef<HTMLVideoElement>(null);
 
   // Track which overlay sub-cards are expanded. Default: all collapsed for a clean tab.
   const [openOverlays, setOpenOverlays] = useState<Set<string>>(new Set());
@@ -119,7 +127,12 @@ export default function MediaPage() {
 
   // Active tab — persisted across navigation via sessionStorage
   const [activeTab, setActiveTab] = useState<string>(() => {
-    try { return sessionStorage.getItem("wf-media-tab") || "upload"; } catch { return "upload"; }
+    try {
+      const saved = sessionStorage.getItem("wf-media-tab") || "upload";
+      // Migrate old tab values to new combined tab
+      if (saved === "camera" || saved === "broadcast") return "camera-broadcast";
+      return saved;
+    } catch { return "upload"; }
   });
 
   // Lower-third draft state
@@ -380,6 +393,28 @@ export default function MediaPage() {
     }
   };
 
+  const startScreenCapture = async () => {
+    setCameraError(null);
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      if (cameraStream) cameraStream.getTracks().forEach(t => t.stop());
+      setCameraStream(stream);
+      setCameraSource("screen");
+      if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(() => {}); }
+      stream.getVideoTracks()[0]?.addEventListener("ended", () => {
+        setCameraStream(null);
+      });
+    } catch {
+      setCameraError("Screen capture was cancelled or denied.");
+    }
+  };
+
+  const sendIpCameraToScreen = () => {
+    if (!ipCameraUrl) return;
+    sendVideoToScreen(ipCameraUrl, "cover", true);
+    toast({ title: "IP Camera sent", description: "Streaming URL sent to the presentation screen." });
+  };
+
   /** Build a safe full state object preserving all overlay fields. */
   const safeFullState = () => ({
     isBlack: screenState?.isBlack ?? false,
@@ -529,6 +564,12 @@ export default function MediaPage() {
       toast({ title: "Failed to load logo image", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
     }
   };
+
+  // Enumerate cameras on mount (labels may be blank until permission is granted)
+  useEffect(() => {
+    enumerateCameras();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     return () => { if (cameraStream) cameraStream.getTracks().forEach(t => t.stop()); };
@@ -693,12 +734,11 @@ export default function MediaPage() {
 
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); try { sessionStorage.setItem("wf-media-tab", v); } catch {} }}>
         <TabsList className="w-full flex-wrap h-auto gap-0.5">
-          <TabsTrigger value="upload"    className="flex-1 gap-1.5 min-w-0"><Upload   className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Upload</span></TabsTrigger>
-          <TabsTrigger value="camera"    className="flex-1 gap-1.5 min-w-0"><Camera   className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Camera</span></TabsTrigger>
-          <TabsTrigger value="url"       className="flex-1 gap-1.5 min-w-0"><Video    className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">URL</span></TabsTrigger>
-          <TabsTrigger value="icons"     className="flex-1 gap-1.5 min-w-0"><Sparkles className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Icons</span></TabsTrigger>
-          <TabsTrigger value="overlays"  className="flex-1 gap-1.5 min-w-0"><Layers3  className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Overlays</span></TabsTrigger>
-          <TabsTrigger value="broadcast" className="flex-1 gap-1.5 min-w-0"><Settings2 className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Broadcast</span></TabsTrigger>
+          <TabsTrigger value="upload"           className="flex-1 gap-1.5 min-w-0"><Upload    className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Upload</span></TabsTrigger>
+          <TabsTrigger value="camera-broadcast" className="flex-1 gap-1.5 min-w-0"><Tv        className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Camera & Broadcast</span></TabsTrigger>
+          <TabsTrigger value="url"              className="flex-1 gap-1.5 min-w-0"><Video     className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">URL</span></TabsTrigger>
+          <TabsTrigger value="icons"            className="flex-1 gap-1.5 min-w-0"><Sparkles  className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Icons</span></TabsTrigger>
+          <TabsTrigger value="overlays"         className="flex-1 gap-1.5 min-w-0"><Layers3   className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Overlays</span></TabsTrigger>
         </TabsList>
 
         {/* ── UPLOAD ── */}
@@ -800,180 +840,521 @@ export default function MediaPage() {
           {uploadedFiles.length === 0 && <div className="text-center py-4 text-muted-foreground text-sm">No files uploaded yet</div>}
         </TabsContent>
 
-        {/* ── CAMERA ── */}
-        <TabsContent value="camera" className="mt-4 space-y-4">
-          <div className="grid md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Camera className="w-4 h-4" /> Live Camera Feed</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {cameras.length > 0 && (
+        {/* ── CAMERA & BROADCAST ── */}
+        <TabsContent value="camera-broadcast" className="mt-4 space-y-6">
+
+          {/* ── Camera Source Selection ── */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Camera className="w-4 h-4" /> Camera Source</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Source type selector */}
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { value: "device", label: "Device Camera", icon: <Camera className="w-4 h-4" /> },
+                  { value: "screen", label: "Screen Capture", icon: <MonitorPlay className="w-4 h-4" /> },
+                  { value: "ip",     label: "IP / Network",  icon: <Wifi className="w-4 h-4" /> },
+                ] as const).map(src => (
+                  <button key={src.value} type="button"
+                    onClick={() => { setCameraSource(src.value); setCameraError(null); }}
+                    className={`py-2.5 rounded-lg text-xs border transition-colors flex flex-col items-center gap-1.5 ${cameraSource === src.value ? "bg-primary/20 border-primary text-primary font-medium" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                    {src.icon}
+                    {src.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Device camera: selector + controls */}
+              {cameraSource === "device" && (
+                <div className="space-y-4">
                   <div className="flex gap-2 items-center">
-                    <Select value={selectedCameraId} onValueChange={switchCamera} disabled={cameras.length <= 1}>
-                      <SelectTrigger className="flex-1 h-8 text-xs"><SelectValue placeholder="Select camera…" /></SelectTrigger>
+                    <Select value={selectedCameraId} onValueChange={switchCamera}>
+                      <SelectTrigger className="flex-1 h-8 text-xs">
+                        <SelectValue placeholder={cameras.length === 0 ? "No cameras found — click Refresh" : "Select camera…"} />
+                      </SelectTrigger>
                       <SelectContent>
                         {cameras.map((c, i) => (
-                          <SelectItem key={c.deviceId} value={c.deviceId} className="text-xs">{c.label || `Camera ${i + 1}`}</SelectItem>
+                          <SelectItem key={c.deviceId} value={c.deviceId} className="text-xs">
+                            {c.label || `Camera ${i + 1}`}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button size="sm" variant="ghost" onClick={enumerateCameras} title="Refresh list" className="h-8 w-8 p-0 shrink-0">
+                    <Button size="sm" variant="ghost" onClick={enumerateCameras} title="Refresh camera list" className="h-8 w-8 p-0 shrink-0">
                       <RefreshCw className="w-3.5 h-3.5" />
                     </Button>
                   </div>
-                )}
-                {cameras.length === 0 && !cameraStream && (
-                  <p className="text-xs text-muted-foreground">Start the camera to see available devices.</p>
-                )}
-
-                <div className="aspect-video bg-black rounded-lg overflow-hidden border border-border flex items-center justify-center">
-                  {cameraStream
-                    ? <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
-                    : <div className="flex flex-col items-center gap-3 text-muted-foreground"><CameraOff className="w-10 h-10" /><span className="text-sm">Camera not started</span></div>
-                  }
+                  <p className="text-[11px] text-muted-foreground -mt-2">
+                    All video input devices appear here — webcams, HDMI capture cards, OBS Virtual Camera, Continuity Camera (iPhone), and more.
+                  </p>
                 </div>
+              )}
 
-                {cameraError && <p className="text-destructive text-sm">{cameraError}</p>}
-
-                <div className="flex gap-2">
-                  {!cameraStream
-                    ? <Button onClick={() => startCamera(selectedCameraId || undefined)} className="flex-1 gap-2"><Play className="w-4 h-4" /> Start Camera</Button>
-                    : <Button variant="outline" onClick={stopCamera} className="flex-1 gap-2"><Square className="w-4 h-4" /> Stop</Button>
-                  }
-                  <Button onClick={sendCameraToScreen} disabled={!cameraStream} className="flex-1 gap-2">
-                    <Cast className="w-4 h-4" /> Send to Screen
-                  </Button>
-                  <Button variant="destructive" onClick={cutFeed} title="Stop camera and black the screen" className="gap-2 shrink-0">
-                    <Scissors className="w-4 h-4" /> Cut
-                  </Button>
+              {/* Screen capture controls */}
+              {cameraSource === "screen" && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground bg-muted/30 rounded px-3 py-2">
+                    Capture any window or your entire screen. The browser will ask you to choose what to share.
+                    Use "Send to Screen" to show it on the presentation display.
+                  </p>
+                  {!cameraStream ? (
+                    <Button onClick={startScreenCapture} className="w-full gap-2">
+                      <MonitorPlay className="w-4 h-4" /> Start Screen Capture
+                    </Button>
+                  ) : (
+                    <Button variant="outline" onClick={stopCamera} className="w-full gap-2">
+                      <Square className="w-4 h-4" /> Stop Capture
+                    </Button>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
+              )}
 
-            <Card>
-              <CardHeader><CardTitle>Camera Layout</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                {/* Layout mode */}
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Display Mode</label>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {([
-                      { value: "fullscreen",       label: "Fullscreen" },
-                      { value: "pip-topright",     label: "PiP Top-Right" },
-                      { value: "pip-topleft",      label: "PiP Top-Left" },
-                      { value: "pip-bottomright",  label: "PiP Bottom-Right" },
-                      { value: "pip-bottomleft",   label: "PiP Bottom-Left" },
-                      { value: "side-left",        label: "Side-by-Side Left" },
-                      { value: "side-right",       label: "Side-by-Side Right" },
-                    ] as const).map(opt => (
-                      <button key={opt.value} onClick={() => setCamLayout(opt.value)}
-                        className={`py-1.5 rounded text-xs border transition-colors ${camLayout === opt.value ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
-                        {opt.label}
-                      </button>
-                    ))}
+              {/* IP / Network camera */}
+              {cameraSource === "ip" && (
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground bg-muted/30 rounded px-3 py-2">
+                    Enter an HLS (.m3u8), MJPEG, or HTTP stream URL from an IP camera, NDI, or live encoder.
+                    The stream is sent directly to the presentation screen as a video background.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="http://192.168.1.100/stream.m3u8"
+                      value={ipCameraUrl}
+                      onChange={e => setIpCameraUrl(e.target.value)}
+                      className="flex-1 text-xs"
+                    />
                   </div>
-                </div>
-
-                {/* Shape — only for PiP */}
-                {isPip && (
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium">PiP Shape</label>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {([
-                        { value: "rect",    label: "Rectangle" },
-                        { value: "rounded", label: "Rounded" },
-                        { value: "circle",  label: "Circle" },
-                      ] as const).map(opt => (
-                        <button key={opt.value} onClick={() => setCamShape(opt.value)}
-                          className={`py-1.5 rounded text-xs border transition-colors ${camShape === opt.value ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
-                          {opt.label}
-                        </button>
-                      ))}
+                  {ipCameraUrl && (
+                    <div className="aspect-video bg-black rounded-lg overflow-hidden border border-border">
+                      <video
+                        ref={ipVideoRef}
+                        src={ipCameraUrl}
+                        autoPlay
+                        muted
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
                     </div>
-                  </div>
-                )}
+                  )}
+                  <Button onClick={sendIpCameraToScreen} disabled={!ipCameraUrl} className="w-full gap-2">
+                    <Cast className="w-4 h-4" /> Send IP Camera to Screen
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-                {/* PiP size */}
-                {isPip && (
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between">
-                      <label className="text-sm font-medium">PiP Size</label>
-                      <span className="text-xs text-muted-foreground">{camPipSize}% of width</span>
-                    </div>
-                    <SliderWithButtons min={15} max={55} step={5} value={[camPipSize]} onValueChange={([v]) => setCamPipSize(v)} />
+          {/* ── Camera Preview + Controls ── */}
+          {cameraSource !== "ip" && (
+            <div className="grid md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    {cameraSource === "screen" ? <MonitorPlay className="w-4 h-4" /> : <Camera className="w-4 h-4" />}
+                    {cameraSource === "screen" ? "Screen Capture Preview" : "Live Camera Preview"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="aspect-video bg-black rounded-lg overflow-hidden border border-border flex items-center justify-center relative">
+                    {cameraStream
+                      ? <video
+                          ref={videoRef}
+                          autoPlay
+                          muted
+                          playsInline
+                          className="w-full h-full object-cover"
+                          style={{
+                            transform: camMirror ? "scaleX(-1)" : undefined,
+                            filter: `brightness(${camBrightness}%) contrast(${camContrast}%) saturate(${camSaturate}%)`,
+                          }}
+                        />
+                      : <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                          <CameraOff className="w-10 h-10" />
+                          <span className="text-sm">
+                            {cameraSource === "screen" ? "No screen capture active" : "Camera not started"}
+                          </span>
+                        </div>
+                    }
+                    {cameraStream && (
+                      <div className="absolute top-2 left-2">
+                        <Badge className="text-[10px] py-0 h-4 bg-red-600 border-0 flex items-center gap-1">
+                          <Circle className="w-2 h-2 fill-current animate-pulse" /> LIVE
+                        </Badge>
+                      </div>
+                    )}
                   </div>
-                )}
 
-                {/* PiP & Side-by-side: pick the backdrop colour/gradient so the
-                    non-camera area uses the theme instead of pure black. */}
-                {(isSide || isPip) && (() => {
-                  const presets: { label: string; value: string }[] = [
-                    { label: "Indigo",  value: "linear-gradient(135deg,#1e1b4b 0%,#0f0a2e 100%)" },
-                    { label: "Slate",   value: "linear-gradient(135deg,#1e293b 0%,#0f172a 100%)" },
-                    { label: "Plum",    value: "linear-gradient(135deg,#3b0764 0%,#1e0533 100%)" },
-                    { label: "Forest",  value: "linear-gradient(135deg,#064e3b 0%,#022c22 100%)" },
-                    { label: "Crimson", value: "linear-gradient(135deg,#7f1d1d 0%,#3b0a0a 100%)" },
-                    { label: "Royal",   value: "linear-gradient(135deg,#1e3a8a 0%,#0c1f57 100%)" },
-                    { label: "Sunset",  value: "linear-gradient(135deg,#c2410c 0%,#7c2d12 100%)" },
-                    { label: "Teal",    value: "linear-gradient(135deg,#115e59 0%,#042f2e 100%)" },
-                    { label: "Black",   value: "#000000" },
-                    { label: "Charcoal",value: "#0a0a0a" },
-                    { label: "Stone",   value: "#1c1917" },
-                    { label: "White",   value: "#ffffff" },
-                  ];
-                  return (
-                    <div className="space-y-2 pt-2 border-t border-border/50">
-                      <label className="text-sm font-medium">Camera Backdrop</label>
-                      <p className="text-[11px] text-muted-foreground">
-                        {isSide
-                          ? "Colour or gradient shown behind the text panel (the half without the camera)."
-                          : "Colour or gradient shown behind your content while the camera floats in a corner."}
-                      </p>
-                      <div className="grid grid-cols-4 gap-1.5">
-                        {presets.map(p => (
-                          <button
-                            key={p.label}
-                            type="button"
-                            data-testid={`button-cam-side-bg-${p.label.toLowerCase()}`}
-                            onClick={() => setCamSideBg(p.value)}
-                            className={`h-9 rounded border transition-colors flex items-center justify-center ${camSideBg === p.value ? "border-primary ring-1 ring-primary" : "border-border hover:bg-muted/40"}`}
-                            style={{ background: p.value }}
-                          >
-                            <span className="text-[10px] font-medium" style={{ color: p.value === "#ffffff" ? "#000" : "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>{p.label}</span>
+                  {cameraError && <p className="text-destructive text-sm">{cameraError}</p>}
+
+                  <div className="flex gap-2 flex-wrap">
+                    {cameraSource === "device" && (
+                      !cameraStream
+                        ? <Button onClick={() => startCamera(selectedCameraId || undefined)} className="flex-1 gap-2">
+                            <Play className="w-4 h-4" /> Start Camera
+                          </Button>
+                        : <Button variant="outline" onClick={stopCamera} className="flex-1 gap-2">
+                            <Square className="w-4 h-4" /> Stop
+                          </Button>
+                    )}
+                    <Button onClick={sendCameraToScreen} disabled={!cameraStream} className="flex-1 gap-2">
+                      <Cast className="w-4 h-4" /> Send to Screen
+                    </Button>
+                    <Button variant="destructive" onClick={cutFeed} title="Stop camera and black the screen" className="gap-2 shrink-0">
+                      <Scissors className="w-4 h-4" /> Cut
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="space-y-4">
+                {/* Camera Layout */}
+                <Card>
+                  <CardHeader><CardTitle className="text-base">Camera Layout</CardTitle></CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium">Display Mode</label>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {([
+                          { value: "fullscreen",       label: "Fullscreen" },
+                          { value: "pip-topright",     label: "PiP Top-Right" },
+                          { value: "pip-topleft",      label: "PiP Top-Left" },
+                          { value: "pip-bottomright",  label: "PiP Bottom-Right" },
+                          { value: "pip-bottomleft",   label: "PiP Bottom-Left" },
+                          { value: "side-left",        label: "Side-by-Side Left" },
+                          { value: "side-right",       label: "Side-by-Side Right" },
+                        ] as const).map(opt => (
+                          <button key={opt.value} onClick={() => setCamLayout(opt.value)}
+                            className={`py-1.5 rounded text-xs border transition-colors ${camLayout === opt.value ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                            {opt.label}
                           </button>
                         ))}
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          type="color"
-                          value={camSideBg.startsWith("#") ? camSideBg : "#1e1b4b"}
-                          onChange={e => setCamSideBg(e.target.value)}
-                          className="h-8 w-10 rounded border border-input cursor-pointer bg-transparent p-0.5 shrink-0"
-                        />
-                        <Input
-                          className="h-8 text-[11px] font-mono"
-                          value={camSideBg}
-                          onChange={e => setCamSideBg(e.target.value)}
-                          placeholder="#000 or linear-gradient(...)"
-                          data-testid="input-cam-side-bg"
-                        />
+                    </div>
+
+                    {isPip && (
+                      <>
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-medium">PiP Shape</label>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {([
+                              { value: "rect",    label: "Rectangle" },
+                              { value: "rounded", label: "Rounded" },
+                              { value: "circle",  label: "Circle" },
+                            ] as const).map(opt => (
+                              <button key={opt.value} onClick={() => setCamShape(opt.value)}
+                                className={`py-1.5 rounded text-xs border transition-colors ${camShape === opt.value ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between">
+                            <label className="text-sm font-medium">PiP Size</label>
+                            <span className="text-xs text-muted-foreground">{camPipSize}% of width</span>
+                          </div>
+                          <SliderWithButtons min={15} max={55} step={5} value={[camPipSize]} onValueChange={([v]) => setCamPipSize(v)} />
+                        </div>
+                      </>
+                    )}
+
+                    {(isSide || isPip) && (() => {
+                      const presets: { label: string; value: string }[] = [
+                        { label: "Indigo",   value: "linear-gradient(135deg,#1e1b4b 0%,#0f0a2e 100%)" },
+                        { label: "Slate",    value: "linear-gradient(135deg,#1e293b 0%,#0f172a 100%)" },
+                        { label: "Plum",     value: "linear-gradient(135deg,#3b0764 0%,#1e0533 100%)" },
+                        { label: "Forest",   value: "linear-gradient(135deg,#064e3b 0%,#022c22 100%)" },
+                        { label: "Crimson",  value: "linear-gradient(135deg,#7f1d1d 0%,#3b0a0a 100%)" },
+                        { label: "Royal",    value: "linear-gradient(135deg,#1e3a8a 0%,#0c1f57 100%)" },
+                        { label: "Sunset",   value: "linear-gradient(135deg,#c2410c 0%,#7c2d12 100%)" },
+                        { label: "Teal",     value: "linear-gradient(135deg,#115e59 0%,#042f2e 100%)" },
+                        { label: "Black",    value: "#000000" },
+                        { label: "Charcoal", value: "#0a0a0a" },
+                        { label: "Stone",    value: "#1c1917" },
+                        { label: "White",    value: "#ffffff" },
+                      ];
+                      return (
+                        <div className="space-y-2 pt-2 border-t border-border/50">
+                          <label className="text-sm font-medium">Camera Backdrop</label>
+                          <div className="grid grid-cols-4 gap-1.5">
+                            {presets.map(p => (
+                              <button key={p.label} type="button" data-testid={`button-cam-side-bg-${p.label.toLowerCase()}`}
+                                onClick={() => setCamSideBg(p.value)}
+                                className={`h-9 rounded border transition-colors flex items-center justify-center ${camSideBg === p.value ? "border-primary ring-1 ring-primary" : "border-border hover:bg-muted/40"}`}
+                                style={{ background: p.value }}>
+                                <span className="text-[10px] font-medium" style={{ color: p.value === "#ffffff" ? "#000" : "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>{p.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <input type="color"
+                              value={camSideBg.startsWith("#") ? camSideBg : "#1e1b4b"}
+                              onChange={e => setCamSideBg(e.target.value)}
+                              className="h-8 w-10 rounded border border-input cursor-pointer bg-transparent p-0.5 shrink-0" />
+                            <Input className="h-8 text-[11px] font-mono" value={camSideBg}
+                              onChange={e => setCamSideBg(e.target.value)}
+                              placeholder="#000 or linear-gradient(...)"
+                              data-testid="input-cam-side-bg" />
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+
+                {/* Camera Adjustments */}
+                <Card>
+                  <CardHeader><CardTitle className="flex items-center gap-2 text-base"><SlidersHorizontal className="w-4 h-4" /> Camera Adjustments</CardTitle></CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FlipHorizontal className="w-4 h-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">Mirror / Flip</p>
+                          <p className="text-[11px] text-muted-foreground">Flip the camera horizontally</p>
+                        </div>
+                      </div>
+                      <Switch checked={camMirror} onCheckedChange={setCamMirror} />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between">
+                        <label className="text-sm font-medium">Brightness</label>
+                        <span className="text-xs text-muted-foreground">{camBrightness}%</span>
+                      </div>
+                      <SliderWithButtons min={50} max={200} step={5} value={[camBrightness]} onValueChange={([v]) => setCamBrightness(v)} />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between">
+                        <label className="text-sm font-medium">Contrast</label>
+                        <span className="text-xs text-muted-foreground">{camContrast}%</span>
+                      </div>
+                      <SliderWithButtons min={50} max={200} step={5} value={[camContrast]} onValueChange={([v]) => setCamContrast(v)} />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between">
+                        <label className="text-sm font-medium">Saturation</label>
+                        <span className="text-xs text-muted-foreground">{camSaturate}%</span>
+                      </div>
+                      <SliderWithButtons min={0} max={200} step={5} value={[camSaturate]} onValueChange={([v]) => setCamSaturate(v)} />
+                    </div>
+
+                    {(camBrightness !== 100 || camContrast !== 100 || camSaturate !== 100 || camMirror) && (
+                      <Button size="sm" variant="outline" className="w-full gap-2"
+                        onClick={() => { setCamBrightness(100); setCamContrast(100); setCamSaturate(100); setCamMirror(false); }}>
+                        <RotateCcw className="w-3.5 h-3.5" /> Reset Adjustments
+                      </Button>
+                    )}
+
+                    {/* Filter presets */}
+                    <div className="space-y-1.5 pt-2 border-t border-border/50">
+                      <label className="text-sm font-medium">Filter Presets</label>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {([
+                          { label: "Natural",    b: 100, c: 100, s: 100 },
+                          { label: "Vivid",      b: 110, c: 115, s: 140 },
+                          { label: "Warm",       b: 105, c: 105, s: 120 },
+                          { label: "Cool",       b: 100, c: 100, s:  80 },
+                          { label: "Cinematic",  b:  90, c: 130, s:  70 },
+                          { label: "B&W",        b: 100, c: 110, s:   0 },
+                        ]).map(p => (
+                          <button key={p.label} type="button"
+                            onClick={() => { setCamBrightness(p.b); setCamContrast(p.c); setCamSaturate(p.s); }}
+                            className="py-1.5 rounded text-xs border border-border text-muted-foreground hover:bg-muted/40 transition-colors">
+                            {p.label}
+                          </button>
+                        ))}
                       </div>
                     </div>
-                  );
-                })()}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
 
-                {(isPip || isSide) && (
-                  <p className="text-xs text-muted-foreground bg-muted/30 rounded px-3 py-2">
-                    {isSide
-                      ? "Camera occupies half the screen. The other half uses your chosen backdrop and shows content/overlays normally."
-                      : "Camera floats in the chosen corner. The rest of the screen uses your chosen backdrop and shows content/overlays normally."
-                    }
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+          {/* ── Broadcast Output (merged from former Broadcast tab) ── */}
+          <div className="pt-4 border-t border-border">
+            <div className="flex items-center gap-2 mb-4">
+              <MonitorSpeaker className="w-5 h-5 text-primary" />
+              <h2 className="text-xl font-semibold">Broadcast Output</h2>
+            </div>
+            <div className="grid md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><MonitorSpeaker className="w-4 h-4" /> Display Selection</CardTitle>
+                  <CardDescription>Choose which screen to open the broadcast window on</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {isWindowManagementSupported ? (
+                    <>
+                      <Button variant="outline" className="w-full gap-2" onClick={detectScreens} disabled={permissionState === "requesting"}>
+                        {permissionState === "requesting" ? <><Loader2 className="w-4 h-4 animate-spin" /> Detecting…</> : <><Monitor className="w-4 h-4" /> Detect Connected Displays</>}
+                      </Button>
+                      {permissionState === "denied" && <p className="text-destructive text-sm">Permission denied.</p>}
+                      {screens.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">{screens.length} display{screens.length > 1 ? "s" : ""} found</p>
+                          {screens.map((s: ScreenInfo, i: number) => (
+                            <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
+                              <div className="flex items-center gap-3">
+                                <Monitor className="w-5 h-5 text-muted-foreground" />
+                                <div>
+                                  <p className="text-sm font-medium">{s.label}</p>
+                                  <p className="text-xs text-muted-foreground">{s.width}×{s.height}{s.isPrimary ? " · Primary" : ""}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {s.isPrimary && <Badge variant="secondary" className="text-xs">Primary</Badge>}
+                                <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={() => openBroadcast(s)}>
+                                  Open <ChevronRight className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {screens.length === 0 && permissionState === "granted" && (
+                        <div className="text-center py-4 text-muted-foreground text-sm">
+                          <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-primary" />
+                          Only one display detected.
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <Button className="w-full gap-2" onClick={() => openBroadcast()}>
+                      <MonitorSpeaker className="w-4 h-4" /> Open Broadcast Window
+                    </Button>
+                  )}
+                  {screens.length > 0 && (
+                    <Button className="w-full gap-2 mt-2" onClick={() => openBroadcast()}>
+                      <MonitorSpeaker className="w-4 h-4" /> Open (let browser choose)
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Settings2 className="w-4 h-4" /> Window Behaviour</CardTitle>
+                    <CardDescription>Saved and applied when opening broadcast</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-5">
+                    {[
+                      { icon: <Maximize2 className="w-4 h-4" />, label: "Auto-fullscreen", desc: "Enter fullscreen when broadcast opens", key: "autoFullscreen" as const },
+                      { icon: <EyeOff className="w-4 h-4" />, label: "Hide cursor", desc: "Hide mouse pointer on broadcast window", key: "hideCursor" as const },
+                      { icon: <RotateCcw className="w-4 h-4" />, label: "Loop video", desc: "Loop video backgrounds automatically", key: "loopVideo" as const },
+                    ].map(row => (
+                      <div key={row.key} className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5 text-muted-foreground">{row.icon}</div>
+                          <div>
+                            <p className="text-sm font-medium">{row.label}</p>
+                            <p className="text-xs text-muted-foreground">{row.desc}</p>
+                          </div>
+                        </div>
+                        <Switch checked={settings[row.key]} onCheckedChange={v => updateSettings({ [row.key]: v })} className="shrink-0 mt-0.5" />
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><PictureInPicture2 className="w-4 h-4" /> Picture-in-Picture</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm text-muted-foreground space-y-2">
+                    <p>Open the broadcast window, then hover at the top to reveal the control bar and click the PiP button.</p>
+                    <ul className="text-xs list-disc list-inside space-y-1">
+                      <li><strong className="text-foreground">Video/Camera</strong> — native video PiP (any browser)</li>
+                      <li><strong className="text-foreground">Other</strong> — Document PiP (Chrome 116+)</li>
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                {/* Recording */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between gap-3">
+                      <CardTitle className="flex items-center gap-2"><Radio className="w-4 h-4" /> Record &amp; Broadcast</CardTitle>
+                      {recState === "recording" && (
+                        <div className="flex items-center gap-1.5 text-xs font-medium text-red-400">
+                          <Circle className="w-2.5 h-2.5 fill-red-500 text-red-500 animate-pulse" />
+                          {String(Math.floor(recDuration / 60)).padStart(2, "0")}:{String(recDuration % 60).padStart(2, "0")}
+                        </div>
+                      )}
+                    </div>
+                    <CardDescription>Record the presentation screen as a video file, or capture with OBS</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {recState === "idle" ? (
+                      <Button onClick={startRecording} className="w-full gap-2">
+                        <Circle className="w-3.5 h-3.5 fill-red-500 text-red-500" /> Start Recording
+                      </Button>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-red-500/10 border border-red-500/30">
+                          <Circle className="w-2.5 h-2.5 fill-red-500 text-red-500 animate-pulse" />
+                          <span className="text-sm font-medium text-red-400">Recording</span>
+                          <span className="ml-auto text-sm font-mono text-red-400 tabular-nums">
+                            {String(Math.floor(recDuration / 60)).padStart(2, "0")}:{String(recDuration % 60).padStart(2, "0")}
+                          </span>
+                        </div>
+                        <Button variant="destructive" onClick={stopRecording} className="w-full gap-2">
+                          <StopCircle className="w-4 h-4" /> Stop Recording
+                        </Button>
+                      </div>
+                    )}
+                    {recDownloadUrl && (
+                      <div className="flex items-center gap-2">
+                        <a href={recDownloadUrl} download={`worship-${new Date().toISOString().slice(0,10)}.webm`} className="flex-1">
+                          <Button variant="outline" className="w-full gap-2">
+                            <Download className="w-4 h-4" /> Download Recording
+                          </Button>
+                        </a>
+                        <Button variant="ghost" size="icon" onClick={clearDownload} title="Discard">
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between gap-3 pt-1">
+                      <div>
+                        <p className="text-xs font-medium text-foreground">Include microphone audio</p>
+                        <p className="text-[11px] text-muted-foreground">Mix your microphone with the captured display audio</p>
+                      </div>
+                      <Switch checked={recIncludeMic} onCheckedChange={setRecIncludeMic} disabled={recState === "recording"} />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Clicking "Start Recording" prompts you to pick the broadcast window or display. Recording continues even if you switch tabs.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* OBS Tips */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base"><MonitorPlay className="w-4 h-4" /> Streaming with OBS</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm text-muted-foreground space-y-2">
+                    <p>Use OBS Studio to stream the presentation to YouTube, Facebook, or Twitch:</p>
+                    <ol className="text-xs list-decimal list-inside space-y-1.5">
+                      <li>Open the broadcast window and put it on your projector display</li>
+                      <li>In OBS, add a <strong className="text-foreground">Window Capture</strong> source for the broadcast window</li>
+                      <li>Set up your streaming platform in OBS Settings → Stream</li>
+                      <li>Click <strong className="text-foreground">Start Streaming</strong> in OBS</li>
+                    </ol>
+                    <p className="text-[11px] bg-muted/30 rounded px-2 py-1.5">
+                      Tip: OBS Virtual Camera lets you use the presentation as a camera source in Zoom, Teams, or any other app.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </div>
+
         </TabsContent>
 
         {/* ── URL ── */}
@@ -1220,163 +1601,6 @@ export default function MediaPage() {
               <Button onClick={() => sendImageToScreen(imageUrl)} disabled={!imageUrl} className="w-full gap-2"><Cast className="w-4 h-4" /> Send Image</Button>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        {/* ── BROADCAST SETTINGS ── */}
-        <TabsContent value="broadcast" className="mt-4">
-          <div className="grid md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2"><MonitorSpeaker className="w-4 h-4" /> Display Selection</CardTitle>
-                <CardDescription>Choose which screen to open the broadcast window on</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isWindowManagementSupported ? (
-                  <>
-                    <Button variant="outline" className="w-full gap-2" onClick={detectScreens} disabled={permissionState === "requesting"}>
-                      {permissionState === "requesting" ? <><Loader2 className="w-4 h-4 animate-spin" /> Detecting…</> : <><Monitor className="w-4 h-4" /> Detect Connected Displays</>}
-                    </Button>
-                    {permissionState === "denied" && <p className="text-destructive text-sm">Permission denied.</p>}
-                    {screens.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">{screens.length} display{screens.length > 1 ? "s" : ""} found</p>
-                        {screens.map((s: ScreenInfo, i: number) => (
-                          <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
-                            <div className="flex items-center gap-3">
-                              <Monitor className="w-5 h-5 text-muted-foreground" />
-                              <div>
-                                <p className="text-sm font-medium">{s.label}</p>
-                                <p className="text-xs text-muted-foreground">{s.width}×{s.height}{s.isPrimary ? " · Primary" : ""}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {s.isPrimary && <Badge variant="secondary" className="text-xs">Primary</Badge>}
-                              <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={() => openBroadcast(s)}>
-                                Open <ChevronRight className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {screens.length === 0 && permissionState === "granted" && (
-                      <div className="text-center py-4 text-muted-foreground text-sm">
-                        <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-primary" />
-                        Only one display detected.
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <Button className="w-full gap-2" onClick={() => openBroadcast()}>
-                    <MonitorSpeaker className="w-4 h-4" /> Open Broadcast Window
-                  </Button>
-                )}
-                {screens.length > 0 && (
-                  <Button className="w-full gap-2 mt-2" onClick={() => openBroadcast()}>
-                    <MonitorSpeaker className="w-4 h-4" /> Open (let browser choose)
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-
-            <div className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><Settings2 className="w-4 h-4" /> Window Behaviour</CardTitle>
-                  <CardDescription>Saved and applied when opening broadcast</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-5">
-                  {[
-                    { icon: <Maximize2 className="w-4 h-4" />, label: "Auto-fullscreen", desc: "Enter fullscreen when broadcast opens", key: "autoFullscreen" as const },
-                    { icon: <EyeOff className="w-4 h-4" />, label: "Hide cursor", desc: "Hide mouse pointer on broadcast window", key: "hideCursor" as const },
-                    { icon: <RotateCcw className="w-4 h-4" />, label: "Loop video", desc: "Loop video backgrounds automatically", key: "loopVideo" as const },
-                  ].map(row => (
-                    <div key={row.key} className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-3">
-                        <div className="mt-0.5 text-muted-foreground">{row.icon}</div>
-                        <div>
-                          <p className="text-sm font-medium">{row.label}</p>
-                          <p className="text-xs text-muted-foreground">{row.desc}</p>
-                        </div>
-                      </div>
-                      <Switch checked={settings[row.key]} onCheckedChange={v => updateSettings({ [row.key]: v })} className="shrink-0 mt-0.5" />
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><PictureInPicture2 className="w-4 h-4" /> Picture-in-Picture</CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm text-muted-foreground space-y-2">
-                  <p>Open the broadcast window, then hover at the top to reveal the control bar and click the PiP button.</p>
-                  <ul className="text-xs list-disc list-inside space-y-1">
-                    <li><strong className="text-foreground">Video/Camera</strong> — native video PiP (any browser)</li>
-                    <li><strong className="text-foreground">Other</strong> — Document PiP (Chrome 116+)</li>
-                  </ul>
-                </CardContent>
-              </Card>
-
-              {/* ── Recording ── */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between gap-3">
-                    <CardTitle className="flex items-center gap-2"><Radio className="w-4 h-4" /> Record &amp; Broadcast</CardTitle>
-                    {recState === "recording" && (
-                      <div className="flex items-center gap-1.5 text-xs font-medium text-red-400">
-                        <Circle className="w-2.5 h-2.5 fill-red-500 text-red-500 animate-pulse" />
-                        {String(Math.floor(recDuration / 60)).padStart(2, "0")}:{String(recDuration % 60).padStart(2, "0")}
-                      </div>
-                    )}
-                  </div>
-                  <CardDescription>Record the presentation screen as a video file, or capture with OBS</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {recState === "idle" ? (
-                    <Button onClick={startRecording} className="w-full gap-2">
-                      <Circle className="w-3.5 h-3.5 fill-red-500 text-red-500" /> Start Recording
-                    </Button>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 p-2 rounded-lg bg-red-500/10 border border-red-500/30">
-                        <Circle className="w-2.5 h-2.5 fill-red-500 text-red-500 animate-pulse" />
-                        <span className="text-sm font-medium text-red-400">Recording</span>
-                        <span className="ml-auto text-sm font-mono text-red-400 tabular-nums">
-                          {String(Math.floor(recDuration / 60)).padStart(2, "0")}:{String(recDuration % 60).padStart(2, "0")}
-                        </span>
-                      </div>
-                      <Button variant="destructive" onClick={stopRecording} className="w-full gap-2">
-                        <StopCircle className="w-4 h-4" /> Stop Recording
-                      </Button>
-                    </div>
-                  )}
-                  {recDownloadUrl && (
-                    <div className="flex items-center gap-2">
-                      <a href={recDownloadUrl} download={`worship-${new Date().toISOString().slice(0,10)}.webm`} className="flex-1">
-                        <Button variant="outline" className="w-full gap-2">
-                          <Download className="w-4 h-4" /> Download Recording
-                        </Button>
-                      </a>
-                      <Button variant="ghost" size="icon" onClick={clearDownload} title="Discard">
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between gap-3 pt-1">
-                    <div>
-                      <p className="text-xs font-medium text-foreground">Include microphone audio</p>
-                      <p className="text-[11px] text-muted-foreground">Mix your microphone with the captured display audio</p>
-                    </div>
-                    <Switch checked={recIncludeMic} onCheckedChange={setRecIncludeMic} disabled={recState === "recording"} />
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    Clicking "Start Recording" prompts you to pick the broadcast window or display. Recording continues even if you switch tabs.
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
         </TabsContent>
 
         {/* ── OVERLAYS ── */}
