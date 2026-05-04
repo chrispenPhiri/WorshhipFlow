@@ -56,7 +56,7 @@ export function DigitalLibrary({ book, chapter, fromVerse, toVerse, onSendToScre
     if (open && !fetchedRef.current) {
       fetchedRef.current = true;
       setTranslationsLoading(true);
-      fetch("https://getbible.net/v2/translations.json")
+      fetch("https://api.getbible.net/v2/translations.json")
         .then(r => r.json())
         .then((data: Record<string, Translation>) => {
           const list = Object.values(data).sort((a, b) => a.language.localeCompare(b.language));
@@ -79,7 +79,7 @@ export function DigitalLibrary({ book, chapter, fromVerse, toVerse, onSendToScre
     setError(null);
     setVerses([]);
     try {
-      const url = `https://getbible.net/v2/${t.abbreviation}/${bookNum}/${chapterNum}.json`;
+      const url = `https://api.getbible.net/v2/${t.abbreviation}/${bookNum}/${chapterNum}.json`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();

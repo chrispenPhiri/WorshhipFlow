@@ -113,7 +113,7 @@ export function BiblePhraseSearch({ book, chapter, currentVerses, onGoTo, onSend
 
       const results = await Promise.allSettled(
         batch.map(ch =>
-          fetch(`https://getbible.net/v2/kjv/${bookNum}/${ch}.json`, { signal: ctrl.signal })
+          fetch(`https://api.getbible.net/v2/kjv/${bookNum}/${ch}.json`, { signal: ctrl.signal })
             .then(r => r.json())
             .then((data: { chapter: Record<string, { verse: number; text: string }> }) => {
               const verses = Object.values(data.chapter ?? {});

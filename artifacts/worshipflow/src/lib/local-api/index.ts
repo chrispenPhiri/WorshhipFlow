@@ -28,12 +28,21 @@ const PASSTHROUGH_PATHS = new Set<string>([
   "/api/teachings/generate",
 ]);
 
+const PASSTHROUGH_PREFIXES = [
+  "/api/ai/",
+  "/api/bible/",
+];
+
 function isApiPath(path: string): boolean {
   return path.startsWith("/api/") || path === "/api";
 }
 
 function shouldPassThrough(path: string): boolean {
-  return PASSTHROUGH_PATHS.has(path);
+  if (PASSTHROUGH_PATHS.has(path)) return true;
+  for (const prefix of PASSTHROUGH_PREFIXES) {
+    if (path.startsWith(prefix)) return true;
+  }
+  return false;
 }
 
 function getUrlFromInput(input: RequestInfo | URL): URL | null {
