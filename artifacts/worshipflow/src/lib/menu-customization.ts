@@ -44,6 +44,7 @@ export const DEFAULT_NAV_ITEMS: readonly NavItemDef[] = [
   { href: "/hymn-number",  label: "Hymn Number",       defaultIconId: "Music2" },
   { href: "/countdown",    label: "Countdown",         defaultIconId: "Clock" },
   { href: "/games",        label: "Bible Games",       defaultIconId: "Gamepad2" },
+  { href: "/ai",           label: "AI Features",       defaultIconId: "Sparkles" },
   { href: "/how-to",       label: "How To",            defaultIconId: "HelpCircle" },
   { href: "/settings",     label: "Settings",          defaultIconId: "Settings" },
 ] as const;

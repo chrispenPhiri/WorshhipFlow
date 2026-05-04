@@ -24,6 +24,7 @@ import AuthPage from "@/pages/auth";
 import PrayerWallPage from "@/pages/prayer-wall";
 import CountdownPage from "@/pages/countdown";
 import HymnNumberPage from "@/pages/hymn-number";
+import AIPage from "@/pages/ai";
 
 const queryClient = new QueryClient();
 
@@ -62,6 +63,7 @@ function ProtectedApp() {
         <Route path="/countdown" component={CountdownPage} />
         <Route path="/hymn-number" component={HymnNumberPage} />
         <Route path="/games" component={GamesPage} />
+        <Route path="/ai" component={AIPage} />
         <Route path="/how-to" component={HowToPage} />
         <Route path="/settings" component={SettingsPage} />
         <Route component={NotFound} />

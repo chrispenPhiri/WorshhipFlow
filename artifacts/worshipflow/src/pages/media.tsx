@@ -1004,6 +1004,59 @@ export default function MediaPage() {
                       <Scissors className="w-4 h-4" /> Cut
                     </Button>
                   </div>
+
+                  {/* ── Inline Record & Broadcast ── */}
+                  <div className="pt-3 border-t border-border/60 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 text-sm font-medium">
+                        <Radio className="w-3.5 h-3.5 text-muted-foreground" />
+                        Record &amp; Broadcast
+                      </div>
+                      {recState === "recording" && (
+                        <div className="flex items-center gap-1 text-xs font-medium text-red-400">
+                          <Circle className="w-2 h-2 fill-red-500 text-red-500 animate-pulse" />
+                          {String(Math.floor(recDuration / 60)).padStart(2, "0")}:{String(recDuration % 60).padStart(2, "0")}
+                        </div>
+                      )}
+                    </div>
+
+                    {recState === "idle" ? (
+                      <Button size="sm" onClick={startRecording} className="w-full gap-2 h-8 text-xs">
+                        <Circle className="w-3 h-3 fill-red-500 text-red-500" /> Start Recording
+                      </Button>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-red-500/10 border border-red-500/30">
+                          <Circle className="w-2 h-2 fill-red-500 text-red-500 animate-pulse shrink-0" />
+                          <span className="text-xs font-medium text-red-400 flex-1">Recording</span>
+                          <span className="text-xs font-mono text-red-400 tabular-nums">
+                            {String(Math.floor(recDuration / 60)).padStart(2, "0")}:{String(recDuration % 60).padStart(2, "0")}
+                          </span>
+                        </div>
+                        <Button size="sm" variant="destructive" onClick={stopRecording} className="w-full gap-2 h-8 text-xs">
+                          <StopCircle className="w-3.5 h-3.5" /> Stop Recording
+                        </Button>
+                      </div>
+                    )}
+
+                    {recDownloadUrl && (
+                      <div className="flex items-center gap-1.5">
+                        <a href={recDownloadUrl} download={`worship-${new Date().toISOString().slice(0,10)}.webm`} className="flex-1">
+                          <Button size="sm" variant="outline" className="w-full gap-2 h-8 text-xs">
+                            <Download className="w-3.5 h-3.5" /> Download Recording
+                          </Button>
+                        </a>
+                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0 shrink-0" onClick={clearDownload} title="Discard">
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[11px] text-muted-foreground">Include mic audio</p>
+                      <Switch checked={recIncludeMic} onCheckedChange={setRecIncludeMic} disabled={recState === "recording"} className="scale-75 origin-right" />
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -1272,64 +1325,6 @@ export default function MediaPage() {
                       <li><strong className="text-foreground">Video/Camera</strong> — native video PiP (any browser)</li>
                       <li><strong className="text-foreground">Other</strong> — Document PiP (Chrome 116+)</li>
                     </ul>
-                  </CardContent>
-                </Card>
-
-                {/* Recording */}
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between gap-3">
-                      <CardTitle className="flex items-center gap-2"><Radio className="w-4 h-4" /> Record &amp; Broadcast</CardTitle>
-                      {recState === "recording" && (
-                        <div className="flex items-center gap-1.5 text-xs font-medium text-red-400">
-                          <Circle className="w-2.5 h-2.5 fill-red-500 text-red-500 animate-pulse" />
-                          {String(Math.floor(recDuration / 60)).padStart(2, "0")}:{String(recDuration % 60).padStart(2, "0")}
-                        </div>
-                      )}
-                    </div>
-                    <CardDescription>Record the presentation screen as a video file, or capture with OBS</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {recState === "idle" ? (
-                      <Button onClick={startRecording} className="w-full gap-2">
-                        <Circle className="w-3.5 h-3.5 fill-red-500 text-red-500" /> Start Recording
-                      </Button>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 p-2 rounded-lg bg-red-500/10 border border-red-500/30">
-                          <Circle className="w-2.5 h-2.5 fill-red-500 text-red-500 animate-pulse" />
-                          <span className="text-sm font-medium text-red-400">Recording</span>
-                          <span className="ml-auto text-sm font-mono text-red-400 tabular-nums">
-                            {String(Math.floor(recDuration / 60)).padStart(2, "0")}:{String(recDuration % 60).padStart(2, "0")}
-                          </span>
-                        </div>
-                        <Button variant="destructive" onClick={stopRecording} className="w-full gap-2">
-                          <StopCircle className="w-4 h-4" /> Stop Recording
-                        </Button>
-                      </div>
-                    )}
-                    {recDownloadUrl && (
-                      <div className="flex items-center gap-2">
-                        <a href={recDownloadUrl} download={`worship-${new Date().toISOString().slice(0,10)}.webm`} className="flex-1">
-                          <Button variant="outline" className="w-full gap-2">
-                            <Download className="w-4 h-4" /> Download Recording
-                          </Button>
-                        </a>
-                        <Button variant="ghost" size="icon" onClick={clearDownload} title="Discard">
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between gap-3 pt-1">
-                      <div>
-                        <p className="text-xs font-medium text-foreground">Include microphone audio</p>
-                        <p className="text-[11px] text-muted-foreground">Mix your microphone with the captured display audio</p>
-                      </div>
-                      <Switch checked={recIncludeMic} onCheckedChange={setRecIncludeMic} disabled={recState === "recording"} />
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">
-                      Clicking "Start Recording" prompts you to pick the broadcast window or display. Recording continues even if you switch tabs.
-                    </p>
                   </CardContent>
                 </Card>
 
