@@ -139,21 +139,45 @@ export function Layout({ children }: { children: ReactNode }) {
   const navItems = visibleNavItems.map((item) => ({
     ...item,
     Icon: getIconComponent(effectiveIconId(item, overrides)),
+    color: item.color,
   }));
 
   /** Render the nav links.  When `showLabels` is false (collapsed desktop
    *  sidebar) we wrap each link in a Tooltip so the label stays discoverable. */
   const renderNav = (showLabels: boolean, onNavigate?: () => void) => (
-    <nav className={`flex-1 ${showLabels ? "px-4" : "px-2"} space-y-1 overflow-y-auto pb-4`}>
+    <nav className={`flex-1 ${showLabels ? "px-3" : "px-2"} space-y-0.5 overflow-y-auto pb-4`}>
       {navItems.map((item) => {
         const isActive = location === item.href;
-        const linkClasses = `flex items-center rounded-md transition-colors ${
-          showLabels ? "gap-3 px-3 py-2" : "justify-center h-10 w-10 mx-auto"
+
+        const linkClasses = `flex items-center rounded-lg transition-all duration-150 ${
+          showLabels ? "gap-3 px-2 py-1.5" : "justify-center h-11 w-11 mx-auto"
         } ${
           isActive
-            ? "bg-primary text-primary-foreground font-medium"
-            : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            ? "bg-primary/15 text-primary font-semibold"
+            : "text-sidebar-foreground hover:bg-sidebar-accent/60"
         }`;
+
+        /* Colored icon pill — visible only when not active */
+        const iconPill = (
+          <span
+            className="flex items-center justify-center rounded-lg shrink-0 transition-all duration-150"
+            style={
+              isActive
+                ? {
+                    width: 32, height: 32,
+                    backgroundColor: `${item.color}33`,
+                    color: item.color,
+                  }
+                : {
+                    width: 32, height: 32,
+                    backgroundColor: `${item.color}22`,
+                    color: item.color,
+                  }
+            }
+          >
+            <item.Icon style={{ width: 17, height: 17 }} />
+          </span>
+        );
 
         const link = (
           <Link
@@ -164,8 +188,10 @@ export function Layout({ children }: { children: ReactNode }) {
             onClick={onNavigate}
             data-testid={`nav-${item.href === "/" ? "home" : item.href.slice(1)}`}
           >
-            <item.Icon className="h-5 w-5 shrink-0" />
-            {showLabels && <span className="truncate">{item.label}</span>}
+            {iconPill}
+            {showLabels && (
+              <span className="truncate text-sm">{item.label}</span>
+            )}
           </Link>
         );
 

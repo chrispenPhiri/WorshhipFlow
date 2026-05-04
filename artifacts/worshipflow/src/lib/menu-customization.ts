@@ -26,27 +26,29 @@ export interface NavItemDef {
   href: string;
   label: string;
   defaultIconId: string;
+  /** Hex color used for the icon pill in the sidebar (inactive state). */
+  color: string;
 }
 
 /** The fixed list of routes that appear in the sidebar.  Order is fixed —
  *  customisation only changes the icon, not the position or destination. */
 export const DEFAULT_NAV_ITEMS: readonly NavItemDef[] = [
-  { href: "/",             label: "Bible",             defaultIconId: "Book" },
-  { href: "/songs",        label: "Songs",             defaultIconId: "Music" },
-  { href: "/custom",       label: "Custom Text",       defaultIconId: "Type" },
-  { href: "/themes",       label: "Themes",            defaultIconId: "Palette" },
-  { href: "/media",        label: "Media & Broadcast", defaultIconId: "Video" },
-  { href: "/schedule",     label: "Schedule",          defaultIconId: "Calendar" },
-  { href: "/notes",        label: "Sermon Notes",      defaultIconId: "BookOpen" },
-  { href: "/inspiration",  label: "Daily Inspiration", defaultIconId: "Sparkles" },
-  { href: "/teachings",    label: "Teachings",         defaultIconId: "GraduationCap" },
-  { href: "/prayer-wall",  label: "Prayer Wall",       defaultIconId: "HandHeart" },
-  { href: "/hymn-number",  label: "Hymn Number",       defaultIconId: "Music2" },
-  { href: "/countdown",    label: "Countdown",         defaultIconId: "Clock" },
-  { href: "/games",        label: "Bible Games",       defaultIconId: "Gamepad2" },
-  { href: "/ai",           label: "AI Features",       defaultIconId: "Sparkles" },
-  { href: "/how-to",       label: "How To",            defaultIconId: "HelpCircle" },
-  { href: "/settings",     label: "Settings",          defaultIconId: "Settings" },
+  { href: "/",             label: "Bible",             defaultIconId: "Book",          color: "#f59e0b" },
+  { href: "/songs",        label: "Songs",             defaultIconId: "Music",         color: "#a855f7" },
+  { href: "/custom",       label: "Custom Text",       defaultIconId: "Type",          color: "#06b6d4" },
+  { href: "/themes",       label: "Themes",            defaultIconId: "Palette",       color: "#ec4899" },
+  { href: "/media",        label: "Media & Broadcast", defaultIconId: "Video",         color: "#ef4444" },
+  { href: "/schedule",     label: "Schedule",          defaultIconId: "Calendar",      color: "#22c55e" },
+  { href: "/notes",        label: "Sermon Notes",      defaultIconId: "BookOpen",      color: "#f97316" },
+  { href: "/inspiration",  label: "Daily Inspiration", defaultIconId: "Sparkles",      color: "#eab308" },
+  { href: "/teachings",    label: "Teachings",         defaultIconId: "GraduationCap", color: "#3b82f6" },
+  { href: "/prayer-wall",  label: "Prayer Wall",       defaultIconId: "HandHeart",     color: "#f43f5e" },
+  { href: "/hymn-number",  label: "Hymn Number",       defaultIconId: "Music2",        color: "#8b5cf6" },
+  { href: "/countdown",    label: "Countdown",         defaultIconId: "Clock",         color: "#14b8a6" },
+  { href: "/games",        label: "Bible Games",       defaultIconId: "Gamepad2",      color: "#84cc16" },
+  { href: "/ai",           label: "AI Features",       defaultIconId: "Sparkles",      color: "#6366f1" },
+  { href: "/how-to",       label: "How To",            defaultIconId: "HelpCircle",    color: "#0ea5e9" },
+  { href: "/settings",     label: "Settings",          defaultIconId: "Settings",      color: "#94a3b8" },
 ] as const;
 
 /** Curated palette of icons users can pick from when customising the menu.
