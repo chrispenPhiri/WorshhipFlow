@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useSessionStorage } from "@/hooks/use-session-storage";
 import { useRecentlyPresented } from "@/hooks/use-recently-presented";
 import { BIBLE_BOOKS, BIBLE_TRANSLATIONS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
@@ -58,9 +59,12 @@ export default function BiblePage() {
 
   // Transient state — not persisted
   const [loading, setLoading]                   = useState(false);
-  const [result, setResult]                     = useState<BibleResult | null>(null);
-  const [secondaryResult, setSecondaryResult]   = useState<BibleResult | null>(null);
-  const [currentVerseIdx, setCurrentVerseIdx]   = useState(0);
+  // Persist the LOOKED-UP verse across navigation so switching tabs and coming
+  // back doesn't make the operator click "Look up" again.  sessionStorage
+  // (not localStorage) so it clears when the tab is closed.
+  const [result, setResult]                     = useSessionStorage<BibleResult | null>("wf-bible-result", null);
+  const [secondaryResult, setSecondaryResult]   = useSessionStorage<BibleResult | null>("wf-bible-result-2", null);
+  const [currentVerseIdx, setCurrentVerseIdx]   = useSessionStorage<number>("wf-bible-current-verse-idx", 0);
   const [highlighted, setHighlighted]           = useState<Set<number>>(new Set());
 
   // B3.4 — phrase search within current passage

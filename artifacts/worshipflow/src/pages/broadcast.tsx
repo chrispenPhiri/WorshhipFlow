@@ -917,10 +917,19 @@ export default function BroadcastPage() {
         case "scroll_reset":
           setScrollOffset(0);
           break;
+        case "caption_set":
+          setLiveCaption(typeof cmd.text === "string" ? cmd.text : "");
+          break;
+        case "caption_clear":
+          setLiveCaption("");
+          break;
       }
     };
     return () => ch.close();
   }, []);
+
+  // Live captions pushed from the operator side (Web Speech API in Media page).
+  const [liveCaption, setLiveCaption] = useState("");
 
   // Clock
   const [clockTime, setClockTime] = useState(new Date());
@@ -1493,6 +1502,28 @@ export default function BroadcastPage() {
           criticalColor={screenState.timerCriticalColor ?? "#ef4444"}
           tickerH={tickerH}
         />
+      )}
+
+      {/* ── Live Captions (AI / Web Speech) ── */}
+      {liveCaption && !screenState?.isBlack && (
+        <div
+          className="absolute left-1/2 -translate-x-1/2 z-40 pointer-events-none px-4 py-2 rounded-md max-w-[80%] text-center"
+          style={{
+            bottom: tickerH + 24,
+            background: "rgba(0,0,0,0.78)",
+            color: "#ffffff",
+            fontSize: "clamp(20px, 2.6vw, 38px)",
+            fontWeight: 600,
+            lineHeight: 1.25,
+            textShadow: "0 2px 8px rgba(0,0,0,0.85)",
+            letterSpacing: "0.01em",
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}
+        >
+          {liveCaption}
+        </div>
       )}
 
       {/* Ticker */}

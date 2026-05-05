@@ -19,6 +19,8 @@ import {
   Wifi, FlipHorizontal, SlidersHorizontal, MonitorPlay, Tv
 } from "lucide-react";
 import { LiveStudioPanel } from "@/components/live-studio";
+import { LiveCaptionsCard } from "@/components/live-captions-card";
+import { StreamDestinationsCard } from "@/components/stream-destinations-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBroadcast, type ScreenInfo } from "@/hooks/use-broadcast";
@@ -1374,6 +1376,12 @@ export default function MediaPage() {
               </div>
             </div>
           )}
+
+          {/* ── Live Captions (AI / Web Speech) ── */}
+          <LiveCaptionsCard />
+
+          {/* ── Stream Destinations (YouTube / Facebook / Twitch / RTMP) ── */}
+          <StreamDestinationsCard />
 
           {/* ── Broadcast Output (merged from former Broadcast tab) ── */}
           <div className="pt-4 border-t border-border">

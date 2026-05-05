@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useState, useRef, useEffect } from "react";
+import { useSessionStorage } from "@/hooks/use-session-storage";
 import {
   Sparkles, Send, Loader2, BookOpen, AlignLeft, Lightbulb, RotateCcw,
   ChevronDown, ChevronUp, X, User, Bot, Monitor, FileDown,
@@ -1096,6 +1097,9 @@ const TABS: Array<{
 export default function AIPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  // Persist the active AI tab across route changes so coming back from
+  // Bible / Songs / Media restores whichever AI tool the operator was using.
+  const [aiActiveTab, setAiActiveTab] = useSessionStorage<string>("wf-ai-active-tab", "prophet");
   const { data: screenState } = useGetScreenState({ query: { queryKey: getGetScreenStateQueryKey() } });
   const { mutate: updateScreen } = useUpdateScreenState({
     mutation: { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetScreenStateQueryKey() }) }
@@ -1148,7 +1152,7 @@ export default function AIPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="prophet">
+      <Tabs value={aiActiveTab} onValueChange={setAiActiveTab}>
         {/* Scrollable / wrappable tab list */}
         <ScrollArea className="w-full">
           <TabsList className="w-full h-auto flex-wrap gap-0.5 p-1 justify-start">

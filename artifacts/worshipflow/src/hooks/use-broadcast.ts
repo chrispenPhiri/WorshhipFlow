@@ -31,7 +31,10 @@ export type BroadcastCommand =
   | { type: "get_fullscreen_state" }
   | { type: "scroll_up" }
   | { type: "scroll_down" }
-  | { type: "scroll_reset" };
+  | { type: "scroll_reset" }
+  // Live captions — operator-side speech recognition pushes interim text here
+  | { type: "caption_set"; text: string; isFinal?: boolean }
+  | { type: "caption_clear" };
 
 /** Status events posted BY the broadcast window back to controllers. */
 export type BroadcastStatus =
