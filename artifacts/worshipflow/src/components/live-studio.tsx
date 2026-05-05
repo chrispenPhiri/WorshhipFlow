@@ -4,7 +4,7 @@
  * scene switcher, presenter spotlight, graphic presets, social handles.
  * All stream credentials stored in localStorage only (never sent to API).
  */
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,8 +18,14 @@ import {
   Radio, Youtube, Tv, Twitch, Zap, Mic2, Users, MonitorPlay,
   Play, Square, Copy, Eye, EyeOff, RefreshCw, Plus, Pencil,
   ChevronRight, Layers3, Sparkles, AlertTriangle, CheckCircle2,
-  Hash, AtSign, Star, Clapperboard, Loader2,
+  Hash, AtSign, Star, Clapperboard, Loader2, FlipHorizontal,
+  Maximize2, Minimize2, RotateCcw, ChevronDown, ChevronUp,
 } from "lucide-react";
+
+const BROADCAST_SRC = (() => {
+  const base = import.meta.env.BASE_URL ?? "/";
+  return base.endsWith("/") ? `${base}broadcast` : `${base}/broadcast`;
+})();
 
 // ── Types ────────────────────────────────────────────────────────────────────
 type Platform = "youtube" | "facebook" | "twitch" | "custom";
@@ -101,6 +107,11 @@ export function LiveStudioPanel() {
   const [liveShowBadge, setLiveShowBadge] = useLocalStorage("wf-live-show-badge", true);
   const [liveShowHandles, setLiveShowHandles] = useLocalStorage("wf-live-show-handles", true);
 
+  // ── Preview monitor ──────────────────────────────────────────────────────
+  const [showPreview, setShowPreview] = useLocalStorage("wf-live-show-preview", true);
+  const [isRehearsal, setIsRehearsal] = useState(false);
+  const [iframeKey, setIframeKey] = useState(0);
+
   // ── Presenter spotlight ──────────────────────────────────────────────────
   const [presenterName, setPresenterName] = useState("");
   const [presenterTitle, setPresenterTitle] = useState("");
@@ -124,6 +135,7 @@ export function LiveStudioPanel() {
 
   const goLive = () => {
     const pInfo = PLATFORM_INFO[platform];
+    setIsRehearsal(false);
     updateScreen({
       data: {
         ...safeBase(),
@@ -137,11 +149,29 @@ export function LiveStudioPanel() {
     toast({ title: `🔴 Going Live on ${pInfo.label}`, description: "Broadcast window is now showing the LIVE indicator." });
   };
 
+  const rehearse = () => {
+    setIsRehearsal(true);
+    setShowPreview(true);
+    setIframeKey(k => k + 1);
+    updateScreen({
+      data: {
+        ...safeBase(),
+        isLive: true,
+        livePlatform: platform,
+        liveStartTime: new Date().toISOString(),
+        liveScene: scenes[0]?.name ?? "Main Stage",
+        liveSocialHandles: liveShowHandles ? socialHandles : "",
+      },
+    });
+    toast({ title: "🎬 Rehearsal Mode active", description: "Live overlays are on. Preview monitor is open below." });
+  };
+
   const endStream = () => {
+    setIsRehearsal(false);
     updateScreen({
       data: { ...safeBase(), isLive: false, liveStartTime: undefined as unknown as string },
     });
-    toast({ title: "Stream ended", description: "LIVE badge has been removed from the broadcast." });
+    toast({ title: isRehearsal ? "Rehearsal ended" : "Stream ended", description: "LIVE badge has been removed from the broadcast." });
   };
 
   const switchScene = (scene: Scene) => {
@@ -195,32 +225,152 @@ export function LiveStudioPanel() {
   const currentScene = screenState?.liveScene;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* ── Header ── */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl" style={{ background: isLive ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.06)" }}>
-            <Radio className="w-5 h-5" style={{ color: isLive ? "#ef4444" : "#94a3b8" }} />
+          <div className="p-2 rounded-xl" style={{ background: isLive ? (isRehearsal ? "rgba(234,179,8,0.15)" : "rgba(239,68,68,0.15)") : "rgba(255,255,255,0.06)" }}>
+            <Radio className="w-5 h-5" style={{ color: isLive ? (isRehearsal ? "#eab308" : "#ef4444") : "#94a3b8" }} />
           </div>
           <div>
             <h2 className="text-xl font-bold flex items-center gap-2">
               Live Studio
-              {isLive && (
-                <span className="flex items-center gap-1.5 text-sm font-semibold text-red-400 animate-pulse">
+              {isLive && !isRehearsal && (
+                <span className="flex items-center gap-1.5 text-sm font-semibold text-red-400">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                   LIVE · {formatDuration(liveDuration)}
+                </span>
+              )}
+              {isLive && isRehearsal && (
+                <span className="flex items-center gap-1.5 text-sm font-semibold text-yellow-400">
+                  <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                  REHEARSAL · {formatDuration(liveDuration)}
                 </span>
               )}
             </h2>
             <p className="text-sm text-muted-foreground">Live podcast, streaming & production controls</p>
           </div>
         </div>
-        {isLive && (
-          <Button variant="destructive" onClick={endStream} className="gap-2 shrink-0">
-            <Square className="w-4 h-4" /> End Stream
+        <div className="flex items-center gap-2 flex-wrap">
+          {!isLive && (
+            <Button size="sm" variant="outline" onClick={rehearse} className="gap-2 text-yellow-500 border-yellow-500/40 hover:bg-yellow-500/10">
+              <Play className="w-3.5 h-3.5" /> Rehearsal Mode
+            </Button>
+          )}
+          {isLive && (
+            <Button variant="destructive" size="sm" onClick={endStream} className="gap-2">
+              <Square className="w-3.5 h-3.5" /> {isRehearsal ? "End Rehearsal" : "End Stream"}
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" onClick={() => setShowPreview(v => !v)} className="gap-1.5 text-xs text-muted-foreground">
+            <MonitorPlay className="w-3.5 h-3.5" />
+            {showPreview ? "Hide Monitor" : "Show Monitor"}
           </Button>
-        )}
+        </div>
       </div>
+
+      {/* ── Broadcast Preview Monitor ── */}
+      {showPreview && (
+        <Card className="overflow-hidden border-2" style={{ borderColor: isLive ? (isRehearsal ? "rgba(234,179,8,0.4)" : "rgba(239,68,68,0.4)") : "rgba(255,255,255,0.08)" }}>
+          <CardHeader className="pb-2 pt-3 px-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MonitorPlay className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">Preview Monitor</span>
+                {isLive && (
+                  <Badge className="text-[10px] h-4 px-1.5" style={{
+                    background: isRehearsal ? "rgba(234,179,8,0.2)" : "rgba(239,68,68,0.2)",
+                    color: isRehearsal ? "#eab308" : "#ef4444",
+                    border: "none",
+                  }}>
+                    {isRehearsal ? "REHEARSAL" : "LIVE"}
+                  </Badge>
+                )}
+                {!isLive && <span className="text-[11px] text-muted-foreground">Off Air</span>}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setIframeKey(k => k + 1)}
+                  title="Reload preview"
+                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-muted/60 text-muted-foreground transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                </button>
+                <a
+                  href={BROADCAST_SRC}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="Open broadcast window"
+                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-muted/60 text-muted-foreground transition-colors"
+                >
+                  <Maximize2 className="w-3 h-3" />
+                </a>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 pb-3 space-y-3">
+            {/* Iframe */}
+            <div className="relative w-full rounded-lg overflow-hidden bg-black border border-border/30" style={{ paddingTop: "56.25%" }}>
+              <iframe
+                key={iframeKey}
+                src={BROADCAST_SRC}
+                className="absolute inset-0 w-full h-full border-0"
+                title="Broadcast Preview"
+                allow="camera; microphone; display-capture"
+              />
+              {!isLive && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80 z-10">
+                  <MonitorPlay className="w-10 h-10 text-white/20" />
+                  <p className="text-white/40 text-sm font-medium">Off Air</p>
+                  <p className="text-white/25 text-xs text-center px-4">Click <strong>Rehearsal Mode</strong> above to test all overlays and commands</p>
+                  <Button size="sm" variant="outline" onClick={rehearse}
+                    className="mt-1 gap-2 text-yellow-500 border-yellow-500/40 hover:bg-yellow-500/10">
+                    <Play className="w-3.5 h-3.5" /> Start Rehearsal
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Quick-test command bar */}
+            <div className="space-y-2">
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Quick Test Commands</p>
+              <div className="flex flex-wrap gap-1.5">
+                {GRAPHIC_PRESETS.slice(0, 4).map(g => (
+                  <button
+                    key={g.id}
+                    onClick={() => fireGraphic(g)}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-border hover:bg-muted/60 hover:border-primary/50 text-xs transition-all"
+                  >
+                    <span>{g.emoji}</span> {g.label}
+                  </button>
+                ))}
+                <button
+                  onClick={() => updateScreen({ data: { ...safeBase(), lowerThirdEnabled: false, textOverlayEnabled: false } })}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-border hover:bg-muted/60 text-xs text-muted-foreground transition-all"
+                >
+                  <RotateCcw className="w-3 h-3" /> Clear
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {scenes.slice(0, 4).map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => switchScene(s)}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs transition-all ${
+                      currentScene === s.name
+                        ? "border-primary bg-primary/15 text-primary"
+                        : "border-border hover:bg-muted/60"
+                    }`}
+                  >
+                    <span>{s.icon}</span> {s.name}
+                    {currentScene === s.name && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse ml-0.5" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid md:grid-cols-3 gap-5">
         {/* ── Column 1: Platform + Stream Config ── */}
