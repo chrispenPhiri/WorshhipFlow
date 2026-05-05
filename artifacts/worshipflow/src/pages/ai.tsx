@@ -1,8 +1,10 @@
+import * as React from "react";
 import { useState, useRef, useEffect } from "react";
 import {
   Sparkles, Send, Loader2, BookOpen, AlignLeft, Lightbulb, RotateCcw,
   ChevronDown, ChevronUp, X, User, Bot, Monitor, FileDown,
   FileText, HandHeart, ListMusic, Megaphone,
+  Sunrise, ListChecks, Link2, Languages, Baby, Wand2,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -73,6 +75,156 @@ function exportToPDF(title: string, content: string) {
 </body></html>`);
   win.document.close();
   setTimeout(() => win.print(), 400);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Refine panel — drop-in for any one-shot AI result.
+   When user submits a refinement, calls /refine and streams the
+   result back, replacing the original via setResult.
+   ───────────────────────────────────────────────────────────────── */
+function RefinePanel({
+  kind, original, setResult,
+}: {
+  kind: string;
+  original: string;
+  setResult: (next: string | ((prev: string) => string)) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Live in-progress refine buffer — shown beneath the original until streaming
+  // completes, then atomically swapped into the result. Keeps the original
+  // visible if streaming fails mid-way.
+  const [draft, setDraft] = useState("");
+
+  async function refine() {
+    if (!text.trim() || loading) return;
+    const snapshot = original;
+    setLoading(true);
+    setError(null);
+    setDraft("");
+    let buffer = "";
+    try {
+      await streamPost("/refine", { kind, original: snapshot, refinement: text }, (chunk) => {
+        buffer += chunk;
+        setDraft(buffer);
+      });
+      // Only replace the original after a successful full stream
+      if (buffer.trim()) setResult(buffer);
+      setDraft("");
+      setText("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Refine failed");
+      setDraft(""); // discard partial draft, original stays intact
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const QUICK_REFINEMENTS = [
+    "Make it shorter",
+    "Make it longer / more detailed",
+    "Use simpler language",
+    "More Scripture references",
+    "Warmer / more personal tone",
+  ];
+
+  return (
+    <div className="mt-3 pt-3 border-t border-border/40">
+      {!open ? (
+        <button type="button" onClick={() => setOpen(true)}
+          className="flex items-center gap-1.5 text-xs text-primary hover:underline font-medium">
+          <Wand2 className="w-3 h-3" /> Reply / refine this response
+        </button>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+              <Wand2 className="w-3 h-3" /> Tell the AI what to change
+            </p>
+            <button type="button" onClick={() => { setOpen(false); setText(""); setError(null); }}
+              className="text-muted-foreground hover:text-foreground">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <Textarea
+            value={text} onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); refine(); } }}
+            placeholder="e.g. make it shorter, add more Scripture, change the tone…"
+            rows={2} className="text-sm resize-none" disabled={loading} />
+          <div className="flex flex-wrap gap-1.5">
+            {QUICK_REFINEMENTS.map((q) => (
+              <button key={q} type="button" disabled={loading}
+                onClick={() => setText(q)}
+                className="text-[10.5px] px-2 py-0.5 rounded-full border border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors">
+                {q}
+              </button>
+            ))}
+          </div>
+          {error && <p className="text-destructive text-xs">{error}</p>}
+          <div className="flex gap-2">
+            <Button size="sm" onClick={refine} disabled={!text.trim() || loading} className="gap-1.5 h-8 text-xs">
+              {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+              {loading ? "Refining…" : "Refine"}
+            </Button>
+            <p className="text-[10px] text-muted-foreground self-center">⌘ / Ctrl + Enter to submit</p>
+          </div>
+          {(loading || draft) && draft && (
+            <div className="mt-2 p-3 rounded-lg border border-primary/30 bg-primary/5 space-y-1">
+              <p className="text-[10px] font-semibold text-primary uppercase tracking-wide flex items-center gap-1.5">
+                <Loader2 className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} /> Refined version (preview)
+              </p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{draft}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   ResultActions — Send-to-screen / Export PDF / Dismiss / Refine.
+   Shared by every one-shot AI feature.
+   ───────────────────────────────────────────────────────────────── */
+function ResultBlock({
+  title, content, kind, setResult, onSendToScreen, dismissable = true,
+}: {
+  title: string;
+  content: string;
+  kind: string;
+  setResult: (next: string | ((prev: string) => string)) => void;
+  onSendToScreen?: (content: string, title: string) => void;
+  dismissable?: boolean;
+}) {
+  return (
+    <div className="space-y-2 p-4 rounded-xl border border-border bg-muted/20">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{title}</p>
+        <div className="flex items-center gap-1.5">
+          {onSendToScreen && (
+            <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs"
+              onClick={() => onSendToScreen(content, title)}>
+              <Monitor className="w-3 h-3" /> Send to screen
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" className="gap-1.5 h-7 text-xs"
+            onClick={() => exportToPDF(title, content)}>
+            <FileDown className="w-3 h-3" /> PDF
+          </Button>
+          {dismissable && (
+            <button type="button" onClick={() => setResult("")}
+              className="text-muted-foreground hover:text-foreground ml-1">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+      <p className="text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
+      <RefinePanel kind={kind} original={content} setResult={setResult} />
+    </div>
+  );
 }
 
 type ProphetMsg = { role: "user" | "assistant"; content: string };
@@ -259,7 +411,6 @@ function AISummary({ onSendToScreen }: { onSendToScreen?: (content: string, titl
     }
   }
 
-  const bullets = result.split(/(?=•)/).filter(Boolean);
   const summaryTitle = book && chapter ? `${book} ${chapter} — Summary` : "AI Chapter Summary";
 
   return (
@@ -290,35 +441,8 @@ function AISummary({ onSendToScreen }: { onSendToScreen?: (content: string, titl
       {error && <p className="text-destructive text-sm">{error}</p>}
 
       {result && (
-        <div className="space-y-2 p-4 rounded-xl border border-border bg-muted/20">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{summaryTitle}</p>
-            <div className="flex gap-1.5">
-              {onSendToScreen && (
-                <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs"
-                  onClick={() => onSendToScreen(result, summaryTitle)}>
-                  <Monitor className="w-3 h-3" /> Send to screen
-                </Button>
-              )}
-              <Button size="sm" variant="ghost" className="gap-1.5 h-7 text-xs"
-                onClick={() => exportToPDF(summaryTitle, result)}>
-                <FileDown className="w-3 h-3" /> PDF
-              </Button>
-            </div>
-          </div>
-          {bullets.length > 0 ? (
-            <ul className="space-y-3">
-              {bullets.map((b, i) => (
-                <li key={i} className="flex gap-2 text-sm leading-relaxed">
-                  <span className="text-primary font-bold shrink-0">•</span>
-                  <span>{b.replace(/^•\s*/, "")}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm whitespace-pre-wrap">{result}</p>
-          )}
-        </div>
+        <ResultBlock title={summaryTitle} content={result} kind="chapter summary"
+          setResult={setResult} onSendToScreen={onSendToScreen} />
       )}
     </div>
   );
@@ -402,27 +526,8 @@ function ContextLens({ onSendToScreen }: { onSendToScreen?: (content: string, ti
       {error && <p className="text-destructive text-sm">{error}</p>}
 
       {result && (
-        <div className="space-y-2 p-4 rounded-xl border border-border bg-muted/20">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{lensTitle}</p>
-            <div className="flex items-center gap-1.5">
-              {onSendToScreen && (
-                <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs"
-                  onClick={() => onSendToScreen(result, lensTitle)}>
-                  <Monitor className="w-3 h-3" /> Send to screen
-                </Button>
-              )}
-              <Button size="sm" variant="ghost" className="gap-1.5 h-7 text-xs"
-                onClick={() => exportToPDF(lensTitle, result)}>
-                <FileDown className="w-3 h-3" /> PDF
-              </Button>
-              <button type="button" onClick={() => setResult("")} className="text-muted-foreground hover:text-foreground ml-1">
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{result}</p>
-        </div>
+        <ResultBlock title={lensTitle} content={result} kind="plain-English Bible explanation"
+          setResult={setResult} onSendToScreen={onSendToScreen} />
       )}
     </div>
   );
@@ -478,17 +583,8 @@ function SermonOutline({ onSendToScreen }: { onSendToScreen?: (content: string, 
       </div>
       {error && <p className="text-destructive text-sm">{error}</p>}
       {result && (
-        <div className="space-y-2 p-4 rounded-xl border border-border bg-muted/20">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{outlineTitle}</p>
-            <div className="flex items-center gap-1.5">
-              {onSendToScreen && <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={() => onSendToScreen(result, outlineTitle)}><Monitor className="w-3 h-3" /> Send to screen</Button>}
-              <Button size="sm" variant="ghost" className="gap-1.5 h-7 text-xs" onClick={() => exportToPDF(outlineTitle, result)}><FileDown className="w-3 h-3" /> PDF</Button>
-              <button type="button" onClick={() => setResult("")} className="text-muted-foreground hover:text-foreground ml-1"><X className="w-3.5 h-3.5" /></button>
-            </div>
-          </div>
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{result}</p>
-        </div>
+        <ResultBlock title={outlineTitle} content={result} kind="sermon outline"
+          setResult={setResult} onSendToScreen={onSendToScreen} />
       )}
     </div>
   );
@@ -540,17 +636,8 @@ function PrayerGenerator({ onSendToScreen }: { onSendToScreen?: (content: string
       </Button>
       {error && <p className="text-destructive text-sm">{error}</p>}
       {result && (
-        <div className="space-y-2 p-4 rounded-xl border border-border bg-muted/20">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{prayerTitle}</p>
-            <div className="flex items-center gap-1.5">
-              {onSendToScreen && <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={() => onSendToScreen(result, prayerTitle)}><Monitor className="w-3 h-3" /> Send to screen</Button>}
-              <Button size="sm" variant="ghost" className="gap-1.5 h-7 text-xs" onClick={() => exportToPDF(prayerTitle, result)}><FileDown className="w-3 h-3" /> PDF</Button>
-              <button type="button" onClick={() => setResult("")} className="text-muted-foreground hover:text-foreground ml-1"><X className="w-3.5 h-3.5" /></button>
-            </div>
-          </div>
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{result}</p>
-        </div>
+        <ResultBlock title={prayerTitle} content={result} kind={`${type} prayer`}
+          setResult={setResult} onSendToScreen={onSendToScreen} />
       )}
     </div>
   );
@@ -602,17 +689,8 @@ function WorshipSetPlanner({ onSendToScreen }: { onSendToScreen?: (content: stri
       </div>
       {error && <p className="text-destructive text-sm">{error}</p>}
       {result && (
-        <div className="space-y-2 p-4 rounded-xl border border-border bg-muted/20">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{setTitle}</p>
-            <div className="flex items-center gap-1.5">
-              {onSendToScreen && <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={() => onSendToScreen(result, setTitle)}><Monitor className="w-3 h-3" /> Send to screen</Button>}
-              <Button size="sm" variant="ghost" className="gap-1.5 h-7 text-xs" onClick={() => exportToPDF(setTitle, result)}><FileDown className="w-3 h-3" /> PDF</Button>
-              <button type="button" onClick={() => setResult("")} className="text-muted-foreground hover:text-foreground ml-1"><X className="w-3.5 h-3.5" /></button>
-            </div>
-          </div>
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{result}</p>
-        </div>
+        <ResultBlock title={setTitle} content={result} kind="worship set plan"
+          setResult={setResult} onSendToScreen={onSendToScreen} />
       )}
     </div>
   );
@@ -662,21 +740,358 @@ function AnnouncementWriter({ onSendToScreen }: { onSendToScreen?: (content: str
       </Button>
       {error && <p className="text-destructive text-sm">{error}</p>}
       {result && (
-        <div className="space-y-2 p-4 rounded-xl border border-border bg-muted/20">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{annTitle}</p>
-            <div className="flex items-center gap-1.5">
-              {onSendToScreen && <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={() => onSendToScreen(result, annTitle)}><Monitor className="w-3 h-3" /> Send to screen</Button>}
-              <Button size="sm" variant="ghost" className="gap-1.5 h-7 text-xs" onClick={() => exportToPDF(annTitle, result)}><FileDown className="w-3 h-3" /> PDF</Button>
-              <button type="button" onClick={() => setResult("")} className="text-muted-foreground hover:text-foreground ml-1"><X className="w-3.5 h-3.5" /></button>
-            </div>
-          </div>
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{result}</p>
-        </div>
+        <ResultBlock title={annTitle} content={result} kind="church announcement"
+          setResult={setResult} onSendToScreen={onSendToScreen} />
       )}
     </div>
   );
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   NEW: Daily Devotional
+   ───────────────────────────────────────────────────────────────── */
+function Devotional({ onSendToScreen }: { onSendToScreen?: (content: string, title: string) => void }) {
+  const [verse, setVerse] = useState("");
+  const [theme, setTheme] = useState("");
+  const [audience, setAudience] = useState("");
+  const [result, setResult] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const QUICK = ["Psalm 23:1", "Philippians 4:13", "Isaiah 40:31", "Proverbs 3:5-6", "Romans 8:28", "John 14:27"];
+
+  async function generate(v = verse, t = theme) {
+    if (!v.trim() && !t.trim()) return;
+    setLoading(true); setResult(""); setError(null);
+    try {
+      await streamPost("/devotional", {
+        verse: v || undefined,
+        theme: t || undefined,
+        audience: audience || undefined,
+      }, chunk => setResult(p => p + chunk));
+    } catch (e) { setError(e instanceof Error ? e.message : "Error"); } finally { setLoading(false); }
+  }
+
+  const devTitle = verse ? `Devotional — ${verse}` : (theme ? `Devotional — ${theme}` : "Daily Devotional");
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">Generate a short, warm daily devotional from any verse or theme — perfect for newsletters, small groups, or personal quiet time.</p>
+      <div className="grid grid-cols-2 gap-2">
+        <Input value={verse} onChange={e => setVerse(e.target.value)} placeholder="Verse (e.g. Psalm 23:1)" disabled={loading} />
+        <Input value={theme} onChange={e => setTheme(e.target.value)} placeholder="Or theme (e.g. trust, joy)" disabled={loading} />
+      </div>
+      <Input value={audience} onChange={e => setAudience(e.target.value)} placeholder="Audience (e.g. youth, mothers, men's group) — optional" disabled={loading} />
+      <Button onClick={() => generate()} disabled={(!verse.trim() && !theme.trim()) || loading} className="gap-2">
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sunrise className="w-4 h-4" />}
+        Write Devotional
+      </Button>
+      <div className="flex flex-wrap gap-1.5">
+        {QUICK.map(q => (
+          <button key={q} type="button" onClick={() => { setVerse(q); generate(q, theme); }}
+            className="text-xs px-2.5 py-1 rounded-full border border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors">
+            {q}
+          </button>
+        ))}
+      </div>
+      {error && <p className="text-destructive text-sm">{error}</p>}
+      {result && (
+        <ResultBlock title={devTitle} content={result} kind="daily devotional"
+          setResult={setResult} onSendToScreen={onSendToScreen} />
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   NEW: Bible Quiz Generator
+   ───────────────────────────────────────────────────────────────── */
+function BibleQuiz({ onSendToScreen }: { onSendToScreen?: (content: string, title: string) => void }) {
+  const [book, setBook] = useState("");
+  const [chapter, setChapter] = useState("");
+  const [count, setCount] = useState(5);
+  const [difficulty, setDifficulty] = useState("medium");
+  const [result, setResult] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const DIFF = [
+    { value: "easy", label: "Easy" }, { value: "medium", label: "Medium" }, { value: "hard", label: "Hard" },
+  ];
+  const QUICK = [
+    { book: "Matthew", chapter: "5" }, { book: "Genesis", chapter: "" }, { book: "Acts", chapter: "2" },
+    { book: "Psalms", chapter: "23" }, { book: "John", chapter: "" }, { book: "Romans", chapter: "8" },
+  ];
+
+  async function generate(b = book, c = chapter) {
+    if (!b.trim()) return;
+    setLoading(true); setResult(""); setError(null);
+    try {
+      await streamPost("/quiz", { book: b, chapter: c || undefined, count, difficulty },
+        chunk => setResult(p => p + chunk));
+    } catch (e) { setError(e instanceof Error ? e.message : "Error"); } finally { setLoading(false); }
+  }
+
+  const quizTitle = book ? `Bible Quiz — ${book}${chapter ? ` ${chapter}` : ""}` : "Bible Quiz";
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">Generate Sunday-school style multiple-choice quiz questions on any book or chapter — great for youth nights, small groups, or church games.</p>
+      <div className="flex gap-2">
+        <Input value={book} onChange={e => setBook(e.target.value)} placeholder="Book (e.g. Matthew)" className="flex-1" disabled={loading} />
+        <Input value={chapter} onChange={e => setChapter(e.target.value)} placeholder="Ch. (opt)" className="w-24" disabled={loading} />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-muted-foreground shrink-0">Questions:</label>
+          <select value={count} onChange={e => setCount(Number(e.target.value))}
+            className="h-9 rounded border border-input bg-background text-sm px-2 text-foreground flex-1" disabled={loading}>
+            {[3, 5, 7, 10, 15].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
+        <div className="flex gap-1">
+          {DIFF.map(d => (
+            <button key={d.value} type="button" onClick={() => setDifficulty(d.value)}
+              className={`flex-1 py-1.5 rounded text-xs border transition-colors ${difficulty === d.value ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+              {d.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <Button onClick={() => generate()} disabled={!book.trim() || loading} className="gap-2">
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ListChecks className="w-4 h-4" />}
+        Generate Quiz
+      </Button>
+      <div className="flex flex-wrap gap-1.5">
+        {QUICK.map(q => (
+          <button key={`${q.book}${q.chapter}`} type="button" onClick={() => { setBook(q.book); setChapter(q.chapter); generate(q.book, q.chapter); }}
+            className="text-xs px-2.5 py-1 rounded-full border border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors">
+            {q.book}{q.chapter && ` ${q.chapter}`}
+          </button>
+        ))}
+      </div>
+      {error && <p className="text-destructive text-sm">{error}</p>}
+      {result && (
+        <ResultBlock title={quizTitle} content={result} kind="Bible quiz"
+          setResult={setResult} onSendToScreen={onSendToScreen} />
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   NEW: Cross-References Finder
+   ───────────────────────────────────────────────────────────────── */
+function CrossRefs({ onSendToScreen }: { onSendToScreen?: (content: string, title: string) => void }) {
+  const [passage, setPassage] = useState("");
+  const [result, setResult] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const QUICK = ["John 3:16", "Isaiah 53", "Genesis 1:1", "Romans 8:28", "Matthew 28:19-20", "Hebrews 11:1", "Psalm 23"];
+
+  async function find(p = passage) {
+    if (!p.trim()) return;
+    setLoading(true); setResult(""); setError(null);
+    try {
+      await streamPost("/cross-refs", { passage: p }, chunk => setResult(prev => prev + chunk));
+    } catch (e) { setError(e instanceof Error ? e.message : "Error"); } finally { setLoading(false); }
+  }
+
+  const xrefTitle = passage ? `Cross-References for ${passage}` : "Cross-References";
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">Discover related verses across the whole Bible — prophetic echoes, parallel teachings, and supporting passages for any verse you're studying or preaching.</p>
+      <div className="flex gap-2">
+        <Input value={passage} onChange={e => setPassage(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") find(); }}
+          placeholder="Verse or passage (e.g. John 3:16)" className="flex-1" disabled={loading} />
+        <Button onClick={() => find()} disabled={!passage.trim() || loading} className="gap-2 shrink-0">
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
+          Find References
+        </Button>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {QUICK.map(q => (
+          <button key={q} type="button" onClick={() => { setPassage(q); find(q); }}
+            className="text-xs px-2.5 py-1 rounded-full border border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors">
+            {q}
+          </button>
+        ))}
+      </div>
+      {error && <p className="text-destructive text-sm">{error}</p>}
+      {result && (
+        <ResultBlock title={xrefTitle} content={result} kind="cross-references list"
+          setResult={setResult} onSendToScreen={onSendToScreen} />
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   NEW: Translate to Local Language
+   ───────────────────────────────────────────────────────────────── */
+function Translate({ onSendToScreen }: { onSendToScreen?: (content: string, title: string) => void }) {
+  const [text, setText] = useState("");
+  const [language, setLanguage] = useState("Chichewa");
+  const [register, setRegister] = useState("respectful and reverent");
+  const [result, setResult] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const LANGUAGES = [
+    "Chichewa", "Tumbuka", "Swahili", "Yao", "Lomwe",
+    "Zulu", "Xhosa", "Shona", "Ndebele", "Tswana",
+    "Yoruba", "Igbo", "Hausa", "Twi", "Amharic",
+    "French", "Portuguese", "Spanish", "Arabic", "Mandarin",
+    "Hindi", "Tagalog", "Korean", "German", "Russian",
+  ];
+  const REGISTERS = [
+    { value: "respectful and reverent", label: "Reverent" },
+    { value: "warm and conversational", label: "Conversational" },
+    { value: "formal liturgical", label: "Liturgical" },
+    { value: "simple for children", label: "Simple" },
+  ];
+
+  async function translate() {
+    if (!text.trim() || !language.trim()) return;
+    setLoading(true); setResult(""); setError(null);
+    try {
+      await streamPost("/translate", { text, language, register }, chunk => setResult(p => p + chunk));
+    } catch (e) { setError(e instanceof Error ? e.message : "Error"); } finally { setLoading(false); }
+  }
+
+  const trTitle = `Translation → ${language}`;
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">Translate any verse, prayer, or announcement into a local or international language for a multilingual congregation.</p>
+      <Textarea value={text} onChange={e => setText(e.target.value)}
+        placeholder="Enter the text to translate (verse, prayer, announcement…)"
+        rows={4} className="text-sm" disabled={loading} />
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Target Language</label>
+          <select value={language} onChange={e => setLanguage(e.target.value)}
+            className="h-9 w-full rounded border border-input bg-background text-sm px-2 text-foreground" disabled={loading}>
+            {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
+          </select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Register</label>
+          <select value={register} onChange={e => setRegister(e.target.value)}
+            className="h-9 w-full rounded border border-input bg-background text-sm px-2 text-foreground" disabled={loading}>
+            {REGISTERS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+          </select>
+        </div>
+      </div>
+      <Input value={language} onChange={e => setLanguage(e.target.value)}
+        placeholder="Or type any other language…" disabled={loading} />
+      <Button onClick={translate} disabled={!text.trim() || !language.trim() || loading} className="gap-2">
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Languages className="w-4 h-4" />}
+        Translate
+      </Button>
+      {error && <p className="text-destructive text-sm">{error}</p>}
+      {result && (
+        <ResultBlock title={trTitle} content={result} kind="translation"
+          setResult={setResult} onSendToScreen={onSendToScreen} />
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   NEW: Children's Sermon
+   ───────────────────────────────────────────────────────────────── */
+function ChildrensSermon({ onSendToScreen }: { onSendToScreen?: (content: string, title: string) => void }) {
+  const [topic, setTopic] = useState("");
+  const [verse, setVerse] = useState("");
+  const [ageGroup, setAgeGroup] = useState("ages 5-10");
+  const [result, setResult] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const AGES = [
+    { value: "ages 3-5", label: "Pre-K" }, { value: "ages 5-10", label: "5-10" },
+    { value: "ages 10-13", label: "Tweens" }, { value: "youth ages 13-17", label: "Teens" },
+  ];
+  const QUICK = [
+    { topic: "God Loves You",          verse: "John 3:16" },
+    { topic: "Be Kind",                verse: "Ephesians 4:32" },
+    { topic: "Trust Jesus When Scared",verse: "Joshua 1:9" },
+    { topic: "Sharing With Others",    verse: "Acts 2:44-45" },
+    { topic: "Forgiving Others",       verse: "Matthew 6:14" },
+    { topic: "Jesus Calms the Storm",  verse: "Mark 4:35-41" },
+  ];
+
+  async function generate(t = topic, v = verse) {
+    if (!t.trim()) return;
+    setLoading(true); setResult(""); setError(null);
+    try {
+      await streamPost("/childrens-sermon", { topic: t, verse: v || undefined, ageGroup },
+        chunk => setResult(p => p + chunk));
+    } catch (e) { setError(e instanceof Error ? e.message : "Error"); } finally { setLoading(false); }
+  }
+
+  const csTitle = topic ? `Children's Sermon — ${topic}` : "Children's Sermon";
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">Write a fun, age-appropriate children's sermon with a story, object lesson, and discussion questions — ready for Sunday School in seconds.</p>
+      <div className="grid grid-cols-4 gap-1.5">
+        {AGES.map(a => (
+          <button key={a.value} type="button" onClick={() => setAgeGroup(a.value)}
+            className={`py-1.5 rounded text-xs border transition-colors ${ageGroup === a.value ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+            {a.label}
+          </button>
+        ))}
+      </div>
+      <Input value={topic} onChange={e => setTopic(e.target.value)}
+        onKeyDown={e => { if (e.key === "Enter") generate(); }}
+        placeholder="Topic (e.g. Be Kind, God Loves You)" disabled={loading} />
+      <Input value={verse} onChange={e => setVerse(e.target.value)}
+        placeholder="Anchor verse (optional)" disabled={loading} />
+      <Button onClick={() => generate()} disabled={!topic.trim() || loading} className="gap-2">
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Baby className="w-4 h-4" />}
+        Write Children's Sermon
+      </Button>
+      <div className="flex flex-wrap gap-1.5">
+        {QUICK.map(q => (
+          <button key={q.topic} type="button" onClick={() => { setTopic(q.topic); setVerse(q.verse); generate(q.topic, q.verse); }}
+            className="text-xs px-2.5 py-1 rounded-full border border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors">
+            {q.topic}
+          </button>
+        ))}
+      </div>
+      {error && <p className="text-destructive text-sm">{error}</p>}
+      {result && (
+        <ResultBlock title={csTitle} content={result} kind="children's sermon"
+          setResult={setResult} onSendToScreen={onSendToScreen} />
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   AI Page
+   ───────────────────────────────────────────────────────────────── */
+const TABS: Array<{
+  value: string;
+  label: string;
+  Icon: React.ComponentType<{ className?: string }>;
+  badge?: string;
+  description: string;
+  Component: React.ComponentType<{ onSendToScreen?: (content: string, title: string) => void }>;
+}> = [
+  { value: "prophet",     label: "Ask a Prophet",   Icon: Bot,          description: "Theological assistant trained on Scripture, church history, and biblical commentaries.",                              Component: ProphetChat },
+  { value: "summary",     label: "Chapter Summary", Icon: AlignLeft,    badge: "TL;DR", description: "3-bullet TL;DR of any Bible chapter — ideal for long books like Leviticus or Revelation.",         Component: AISummary },
+  { value: "lens",        label: "Context Lens",    Icon: Lightbulb,    badge: "ELI5",  description: "Explain any passage in plain English — great for new believers and children's ministry.",        Component: ContextLens },
+  { value: "sermon",      label: "Sermon Outline",  Icon: FileText,     description: "Generate structured, Scripture-rich sermon outlines with main points, application, and call to action.",          Component: SermonOutline },
+  { value: "prayer",      label: "Prayer",          Icon: HandHeart,    description: "Heartfelt, Scripture-inspired prayers — opening, closing, intercessory, communion, and more.",                     Component: PrayerGenerator },
+  { value: "worship-set", label: "Worship Set",     Icon: ListMusic,    description: "Plan a complete worship set with song suggestions, keys, tempo, Scripture readings, and a flow arc.",             Component: WorshipSetPlanner },
+  { value: "announcement",label: "Announcements",   Icon: Megaphone,    description: "Polished church announcements for bulletins and slides — catchy headline, key details, and a clear CTA.",          Component: AnnouncementWriter },
+  { value: "devotional",  label: "Devotional",      Icon: Sunrise,      badge: "NEW",   description: "Short, warm daily devotional from any verse or theme — great for newsletters or quiet time.",     Component: Devotional },
+  { value: "quiz",        label: "Bible Quiz",      Icon: ListChecks,   badge: "NEW",   description: "Sunday-school style multiple-choice quiz on any book or chapter — perfect for youth nights.",     Component: BibleQuiz },
+  { value: "cross-refs",  label: "Cross-Refs",      Icon: Link2,        badge: "NEW",   description: "Find related verses across the Bible — prophetic echoes, parallel teachings, supporting passages.", Component: CrossRefs },
+  { value: "translate",   label: "Translate",       Icon: Languages,    badge: "NEW",   description: "Translate any verse, prayer, or announcement into a local or international language.",            Component: Translate },
+  { value: "kids",        label: "Kids' Sermon",    Icon: Baby,         badge: "NEW",   description: "Fun, age-appropriate children's sermon with story, object lesson, and discussion questions.",     Component: ChildrensSermon },
+];
 
 export default function AIPage() {
   const queryClient = useQueryClient();
@@ -718,156 +1133,56 @@ export default function AIPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6 p-4 pb-12">
       <div>
-        <div className="flex items-center gap-3 mb-1">
+        <div className="flex items-center gap-3 mb-1 flex-wrap">
           <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center">
             <Sparkles className="w-5 h-5 text-primary" />
           </div>
           <h1 className="text-2xl font-bold">AI-Powered Features</h1>
           <Badge variant="secondary" className="text-[10px]">Online</Badge>
+          <Badge variant="outline" className="text-[10px] gap-1">
+            <Sparkles className="w-2.5 h-2.5" /> {TABS.length} tools · all free
+          </Badge>
         </div>
-        <p className="text-muted-foreground text-sm ml-12">
-          Powered by AI — requires an internet connection. All features are free to use.
+        <p className="text-muted-foreground text-sm sm:ml-12">
+          Powered by AI — requires an internet connection. Every response can be refined with feedback.
         </p>
       </div>
 
       <Tabs defaultValue="prophet">
-        <TabsList className="w-full h-auto flex-wrap gap-0.5">
-          <TabsTrigger value="prophet" className="flex-1 gap-1.5 min-w-fit">
-            <Bot className="w-4 h-4" /> Ask a Prophet
-          </TabsTrigger>
-          <TabsTrigger value="summary" className="flex-1 gap-1.5 min-w-fit">
-            <AlignLeft className="w-4 h-4" /> AI Summary
-          </TabsTrigger>
-          <TabsTrigger value="lens" className="flex-1 gap-1.5 min-w-fit">
-            <Lightbulb className="w-4 h-4" /> Context Lens
-          </TabsTrigger>
-          <TabsTrigger value="sermon" className="flex-1 gap-1.5 min-w-fit">
-            <FileText className="w-4 h-4" /> Sermon Outline
-          </TabsTrigger>
-          <TabsTrigger value="prayer" className="flex-1 gap-1.5 min-w-fit">
-            <HandHeart className="w-4 h-4" /> Prayer
-          </TabsTrigger>
-          <TabsTrigger value="worship-set" className="flex-1 gap-1.5 min-w-fit">
-            <ListMusic className="w-4 h-4" /> Worship Set
-          </TabsTrigger>
-          <TabsTrigger value="announcement" className="flex-1 gap-1.5 min-w-fit">
-            <Megaphone className="w-4 h-4" /> Announcements
-          </TabsTrigger>
-        </TabsList>
+        {/* Scrollable / wrappable tab list */}
+        <ScrollArea className="w-full">
+          <TabsList className="w-full h-auto flex-wrap gap-0.5 p-1 justify-start">
+            {TABS.map(({ value, label, Icon, badge }) => (
+              <TabsTrigger key={value} value={value}
+                className="gap-1.5 min-w-fit relative px-3 py-1.5 text-xs">
+                <Icon className="w-3.5 h-3.5" />
+                <span>{label}</span>
+                {badge && (
+                  <Badge variant="secondary" className="ml-0.5 px-1 py-0 text-[8.5px] leading-none h-3.5">
+                    {badge}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </ScrollArea>
 
-        <TabsContent value="prophet" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bot className="w-4 h-4 text-primary" /> Ask a Prophet
-              </CardTitle>
-              <CardDescription>
-                An AI assistant trained on theological commentaries, church history, and Scripture. Ask anything about the Bible.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ProphetChat onSendToScreen={sendToScreen} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="summary" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlignLeft className="w-4 h-4 text-primary" /> AI Chapter Summary
-                <Badge variant="outline" className="text-[10px] ml-auto">TL;DR</Badge>
-              </CardTitle>
-              <CardDescription>
-                Get a 3-bullet summary of any Bible chapter — ideal for long books like Leviticus, Numbers, or Revelation.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <AISummary onSendToScreen={sendToScreen} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="lens" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Lightbulb className="w-4 h-4 text-primary" /> Context Lens
-                <Badge variant="outline" className="text-[10px] ml-auto">ELI5</Badge>
-              </CardTitle>
-              <CardDescription>
-                Explain any passage in plain English — simplifies complex parables, archaic language, and dense theology.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ContextLens onSendToScreen={sendToScreen} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="sermon" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-primary" /> Sermon Outline Generator
-              </CardTitle>
-              <CardDescription>
-                Generate structured, Scripture-rich sermon outlines for any topic — with main points, sub-points, application, and a call to action.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <SermonOutline onSendToScreen={sendToScreen} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="prayer" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <HandHeart className="w-4 h-4 text-primary" /> Prayer Generator
-              </CardTitle>
-              <CardDescription>
-                Write heartfelt, Scripture-inspired prayers for any type of church service — opening, closing, intercessory, communion, and more.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <PrayerGenerator onSendToScreen={sendToScreen} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="worship-set" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ListMusic className="w-4 h-4 text-primary" /> Worship Set Planner
-              </CardTitle>
-              <CardDescription>
-                Plan a complete worship set with song suggestions, keys, tempo, Scripture readings, and a flow arc from gathering to response.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <WorshipSetPlanner onSendToScreen={sendToScreen} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="announcement" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Megaphone className="w-4 h-4 text-primary" /> Announcement Writer
-              </CardTitle>
-              <CardDescription>
-                Write polished church announcements for Sunday bulletins and slides — with a catchy headline, key details, and a clear call to action.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <AnnouncementWriter onSendToScreen={sendToScreen} />
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {TABS.map(({ value, label, Icon, description, Component, badge }) => (
+          <TabsContent key={value} value={value} className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Icon className="w-4 h-4 text-primary" /> {label}
+                  {badge && <Badge variant="outline" className="text-[10px] ml-auto">{badge}</Badge>}
+                </CardTitle>
+                <CardDescription>{description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Component onSendToScreen={sendToScreen} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ))}
       </Tabs>
 
       <Card className="border-primary/20 bg-primary/5">
@@ -877,7 +1192,7 @@ export default function AIPage() {
             <div className="text-xs text-muted-foreground space-y-1">
               <p><strong className="text-foreground">About AI Features:</strong> Responses are AI-generated and should be used as a starting point for study, not as a replacement for Scripture or pastoral guidance.</p>
               <p>These features use <strong className="text-foreground">Replit AI Integrations</strong> and require an active internet connection. No data is stored after your session ends.</p>
-              <p className="flex items-center gap-1.5 mt-1"><Monitor className="w-3 h-3 text-primary" /> Use <strong className="text-foreground">Send to screen</strong> to project any AI response on your presentation display. <FileDown className="w-3 h-3 text-primary ml-1" /> Use <strong className="text-foreground">Export PDF</strong> to print or save as a document.</p>
+              <p className="flex items-center gap-1.5 mt-1 flex-wrap"><Wand2 className="w-3 h-3 text-primary" /> Use <strong className="text-foreground">Reply / refine</strong> on any result to ask the AI to revise it. <Monitor className="w-3 h-3 text-primary ml-1" /> Use <strong className="text-foreground">Send to screen</strong> to project on your display. <FileDown className="w-3 h-3 text-primary ml-1" /> Use <strong className="text-foreground">Export PDF</strong> to print or save.</p>
             </div>
           </div>
         </CardContent>

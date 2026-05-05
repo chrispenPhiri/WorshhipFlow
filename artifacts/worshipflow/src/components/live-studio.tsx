@@ -458,10 +458,14 @@ export function LiveStudioPanel() {
         <div className="space-y-4">
           {/* Platform Selector */}
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2"><Tv className="w-4 h-4" /> Platform</CardTitle>
+            <CardHeader className="pb-0 pt-3 px-4">
+              <button className="flex items-center justify-between w-full text-left" onClick={() => toggleSection("platform")}>
+                <CardTitle className="text-sm flex items-center gap-2"><Tv className="w-4 h-4" /> Platform</CardTitle>
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${openSections.platform !== false ? "rotate-180" : ""}`} />
+              </button>
             </CardHeader>
-            <CardContent className="space-y-2">
+            {openSections.platform !== false && (
+            <CardContent className="px-4 pb-3 pt-3 space-y-2">
               {(["youtube", "facebook", "twitch", "custom"] as Platform[]).map(p => {
                 const pi = PLATFORM_INFO[p];
                 const icons: Record<Platform, React.ReactNode> = {
@@ -491,15 +495,22 @@ export function LiveStudioPanel() {
                 );
               })}
             </CardContent>
+            )}
           </Card>
 
           {/* Stream Config */}
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm">Stream Configuration</CardTitle>
-              <CardDescription className="text-[11px]">{pInfo.help}</CardDescription>
+            <CardHeader className="pb-0 pt-3 px-4">
+              <button className="flex items-center justify-between w-full text-left" onClick={() => toggleSection("streamConfig")}>
+                <div>
+                  <CardTitle className="text-sm">Stream Configuration</CardTitle>
+                  <CardDescription className="text-[11px]">{pInfo.help}</CardDescription>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform shrink-0 ${openSections.streamConfig !== false ? "rotate-180" : ""}`} />
+              </button>
             </CardHeader>
-            <CardContent className="space-y-3">
+            {openSections.streamConfig !== false && (
+            <CardContent className="px-4 pb-3 pt-3 space-y-3">
               {platform === "custom" && (
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-muted-foreground">RTMP Server URL</label>
@@ -558,14 +569,19 @@ export function LiveStudioPanel() {
                 </div>
               )}
             </CardContent>
+            )}
           </Card>
 
           {/* Live Overlays Config */}
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2"><Layers3 className="w-4 h-4" /> Live Overlays</CardTitle>
+            <CardHeader className="pb-0 pt-3 px-4">
+              <button className="flex items-center justify-between w-full text-left" onClick={() => toggleSection("overlays")}>
+                <CardTitle className="text-sm flex items-center gap-2"><Layers3 className="w-4 h-4" /> Live Overlays</CardTitle>
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${openSections.overlays !== false ? "rotate-180" : ""}`} />
+              </button>
             </CardHeader>
-            <CardContent className="space-y-3">
+            {openSections.overlays !== false && (
+            <CardContent className="px-4 pb-3 pt-3 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">LIVE Badge</p>
@@ -598,6 +614,7 @@ export function LiveStudioPanel() {
                 </div>
               )}
             </CardContent>
+            )}
           </Card>
         </div>
 
@@ -605,10 +622,14 @@ export function LiveStudioPanel() {
         <div className="space-y-4">
           {/* Scene Switcher */}
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2"><Clapperboard className="w-4 h-4" /> Scene Switcher</CardTitle>
+            <CardHeader className="pb-0 pt-3 px-4">
+              <button className="flex items-center justify-between w-full text-left" onClick={() => toggleSection("scenes")}>
+                <CardTitle className="text-sm flex items-center gap-2"><Clapperboard className="w-4 h-4" /> Scene Switcher</CardTitle>
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${openSections.scenes !== false ? "rotate-180" : ""}`} />
+              </button>
             </CardHeader>
-            <CardContent className="space-y-2">
+            {openSections.scenes !== false && (
+            <CardContent className="px-4 pb-3 pt-3 space-y-2">
               {scenes.map(scene => {
                 const active = currentScene === scene.name;
                 return (
@@ -657,15 +678,22 @@ export function LiveStudioPanel() {
                 </Button>
               )}
             </CardContent>
+            )}
           </Card>
 
           {/* Presenter Spotlight */}
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2"><Mic2 className="w-4 h-4" /> Presenter Spotlight</CardTitle>
-              <CardDescription className="text-[11px]">Push presenter name tag to broadcast window</CardDescription>
+            <CardHeader className="pb-0 pt-3 px-4">
+              <button className="flex items-center justify-between w-full text-left" onClick={() => toggleSection("presenter")}>
+                <div>
+                  <CardTitle className="text-sm flex items-center gap-2"><Mic2 className="w-4 h-4" /> Presenter Spotlight</CardTitle>
+                  <CardDescription className="text-[11px]">Push presenter name tag to broadcast</CardDescription>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform shrink-0 ${openSections.presenter !== false ? "rotate-180" : ""}`} />
+              </button>
             </CardHeader>
-            <CardContent className="space-y-3">
+            {openSections.presenter !== false && (
+            <CardContent className="px-4 pb-3 pt-3 space-y-3">
               <Input
                 value={presenterName}
                 onChange={e => setPresenterName(e.target.value)}
@@ -706,14 +734,19 @@ export function LiveStudioPanel() {
                 </div>
               </div>
             </CardContent>
+            )}
           </Card>
 
           {/* Live Stream Checklist */}
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Pre-Live Checklist</CardTitle>
+            <CardHeader className="pb-0 pt-3 px-4">
+              <button className="flex items-center justify-between w-full text-left" onClick={() => toggleSection("checklist")}>
+                <CardTitle className="text-sm flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Pre-Live Checklist</CardTitle>
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${openSections.checklist ? "rotate-180" : ""}`} />
+              </button>
             </CardHeader>
-            <CardContent>
+            {openSections.checklist && (
+            <CardContent className="px-4 pb-3 pt-3">
               <ul className="space-y-2">
                 {[
                   { label: "Camera is on and previewing", done: true },
@@ -731,6 +764,7 @@ export function LiveStudioPanel() {
                 ))}
               </ul>
             </CardContent>
+            )}
           </Card>
         </div>
 

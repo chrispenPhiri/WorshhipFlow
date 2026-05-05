@@ -256,6 +256,130 @@ Format: Start with a catchy 1-line headline, then 2-3 sentences of detail, then 
   );
 });
 
+/* ── Universal Refine Endpoint ────────────────────────────────── */
+/**
+ * Refines / iterates on any previously-generated AI response.
+ * Client sends the kind of content + the previous output + a free-form
+ * refinement instruction; we return a revised version.
+ */
+router.post("/refine", async (req, res) => {
+  const { kind, original, refinement } = req.body as {
+    kind: string;
+    original: string;
+    refinement: string;
+  };
+  if (!original?.trim() || !refinement?.trim()) {
+    res.status(400).json({ error: "original and refinement are required" });
+    return;
+  }
+  const kindCtx = kind?.trim() ? ` (genre: ${kind})` : "";
+  await streamCompletion(
+    res,
+    `You are an expert editor for a church worship app. The user previously received an AI-generated piece of content${kindCtx} and now wants you to revise it according to their feedback.
+Output ONLY the revised version of the content — keep the same overall format, structure, and length unless the user explicitly asks otherwise. Do NOT add headings like "Revised version:", do not add preamble, do not summarize the changes. Just give the new revised text directly.`,
+    `ORIGINAL CONTENT:\n${original}\n\nUSER FEEDBACK / REFINEMENT REQUEST:\n${refinement}\n\nNow output the revised version:`
+  );
+});
+
+/* ── Daily Devotional ──────────────────────────────────────────── */
+router.post("/devotional", async (req, res) => {
+  const { verse, theme, audience } = req.body as { verse?: string; theme?: string; audience?: string };
+  if (!verse?.trim() && !theme?.trim()) { res.status(400).json({ error: "verse or theme is required" }); return; }
+  const audienceCtx = audience?.trim() ? ` Tailor the tone for: ${audience}.` : "";
+  const seed = verse?.trim() ? `Centred on the verse: "${verse}"` : `On the theme: "${theme}"`;
+  await streamCompletion(res,
+    `You are a warm, pastoral devotional writer. Write a short daily devotional (≈250 words) suitable for personal quiet time or a church newsletter.${audienceCtx}
+Format:
+**[Title]**
+*[Verse reference] — [Verse text]*
+
+[Reflection — 2-3 short paragraphs that explain the verse, draw out a spiritual insight, and apply it to daily life. Use everyday language, warm and personal.]
+
+**Prayer:** [A 2-3 sentence prayer drawing from the verse.]
+
+**Today's Practice:** [One small concrete action the reader can do today.]`,
+    `${seed}. Write today's devotional.`
+  );
+});
+
+/* ── Bible Quiz Generator ──────────────────────────────────────── */
+router.post("/quiz", async (req, res) => {
+  const { book, chapter, count, difficulty } = req.body as { book: string; chapter?: string | number; count?: number; difficulty?: string };
+  if (!book?.trim()) { res.status(400).json({ error: "book is required" }); return; }
+  const n = count ?? 5;
+  const diff = difficulty?.trim() || "medium";
+  const chapterCtx = chapter ? ` chapter ${chapter}` : "";
+  await streamCompletion(res,
+    `You are a Bible Sunday-school teacher creating engaging quiz questions for a church congregation. Difficulty: ${diff}.
+Format each question EXACTLY like this:
+Q1. [Question text]
+A) [option]
+B) [option]
+C) [option]
+D) [option]
+✓ Answer: [letter] — [1-sentence explanation with verse reference]
+
+Separate each question with a blank line. Mix question types (who/what/why/where), include at least one application question that helps the congregation think about the meaning.`,
+    `Generate ${n} Bible quiz questions about ${book}${chapterCtx}.`
+  );
+});
+
+/* ── Cross-References Finder ───────────────────────────────────── */
+router.post("/cross-refs", async (req, res) => {
+  const { passage } = req.body as { passage: string };
+  if (!passage?.trim()) { res.status(400).json({ error: "passage is required" }); return; }
+  await streamCompletion(res,
+    `You are a Bible scholar who finds rich cross-references for any verse or passage. For the given reference, list 6-10 related verses from across the Bible (Old & New Testament) that connect thematically, prophetically, or by direct quotation.
+Format each entry like:
+**[Reference]** — "[Brief verse text or excerpt]"
+*Connection:* [1-sentence explanation of how it relates to the original passage]
+
+Group them into thematic clusters with bold headings (e.g., **Prophetic Echoes**, **Parallel Teachings**, **Application Verses**) where helpful. Keep it concise and Scripture-rich.`,
+    `Find cross-references for: "${passage}"`
+  );
+});
+
+/* ── Translate to Local Language ───────────────────────────────── */
+router.post("/translate", async (req, res) => {
+  const { text, language, register } = req.body as { text: string; language: string; register?: string };
+  if (!text?.trim() || !language?.trim()) { res.status(400).json({ error: "text and language are required" }); return; }
+  const reg = register?.trim() || "respectful and reverent";
+  await streamCompletion(res,
+    `You are a skilled translator with deep knowledge of African and global languages used in church worship contexts. Translate the given text into the target language with a ${reg} register suitable for church use. Preserve the spiritual meaning and tone faithfully.
+
+Output format:
+**[Target Language]:**
+[Translated text]
+
+If the language uses a non-Latin script, also provide a phonetic Latin pronunciation guide on the next line, prefixed with *Pronunciation:*.
+
+If the text contains Bible verse references (e.g., "John 3:16"), keep those references in their original form — do not translate verse references.`,
+    `Translate this church text into ${language}:\n\n${text}`
+  );
+});
+
+/* ── Children's Sermon ─────────────────────────────────────────── */
+router.post("/childrens-sermon", async (req, res) => {
+  const { topic, verse, ageGroup } = req.body as { topic: string; verse?: string; ageGroup?: string };
+  if (!topic?.trim()) { res.status(400).json({ error: "topic is required" }); return; }
+  const age = ageGroup?.trim() || "ages 5-10";
+  const verseCtx = verse?.trim() ? ` anchored on the verse: "${verse}"` : "";
+  await streamCompletion(res,
+    `You are a beloved children's ministry leader. Write a fun, engaging children's sermon for ${age} that teaches a Biblical truth through story, simple language, and a hands-on idea.
+
+Format:
+**Big Idea:** [One sentence the children should remember.]
+**Bible Verse:** [Reference + simple paraphrase suitable for kids.]
+**Story / Object Lesson:** [3-5 sentences telling a relatable story or describing a simple object lesson with a household item.]
+**Questions to Ask:** [3 simple questions to get kids talking.]
+**Closing Prayer:** [Short, warm prayer kids can echo line by line.]
+**Take-Home:** [One simple action for the week.]
+
+Keep all language age-appropriate, joyful, and Christ-centered.`,
+    `Write a children's sermon on the topic: "${topic}"${verseCtx}`
+  );
+});
+
 /* ── AI Song Generator ────────────────────────────────────────── */
 router.post("/generate-song", async (req, res) => {
   const { title, theme, style, numVerses } = req.body as { title?: string; theme: string; style?: string; numVerses?: number };
