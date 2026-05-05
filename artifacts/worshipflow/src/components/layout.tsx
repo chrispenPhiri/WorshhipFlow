@@ -6,6 +6,7 @@ import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useGlobalScrollKeys } from "@/hooks/use-global-scroll-keys";
 import {
   DEFAULT_NAV_ITEMS, effectiveIconId, effectiveEmoji, getIconComponent,
   useMenuCustomization, useEmojiMode,
@@ -125,6 +126,11 @@ export function Layout({ children }: { children: ReactNode }) {
   const isLive = !!(screenState as { isLive?: boolean } | undefined)?.isLive;
 
   const isDesktop = mode === "desktop";
+
+  // Operator-side global scroll: ↑ / ↓ / PageUp / PageDown / Home / End
+  // forward to the broadcast window so long Bible / sermon text can be
+  // scrolled without focusing a remote button.  Skips inputs & /broadcast.
+  useGlobalScrollKeys();
 
   // If the viewport grows past the lg breakpoint while a mobile sheet is
   // open, close it — otherwise it would silently re-appear next time the

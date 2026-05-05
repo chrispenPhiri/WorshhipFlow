@@ -404,7 +404,15 @@ export function LivePreview() {
                   disabled={!broadcastLive}
                 />
               </div>
-              <p className="text-[10px] text-muted-foreground text-center mt-1">↑↓ arrow keys also work in broadcast window</p>
+              <p className="text-[10px] text-muted-foreground text-center mt-1">
+                <kbd className="px-1 py-px rounded bg-muted/60 border border-border text-[9px] font-mono">↑</kbd>
+                <kbd className="px-1 py-px rounded bg-muted/60 border border-border text-[9px] font-mono ml-0.5">↓</kbd>
+                <span className="ml-1">scroll</span>
+                <span className="mx-1.5">·</span>
+                <kbd className="px-1 py-px rounded bg-muted/60 border border-border text-[9px] font-mono">Home</kbd>
+                <span className="ml-1">reset</span>
+                <span className="block text-[9px] mt-0.5 italic opacity-70">Works anywhere in the app</span>
+              </p>
             </div>
 
             {broadcastLive && (

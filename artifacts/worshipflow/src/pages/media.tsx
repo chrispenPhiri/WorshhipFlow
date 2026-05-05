@@ -23,6 +23,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBroadcast, type ScreenInfo } from "@/hooks/use-broadcast";
 import { useToast } from "@/hooks/use-toast";
+import { useLocalStorage } from "@/hooks/use-local-storage";
+
+/** Local helper: collapsible Card sections for the Camera & Broadcast tab. */
+type CamSectionKey = "source" | "layout" | "adjust";
+const DEFAULT_CAM_SECTIONS: Record<CamSectionKey, boolean> = {
+  source: true,
+  layout: false,
+  adjust: false,
+};
 
 interface UploadedFile {
   id: string;
@@ -65,6 +74,14 @@ export default function MediaPage() {
   const videoInputRef = useRef<HTMLInputElement>(null);
 
   const [broadcastOpen, setBroadcastOpen] = useState(true);
+  // Persisted per-section open/closed state for the Camera & Broadcast tab so
+  // operators see a tidy collapsed panel by default after their first visit.
+  const [camSections, setCamSections] = useLocalStorage<Record<CamSectionKey, boolean>>(
+    "wf-media-cam-sections",
+    DEFAULT_CAM_SECTIONS,
+  );
+  const toggleCamSection = (k: CamSectionKey) =>
+    setCamSections((prev) => ({ ...prev, [k]: !prev[k] }));
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
@@ -880,10 +897,17 @@ export default function MediaPage() {
 
           {/* ── Camera Source Selection ── */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Camera className="w-4 h-4" /> Camera Source</CardTitle>
+            <CardHeader className="pb-0 pt-3 px-4">
+              <button type="button" onClick={() => toggleCamSection("source")}
+                aria-expanded={camSections.source}
+                className="flex items-center justify-between w-full text-left hover:opacity-80 transition-opacity"
+                data-testid="button-cam-section-source">
+                <CardTitle className="text-sm flex items-center gap-2"><Camera className="w-4 h-4" /> Camera Source <span className="text-[10px] font-normal text-muted-foreground capitalize">· {cameraSource}</span></CardTitle>
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${camSections.source ? "rotate-180" : ""}`} />
+              </button>
             </CardHeader>
-            <CardContent className="space-y-4">
+            {camSections.source && (
+            <CardContent className="space-y-4 pt-3">
               {/* Source type selector */}
               <div className="grid grid-cols-3 gap-2">
                 {([
@@ -978,6 +1002,7 @@ export default function MediaPage() {
                 </div>
               )}
             </CardContent>
+            )}
           </Card>
 
           {/* ── Camera Preview + Controls ── */}
@@ -1098,8 +1123,17 @@ export default function MediaPage() {
               <div className="space-y-4">
                 {/* Camera Layout */}
                 <Card>
-                  <CardHeader><CardTitle className="text-base">Camera Layout</CardTitle></CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardHeader className="pb-0 pt-3 px-4">
+                    <button type="button" onClick={() => toggleCamSection("layout")}
+                      aria-expanded={camSections.layout}
+                      className="flex items-center justify-between w-full text-left hover:opacity-80 transition-opacity"
+                      data-testid="button-cam-section-layout">
+                      <CardTitle className="text-sm flex items-center gap-2"><Layers3 className="w-4 h-4" /> Camera Layout <span className="text-[10px] font-normal text-muted-foreground">· {camLayout}</span></CardTitle>
+                      <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${camSections.layout ? "rotate-180" : ""}`} />
+                    </button>
+                  </CardHeader>
+                  {camSections.layout && (
+                  <CardContent className="space-y-4 pt-3">
                     <div className="space-y-1.5">
                       <label className="text-sm font-medium">Display Mode</label>
                       <div className="grid grid-cols-2 gap-1.5">
@@ -1223,12 +1257,26 @@ export default function MediaPage() {
                       );
                     })()}
                   </CardContent>
+                  )}
                 </Card>
 
                 {/* Camera Adjustments */}
                 <Card>
-                  <CardHeader><CardTitle className="flex items-center gap-2 text-base"><SlidersHorizontal className="w-4 h-4" /> Camera Adjustments</CardTitle></CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardHeader className="pb-0 pt-3 px-4">
+                    <button type="button" onClick={() => toggleCamSection("adjust")}
+                      aria-expanded={camSections.adjust}
+                      className="flex items-center justify-between w-full text-left hover:opacity-80 transition-opacity"
+                      data-testid="button-cam-section-adjust">
+                      <CardTitle className="text-sm flex items-center gap-2"><SlidersHorizontal className="w-4 h-4" /> Camera Adjustments
+                        {(camBrightness !== 100 || camContrast !== 100 || camSaturate !== 100 || camMirror || camBorderWidth > 0) && (
+                          <span className="text-[10px] font-normal text-amber-400">· customised</span>
+                        )}
+                      </CardTitle>
+                      <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${camSections.adjust ? "rotate-180" : ""}`} />
+                    </button>
+                  </CardHeader>
+                  {camSections.adjust && (
+                  <CardContent className="space-y-4 pt-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <FlipHorizontal className="w-4 h-4 text-muted-foreground" />
@@ -1321,6 +1369,7 @@ export default function MediaPage() {
                       </div>
                     </div>
                   </CardContent>
+                  )}
                 </Card>
               </div>
             </div>
