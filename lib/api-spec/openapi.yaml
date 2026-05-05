@@ -867,6 +867,21 @@ components:
           type: string
         timerCriticalColor:
           type: string
+        isLive:
+          type: boolean
+          description: "True while a live stream is active. Broadcast window shows LIVE badge."
+        livePlatform:
+          type: string
+          enum: [youtube, facebook, twitch, custom]
+        liveScene:
+          type: string
+          description: "Current scene label shown on broadcast window."
+        liveSocialHandles:
+          type: string
+          description: "Comma-separated social handles shown during live stream."
+        liveStartTime:
+          type: string
+          description: "ISO timestamp when the live stream started."
         clockDateFormat:
           type: string
           enum: [short, long, numeric]

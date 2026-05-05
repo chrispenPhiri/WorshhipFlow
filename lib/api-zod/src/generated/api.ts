@@ -643,6 +643,27 @@ export const GetScreenStateResponse = zod.object({
   timerWarningSec: zod.number().optional(),
   timerWarningColor: zod.string().optional(),
   timerCriticalColor: zod.string().optional(),
+  isLive: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True while a live stream is active. Broadcast window shows LIVE badge.",
+    ),
+  livePlatform: zod
+    .enum(["youtube", "facebook", "twitch", "custom"])
+    .optional(),
+  liveScene: zod
+    .string()
+    .optional()
+    .describe("Current scene label shown on broadcast window."),
+  liveSocialHandles: zod
+    .string()
+    .optional()
+    .describe("Comma-separated social handles shown during live stream."),
+  liveStartTime: zod
+    .string()
+    .optional()
+    .describe("ISO timestamp when the live stream started."),
   clockDateFormat: zod.enum(["short", "long", "numeric"]).optional(),
   clockFontSize: zod.number().optional(),
   clockColor: zod.string().optional(),
@@ -882,6 +903,27 @@ export const UpdateScreenStateBody = zod.object({
   timerWarningSec: zod.number().optional(),
   timerWarningColor: zod.string().optional(),
   timerCriticalColor: zod.string().optional(),
+  isLive: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True while a live stream is active. Broadcast window shows LIVE badge.",
+    ),
+  livePlatform: zod
+    .enum(["youtube", "facebook", "twitch", "custom"])
+    .optional(),
+  liveScene: zod
+    .string()
+    .optional()
+    .describe("Current scene label shown on broadcast window."),
+  liveSocialHandles: zod
+    .string()
+    .optional()
+    .describe("Comma-separated social handles shown during live stream."),
+  liveStartTime: zod
+    .string()
+    .optional()
+    .describe("ISO timestamp when the live stream started."),
   clockDateFormat: zod.enum(["short", "long", "numeric"]).optional(),
   clockFontSize: zod.number().optional(),
   clockColor: zod.string().optional(),
@@ -1118,6 +1160,27 @@ export const UpdateScreenStateResponse = zod.object({
   timerWarningSec: zod.number().optional(),
   timerWarningColor: zod.string().optional(),
   timerCriticalColor: zod.string().optional(),
+  isLive: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True while a live stream is active. Broadcast window shows LIVE badge.",
+    ),
+  livePlatform: zod
+    .enum(["youtube", "facebook", "twitch", "custom"])
+    .optional(),
+  liveScene: zod
+    .string()
+    .optional()
+    .describe("Current scene label shown on broadcast window."),
+  liveSocialHandles: zod
+    .string()
+    .optional()
+    .describe("Comma-separated social handles shown during live stream."),
+  liveStartTime: zod
+    .string()
+    .optional()
+    .describe("ISO timestamp when the live stream started."),
   clockDateFormat: zod.enum(["short", "long", "numeric"]).optional(),
   clockFontSize: zod.number().optional(),
   clockColor: zod.string().optional(),

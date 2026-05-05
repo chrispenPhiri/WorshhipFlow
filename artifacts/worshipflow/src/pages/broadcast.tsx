@@ -5,10 +5,11 @@ import { LiveWallpaperLayer } from "@/components/live-wallpaper";
 import { subscribeScreenChanges } from "@/lib/local-api";
 import { GameStageView } from "@/components/game-stage-view";
 import { tryDecodeGamePayload } from "@/lib/game-stage-payload";
+import { LiveBadgeOverlay, LIVE_OVERLAY_STYLES } from "@/components/live-overlays";
 
 const CHANNEL_NAME = "wf-broadcast-cmd";
 
-const ANIMATION_STYLES = `
+const ANIMATION_STYLES = LIVE_OVERLAY_STYLES + `
 @keyframes wf-fade-in {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -1426,6 +1427,17 @@ export default function BroadcastPage() {
             {screenState.tickerText}
           </div>
         </div>
+      )}
+
+      {/* ── Live Stream overlays ─────────────────────────────────────────────── */}
+      {screenState?.isLive && (
+        <LiveBadgeOverlay
+          isLive={screenState.isLive}
+          platform={screenState.livePlatform}
+          startTime={screenState.liveStartTime}
+          socialHandles={screenState.liveSocialHandles}
+          scene={screenState.liveScene}
+        />
       )}
 
       {/* Idle watermark — uses optional Church Name from settings; nothing if not set */}

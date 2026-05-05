@@ -18,6 +18,7 @@ import {
   Timer as TimerIcon, Pause, RotateCw, Hexagon, Shield, Type, Sparkles,
   Wifi, FlipHorizontal, SlidersHorizontal, MonitorPlay, Tv
 } from "lucide-react";
+import { LiveStudioPanel } from "@/components/live-studio";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBroadcast, type ScreenInfo } from "@/hooks/use-broadcast";
@@ -1406,26 +1407,13 @@ export default function MediaPage() {
                   </CardContent>
                 </Card>
 
-                {/* OBS Tips */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base"><MonitorPlay className="w-4 h-4" /> Streaming with OBS</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-sm text-muted-foreground space-y-2">
-                    <p>Use OBS Studio to stream the presentation to YouTube, Facebook, or Twitch:</p>
-                    <ol className="text-xs list-decimal list-inside space-y-1.5">
-                      <li>Open the broadcast window and put it on your projector display</li>
-                      <li>In OBS, add a <strong className="text-foreground">Window Capture</strong> source for the broadcast window</li>
-                      <li>Set up your streaming platform in OBS Settings → Stream</li>
-                      <li>Click <strong className="text-foreground">Start Streaming</strong> in OBS</li>
-                    </ol>
-                    <p className="text-[11px] bg-muted/30 rounded px-2 py-1.5">
-                      Tip: OBS Virtual Camera lets you use the presentation as a camera source in Zoom, Teams, or any other app.
-                    </p>
-                  </CardContent>
-                </Card>
               </div>
             </div>
+          </div>
+
+          {/* ── Live Studio ── */}
+          <div className="pt-4 border-t border-border">
+            <LiveStudioPanel />
           </div>
 
         </TabsContent>

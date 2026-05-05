@@ -388,6 +388,16 @@ export const ScreenStateTimerPosition = {
   "bottom-right": "bottom-right",
 } as const;
 
+export type ScreenStateLivePlatform =
+  (typeof ScreenStateLivePlatform)[keyof typeof ScreenStateLivePlatform];
+
+export const ScreenStateLivePlatform = {
+  youtube: "youtube",
+  facebook: "facebook",
+  twitch: "twitch",
+  custom: "custom",
+} as const;
+
 export type ScreenStateClockDateFormat =
   (typeof ScreenStateClockDateFormat)[keyof typeof ScreenStateClockDateFormat];
 
@@ -506,6 +516,15 @@ export interface ScreenState {
   timerWarningSec?: number;
   timerWarningColor?: string;
   timerCriticalColor?: string;
+  /** True while a live stream is active. Broadcast window shows LIVE badge. */
+  isLive?: boolean;
+  livePlatform?: ScreenStateLivePlatform;
+  /** Current scene label shown on broadcast window. */
+  liveScene?: string;
+  /** Comma-separated social handles shown during live stream. */
+  liveSocialHandles?: string;
+  /** ISO timestamp when the live stream started. */
+  liveStartTime?: string;
   clockDateFormat?: ScreenStateClockDateFormat;
   clockFontSize?: number;
   clockColor?: string;
