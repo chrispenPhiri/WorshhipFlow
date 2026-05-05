@@ -381,7 +381,10 @@ export default function MediaPage() {
       const constraints: MediaStreamConstraints = { video: deviceId ? { deviceId: { exact: deviceId } } : true, audio: false };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       setCameraStream(stream);
-      if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play(); }
+      // NOTE: don't assign srcObject here — the <video> element only mounts
+      // AFTER this state update commits, so videoRef.current is null on the
+      // first call. The dedicated `useEffect([cameraStream])` below handles
+      // the assignment once the element is in the DOM.
       await enumerateCameras();
       if (deviceId) setSelectedCameraId(deviceId);
     } catch {
@@ -446,7 +449,8 @@ export default function MediaPage() {
       if (cameraStream) cameraStream.getTracks().forEach(t => t.stop());
       setCameraStream(stream);
       setCameraSource("screen");
-      if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(() => {}); }
+      // srcObject is wired up by the `useEffect([cameraStream])` below once
+      // the conditional <video> element mounts in the DOM.
       stream.getVideoTracks()[0]?.addEventListener("ended", () => {
         setCameraStream(null);
       });
@@ -619,6 +623,26 @@ export default function MediaPage() {
 
   useEffect(() => {
     return () => { if (cameraStream) cameraStream.getTracks().forEach(t => t.stop()); };
+  }, [cameraStream]);
+
+  /**
+   * Wire the live camera / screen-capture MediaStream into the <video>
+   * element AFTER React mounts it.  Doing this synchronously inside
+   * `startCamera` doesn't work: the <video> is conditionally rendered on
+   * `cameraStream`, so on the first start the element doesn't exist yet
+   * (videoRef.current is null) and the preview stays blank.
+   */
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (cameraStream) {
+      if (v.srcObject !== cameraStream) v.srcObject = cameraStream;
+      // play() can reject if interrupted by another play/srcObject swap —
+      // safe to ignore; autoPlay will handle it.
+      v.play().catch(() => {});
+    } else {
+      v.srcObject = null;
+    }
   }, [cameraStream]);
 
   /** Convert a blob: URL to a data URL so the broadcast window can load it. */

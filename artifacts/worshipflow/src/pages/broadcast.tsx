@@ -852,7 +852,8 @@ export default function BroadcastPage() {
       }
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setScrollOffset(v => Math.min(v + SCROLL_STEP, textOverflowHRef.current));
+        setScrollOffset(v => v + SCROLL_STEP);
+        clampScrollNextFrame();
       }
       if (e.key === "ArrowUp") {
         e.preventDefault();
@@ -909,7 +910,16 @@ export default function BroadcastPage() {
           pipWinRef.current?.close();
           break;
         case "scroll_down":
-          setScrollOffset(v => Math.min(v + SCROLL_STEP, textOverflowHRef.current));
+          // Bump optimistically — `effectiveAutoFitFactor` will switch to 1
+          // (full natural size) on the next render because scrollOffset > 0,
+          // and `clampScrollNextFrame` will trim back to the real overflow
+          // measured against the now-larger DOM. This is what makes scroll
+          // actually work for long Bible passages: auto-fit had shrunk the
+          // text to fit (zero overflow), so the old `Math.min(.., overflow)`
+          // clamp pinned us at 0. We now grow the offset, then clamp to the
+          // post-grow DOM measurement.
+          setScrollOffset(v => v + SCROLL_STEP);
+          clampScrollNextFrame();
           break;
         case "scroll_up":
           setScrollOffset(v => Math.max(0, v - SCROLL_STEP));
@@ -974,6 +984,30 @@ export default function BroadcastPage() {
   // Keep a ref to the current overflow for use in the keyboard handler closure
   const textOverflowHRef = useRef(0);
   useEffect(() => { textOverflowHRef.current = textOverflowH; }, [textOverflowH]);
+
+  /**
+   * After bumping `scrollOffset`, wait two animation frames so React commits
+   * the new scrollOffset, the renderer drops `effectiveAutoFitFactor` back to
+   * 1 (full natural size — see line ~1037), and the DOM relays out at that
+   * larger size.  THEN measure the real natural overflow and clamp the
+   * scrollOffset so we don't push text completely off the screen.
+   *
+   * Two RAFs because the first fires after layout but before React's commit
+   * for the new font-size; the second fires after that commit + layout.
+   */
+  const clampScrollNextFrame = () => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = autoFitTextRef.current;
+        if (!el || !el.parentElement) return;
+        const parent = el.parentElement;
+        const overflow = Math.max(0, el.scrollHeight - parent.clientHeight);
+        textOverflowHRef.current = overflow;
+        setTextOverflowH(overflow);
+        setScrollOffset(v => Math.min(v, overflow));
+      });
+    });
+  };
 
   // Camera lifecycle — re-acquire when type or deviceId changes.
   // Strategy: acquire NEW stream first, then stop the old one — prevents the
