@@ -8,7 +8,19 @@ import { tryDecodeGamePayload } from "@/lib/game-stage-payload";
 import { LiveBadgeOverlay, LIVE_OVERLAY_STYLES } from "@/components/live-overlays";
 
 const CHANNEL_NAME = "wf-broadcast-cmd";
-const SCROLL_STEP = 80; // pixels per scroll command / arrow key press
+
+/**
+ * Pixels each arrow / scroll-button press moves the text.  Viewport-relative
+ * (≈ 15 % of the screen height, min 100 px) so a single press makes a clearly
+ * visible jump even when the text is very large after auto-fit is disabled.
+ */
+function getScrollStep(): number {
+  const h = typeof window !== "undefined" ? window.innerHeight : 720;
+  return Math.max(100, Math.round(h * 0.15));
+}
+
+const AUTO_SCROLL_DEFAULT_SPEED = 60;     // px / second when no speed is given
+const AUTO_SCROLL_TICK_MS       = 33;     // ~30 fps
 
 const ANIMATION_STYLES = LIVE_OVERLAY_STYLES + `
 @keyframes wf-fade-in {
@@ -852,12 +864,17 @@ export default function BroadcastPage() {
       }
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setScrollOffset(v => v + SCROLL_STEP);
+        setScrollOffset(v => v + getScrollStep());
         clampScrollNextFrame();
       }
       if (e.key === "ArrowUp") {
         e.preventDefault();
-        setScrollOffset(v => Math.max(0, v - SCROLL_STEP));
+        setScrollOffset(v => Math.max(0, v - getScrollStep()));
+      }
+      if (e.key === " " || e.code === "Space") {
+        // Space toggles auto-scroll (teleprompter)
+        e.preventDefault();
+        toggleAutoScrollRef.current();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -918,14 +935,27 @@ export default function BroadcastPage() {
           // text to fit (zero overflow), so the old `Math.min(.., overflow)`
           // clamp pinned us at 0. We now grow the offset, then clamp to the
           // post-grow DOM measurement.
-          setScrollOffset(v => v + SCROLL_STEP);
+          setScrollOffset(v => v + getScrollStep());
           clampScrollNextFrame();
           break;
         case "scroll_up":
-          setScrollOffset(v => Math.max(0, v - SCROLL_STEP));
+          setScrollOffset(v => Math.max(0, v - getScrollStep()));
           break;
         case "scroll_reset":
+          stopAutoScroll();
           setScrollOffset(0);
+          break;
+        case "scroll_auto_start":
+          startAutoScroll(typeof cmd.speed === "number" ? cmd.speed : AUTO_SCROLL_DEFAULT_SPEED);
+          break;
+        case "scroll_auto_stop":
+          stopAutoScroll();
+          break;
+        case "scroll_auto_toggle":
+          // Single source of truth — the broadcast window decides start vs
+          // stop based on its own timer state, so controllers can't desync.
+          if (autoScrollTimerRef.current) stopAutoScroll();
+          else startAutoScroll(typeof cmd.speed === "number" ? cmd.speed : AUTO_SCROLL_DEFAULT_SPEED);
           break;
         case "caption_set":
           setLiveCaption(typeof cmd.text === "string" ? cmd.text : "");
@@ -1009,6 +1039,82 @@ export default function BroadcastPage() {
     });
   };
 
+  // ── Auto-scroll (teleprompter) ───────────────────────────────────────────
+  // Continuously increments scrollOffset on a 30 fps interval until the natural
+  // overflow is reached, then halts.  Uses a fractional accumulator inside a
+  // ref so slow speeds (e.g. 30 px/s) move smoothly without rounding to zero.
+  const [autoScrollSpeed, setAutoScrollSpeed] = useState(0); // 0 = off
+  const autoScrollSpeedRef = useRef(0);
+  const autoScrollAccumRef = useRef(0);
+  const autoScrollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const broadcastAutoState = (running: boolean, speed: number) => {
+    try { ctrlChannelRef.current?.postMessage({ type: "scroll_auto_state", running, speed }); } catch {}
+  };
+
+  const stopAutoScroll = () => {
+    const wasRunning = !!autoScrollTimerRef.current;
+    if (autoScrollTimerRef.current) { clearInterval(autoScrollTimerRef.current); autoScrollTimerRef.current = null; }
+    autoScrollSpeedRef.current = 0;
+    autoScrollAccumRef.current = 0;
+    setAutoScrollSpeed(0);
+    if (wasRunning) broadcastAutoState(false, 0);
+  };
+
+  const startAutoScroll = (speed: number) => {
+    autoScrollSpeedRef.current = Math.max(10, Math.min(400, speed));
+    setAutoScrollSpeed(autoScrollSpeedRef.current);
+    if (autoScrollTimerRef.current) {
+      // already running, just updated speed — broadcast the new speed
+      broadcastAutoState(true, autoScrollSpeedRef.current);
+      return;
+    }
+    autoScrollAccumRef.current = 0;
+    // Make sure the renderer drops auto-fit on the next paint so the text grows
+    // back to natural size and we have something to actually scroll through.
+    setScrollOffset(v => (v === 0 ? 1 : v));
+    clampScrollNextFrame();
+    autoScrollTimerRef.current = setInterval(() => {
+      const px = (autoScrollSpeedRef.current * AUTO_SCROLL_TICK_MS) / 1000;
+      autoScrollAccumRef.current += px;
+      const whole = Math.floor(autoScrollAccumRef.current);
+      if (whole < 1) return;
+      autoScrollAccumRef.current -= whole;
+      // Re-measure overflow each tick so we know when to stop.
+      const el = autoFitTextRef.current;
+      const parent = el?.parentElement;
+      const overflow = el && parent ? Math.max(0, el.scrollHeight - parent.clientHeight) : textOverflowHRef.current;
+      textOverflowHRef.current = overflow;
+      setScrollOffset(v => {
+        const next = v + whole;
+        if (next >= overflow) { stopAutoScroll(); return overflow; }
+        return next;
+      });
+    }, AUTO_SCROLL_TICK_MS);
+    broadcastAutoState(true, autoScrollSpeedRef.current);
+  };
+
+  const toggleAutoScrollRef = useRef(() => {
+    if (autoScrollTimerRef.current) stopAutoScroll();
+    else startAutoScroll(AUTO_SCROLL_DEFAULT_SPEED);
+  });
+  toggleAutoScrollRef.current = () => {
+    if (autoScrollTimerRef.current) stopAutoScroll();
+    else startAutoScroll(AUTO_SCROLL_DEFAULT_SPEED);
+  };
+
+  // Stop auto-scroll whenever the displayed content changes (new verse / song)
+  useEffect(() => { stopAutoScroll(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [contentKey]);
+  // Cleanup on unmount
+  useEffect(() => () => stopAutoScroll(), []);
+
+  // Tracks whether the operator selected "Screen Capture" as the camera source.
+  // For screen capture we CANNOT call getDisplayMedia automatically — browsers
+  // require a real user gesture inside this window — so the overlay shown
+  // below the BackgroundLayer prompts the operator to click once.
+  const isScreenCapture = (screenState?.background as { cameraDeviceId?: string } | undefined)?.cameraDeviceId === "__screen__";
+  const [needsScreenPick, setNeedsScreenPick] = useState(false);
+
   // Camera lifecycle — re-acquire when type or deviceId changes.
   // Strategy: acquire NEW stream first, then stop the old one — prevents the
   // black-screen flash that occurs when we null the stream before the new one arrives.
@@ -1020,9 +1126,25 @@ export default function BroadcastPage() {
         cameraStreamRef.current = null;
         setCameraStream(null);
       }
+      setNeedsScreenPick(false);
       return;
     }
     const deviceId = (bg as { cameraDeviceId?: string }).cameraDeviceId;
+
+    // Screen capture path — needs a user gesture, so just flag it and let the
+    // operator click the overlay; the click handler calls getDisplayMedia().
+    if (deviceId === "__screen__") {
+      // Drop any existing webcam stream before showing the picker prompt.
+      if (cameraStreamRef.current) {
+        cameraStreamRef.current.getTracks().forEach(t => t.stop());
+        cameraStreamRef.current = null;
+        setCameraStream(null);
+      }
+      setNeedsScreenPick(true);
+      return;
+    }
+
+    setNeedsScreenPick(false);
     const constraints: MediaStreamConstraints = {
       video: deviceId ? { deviceId: { exact: deviceId } } : true,
       audio: false,
@@ -1043,6 +1165,26 @@ export default function BroadcastPage() {
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screenState?.background?.type, (screenState?.background as { cameraDeviceId?: string } | undefined)?.cameraDeviceId]);
+
+  /** Operator-initiated screen-share — only path that satisfies the browser's
+   *  user-gesture requirement for getDisplayMedia. */
+  const acquireScreenCapture = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      if (cameraStreamRef.current) cameraStreamRef.current.getTracks().forEach(t => t.stop());
+      cameraStreamRef.current = stream;
+      setCameraStream(stream);
+      setNeedsScreenPick(false);
+      // When the user stops sharing from the browser chrome, drop back to the picker.
+      stream.getVideoTracks()[0]?.addEventListener("ended", () => {
+        cameraStreamRef.current = null;
+        setCameraStream(null);
+        setNeedsScreenPick(true);
+      });
+    } catch {
+      // user cancelled — keep the picker visible
+    }
+  };
 
   // Click anywhere to request fullscreen (user gesture).
   // Only auto-fullscreens when the controller explicitly requested it (fullscreenBlocked) so we don't
@@ -1174,6 +1316,35 @@ export default function BroadcastPage() {
 
       {/* Background */}
       <BackgroundLayer background={bg} cameraStream={cameraStream} />
+
+      {/* Screen-capture picker — only path that satisfies the browser's
+          user-gesture requirement for getDisplayMedia(). Shown for any
+          non-quad layout where the operator chose Screen Capture as the
+          camera source. */}
+      {isScreenCapture && needsScreenPick && !showQuadCamera && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); acquireScreenCapture(); }}
+          className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-black/85 backdrop-blur-sm text-white cursor-pointer"
+          data-testid="overlay-screen-capture-pick"
+        >
+          <span className="text-5xl">🖥️</span>
+          <span className="text-lg font-medium">Click to share a screen or window</span>
+          <span className="text-xs text-white/70">Required by your browser — we can't start screen capture without a click here.</span>
+        </button>
+      )}
+
+      {/* Auto-scroll progress bar — slim indicator across the bottom while
+          the teleprompter is running so the operator can see how far the
+          text has advanced.  Hidden during black/clear screens. */}
+      {autoScrollSpeed > 0 && !screenState?.isBlack && !screenState?.isClear && textOverflowH > 0 && (
+        <div className="absolute bottom-0 left-0 right-0 z-40 h-1 bg-white/10 pointer-events-none">
+          <div
+            className="h-full bg-primary transition-[width] duration-200 ease-linear"
+            style={{ width: `${Math.min(100, (scrollOffset / textOverflowH) * 100)}%` }}
+          />
+        </div>
+      )}
 
       {/* Quad camera 2×2 grid */}
       {showQuadCamera && (

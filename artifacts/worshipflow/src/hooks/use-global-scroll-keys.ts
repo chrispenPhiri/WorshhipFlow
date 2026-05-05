@@ -44,22 +44,35 @@ export function useGlobalScrollKeys() {
         case "ArrowDown":
         case "PageDown":
           e.preventDefault();
+          // Stopping is idempotent on the broadcast side, so we don't need
+          // to track auto-scroll state here.
+          send({ type: "scroll_auto_stop" });
           send({ type: "scroll_down" });
           break;
         case "ArrowUp":
         case "PageUp":
           e.preventDefault();
+          send({ type: "scroll_auto_stop" });
           send({ type: "scroll_up" });
           break;
         case "Home":
           e.preventDefault();
+          send({ type: "scroll_auto_stop" });
           send({ type: "scroll_reset" });
           break;
         case "End":
           // Walk down a few times to push toward the end. The broadcast clamps
           // to its actual overflow so this is safe.
           e.preventDefault();
+          send({ type: "scroll_auto_stop" });
           for (let i = 0; i < 12; i++) send({ type: "scroll_down" });
+          break;
+        case " ":
+          // Space toggles teleprompter / auto-scroll.  The broadcast window
+          // is the single source of truth — it decides start vs stop based
+          // on its own timer state, so we cannot desync.
+          e.preventDefault();
+          send({ type: "scroll_auto_toggle", speed: 60 });
           break;
       }
     };

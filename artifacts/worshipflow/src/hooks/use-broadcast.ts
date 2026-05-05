@@ -32,6 +32,16 @@ export type BroadcastCommand =
   | { type: "scroll_up" }
   | { type: "scroll_down" }
   | { type: "scroll_reset" }
+  // Auto-scroll (teleprompter / marquee). speed = pixels per second.
+  // The broadcast page increments scrollOffset on a timer until it reaches
+  // the natural overflow, then stops automatically. scroll_auto_stop halts
+  // it early; scroll_reset returns to the top.
+  | { type: "scroll_auto_start"; speed?: number }
+  | { type: "scroll_auto_stop" }
+  // Toggles auto-scroll on/off based on the broadcast window's own state —
+  // the broadcast is the single source of truth, so controllers don't need
+  // to track local copies.  Optional speed only applies when starting.
+  | { type: "scroll_auto_toggle"; speed?: number }
   // Live captions — operator-side speech recognition pushes interim text here
   | { type: "caption_set"; text: string; isFinal?: boolean }
   | { type: "caption_clear" };
@@ -39,7 +49,11 @@ export type BroadcastCommand =
 /** Status events posted BY the broadcast window back to controllers. */
 export type BroadcastStatus =
   | { type: "fullscreen_state"; value: boolean }
-  | { type: "fullscreen_blocked" };
+  | { type: "fullscreen_blocked" }
+  // Authoritative auto-scroll state.  Emitted whenever the teleprompter
+  // starts, stops, changes speed, or auto-stops at the end of the text.
+  // running=false implies speed=0 conceptually.
+  | { type: "scroll_auto_state"; running: boolean; speed: number };
 
 export const CHANNEL_NAME = "wf-broadcast-cmd";
 

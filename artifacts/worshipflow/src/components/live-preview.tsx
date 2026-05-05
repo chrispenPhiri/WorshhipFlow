@@ -6,7 +6,7 @@ import {
   AlertCircle, ExternalLink, Monitor, MonitorSpeaker, ChevronDown, Loader2,
   ZoomIn, AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   Maximize2, Minimize2, EyeOff, Eye, RotateCcw, CheckCircle2, Tv2, PictureInPicture2,
-  MonitorOff, ChevronUp, ArrowUp, ArrowDown, RefreshCw,
+  MonitorOff, ChevronUp, ArrowUp, ArrowDown, RefreshCw, Play, Pause, Gauge,
 } from "lucide-react";
 import { useBroadcast, CHANNEL_NAME } from "@/hooks/use-broadcast";
 import {
@@ -26,6 +26,13 @@ export function LivePreview() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [cursorHidden, setCursorHidden] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // Auto-scroll (teleprompter) state — mirrors the authoritative state
+  // the broadcast window emits as `scroll_auto_state`. We never write
+  // these from local user clicks; we send commands and let the next
+  // status echo update us.  This prevents UI desync when the teleprompter
+  // auto-stops at end-of-text or someone toggles it from a keyboard shortcut.
+  const [autoScrollOn, setAutoScrollOn] = useState(false);
+  const [autoScrollSpeed, setAutoScrollSpeed] = useState(60);
   const { toast } = useToast();
 
   const { data: screenState, isLoading, error } = useGetScreenState({
@@ -71,6 +78,13 @@ export function LivePreview() {
           description: "The browser blocks fullscreen without a click in the broadcast window. Click on it, or press F.",
           variant: "destructive",
         });
+      }
+      else if (m.type === "scroll_auto_state") {
+        // Authoritative auto-scroll state from the broadcast window — used to
+        // keep the toggle button in sync when the teleprompter auto-stops at
+        // end-of-text or someone toggled it from the global keyboard shortcut.
+        setAutoScrollOn(!!m.running);
+        if (typeof m.speed === "number" && m.speed > 0) setAutoScrollSpeed(m.speed);
       }
     };
     // Ask for current state on mount (handles late-mounting / reload after broadcast is already fullscreen)
@@ -386,28 +400,89 @@ export function LivePreview() {
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium mb-1.5">Text Scroll</p>
               <div className="grid grid-cols-3 gap-1.5">
                 <RemoteBtn
-                  onClick={() => sendCommand({ type: "scroll_up" })}
+                  onClick={() => { sendCommand({ type: "scroll_auto_stop" }); setAutoScrollOn(false); sendCommand({ type: "scroll_up" }); }}
                   icon={<ArrowUp className="w-4 h-4" />}
                   label="Scroll Up"
                   disabled={!broadcastLive}
                 />
                 <RemoteBtn
-                  onClick={() => sendCommand({ type: "scroll_reset" })}
+                  onClick={() => { sendCommand({ type: "scroll_auto_stop" }); setAutoScrollOn(false); sendCommand({ type: "scroll_reset" }); }}
                   icon={<RefreshCw className="w-3.5 h-3.5" />}
                   label="Reset"
                   disabled={!broadcastLive}
                 />
                 <RemoteBtn
-                  onClick={() => sendCommand({ type: "scroll_down" })}
+                  onClick={() => { sendCommand({ type: "scroll_auto_stop" }); setAutoScrollOn(false); sendCommand({ type: "scroll_down" }); }}
                   icon={<ArrowDown className="w-4 h-4" />}
                   label="Scroll Down"
                   disabled={!broadcastLive}
                 />
               </div>
-              <p className="text-[10px] text-muted-foreground text-center mt-1">
+
+              {/* Auto-scroll (teleprompter) — continuous scroll at chosen speed.
+                  Useful for long Bible passages or sermon notes where pressing
+                  arrows repeatedly is impractical. */}
+              <div className="mt-2 rounded-md border border-border/60 bg-muted/30 px-2 py-1.5 space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <Gauge className="w-3 h-3 text-primary/80" />
+                    <span className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Auto-scroll</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Fire-and-forget toggle — the broadcast decides start vs
+                      // stop and echoes back via `scroll_auto_state`, which
+                      // updates `autoScrollOn`.  No optimistic local flip.
+                      sendCommand({ type: "scroll_auto_toggle", speed: autoScrollSpeed });
+                    }}
+                    disabled={!broadcastLive}
+                    className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                      autoScrollOn
+                        ? "bg-destructive/15 text-destructive hover:bg-destructive/25"
+                        : "bg-primary/15 text-primary hover:bg-primary/25"
+                    }`}
+                    data-testid="button-auto-scroll-toggle"
+                  >
+                    {autoScrollOn ? <><Pause className="w-3 h-3" /> Stop</> : <><Play className="w-3 h-3" /> Start</>}
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 gap-1">
+                  {[
+                    { label: "Slow",   value: 30  },
+                    { label: "Medium", value: 60  },
+                    { label: "Fast",   value: 120 },
+                  ].map(p => (
+                    <button
+                      key={p.value}
+                      type="button"
+                      onClick={() => {
+                        setAutoScrollSpeed(p.value);
+                        // If running, restart at new speed (broadcast echoes the
+                        // updated speed back via `scroll_auto_state`).
+                        if (autoScrollOn) sendCommand({ type: "scroll_auto_start", speed: p.value });
+                      }}
+                      disabled={!broadcastLive}
+                      className={`py-0.5 rounded text-[10px] border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                        autoScrollSpeed === p.value
+                          ? "bg-primary/20 border-primary text-primary font-medium"
+                          : "border-border/60 text-muted-foreground hover:bg-muted/50"
+                      }`}
+                      data-testid={`button-auto-scroll-${p.label.toLowerCase()}`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-[10px] text-muted-foreground text-center mt-1.5">
                 <kbd className="px-1 py-px rounded bg-muted/60 border border-border text-[9px] font-mono">↑</kbd>
                 <kbd className="px-1 py-px rounded bg-muted/60 border border-border text-[9px] font-mono ml-0.5">↓</kbd>
                 <span className="ml-1">scroll</span>
+                <span className="mx-1.5">·</span>
+                <kbd className="px-1 py-px rounded bg-muted/60 border border-border text-[9px] font-mono">Space</kbd>
+                <span className="ml-1">auto</span>
                 <span className="mx-1.5">·</span>
                 <kbd className="px-1 py-px rounded bg-muted/60 border border-border text-[9px] font-mono">Home</kbd>
                 <span className="ml-1">reset</span>

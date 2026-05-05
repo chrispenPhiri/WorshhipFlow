@@ -690,7 +690,13 @@ export default function MediaPage() {
           cameraMirror: camMirror,
           cameraBorderWidth: camBorderWidth,
           cameraBorderColor: camBorderColor,
-          cameraDeviceId: (camLayout !== "quad" && camLayout !== "dual") ? selectedCameraId : undefined,
+          // Route the camera source: "__screen__" sentinel tells the broadcast
+          // window to use getDisplayMedia() instead of getUserMedia(), so a
+          // fullscreen / PiP / side layout can present a screen capture (not
+          // just the quad/dual grid that already supported it).
+          cameraDeviceId: (camLayout !== "quad" && camLayout !== "dual")
+            ? (cameraSource === "screen" ? "__screen__" : selectedCameraId)
+            : undefined,
           cameraDeviceIds: (camLayout === "quad" || camLayout === "dual") ? quadSlots.slice(0, camLayout === "dual" ? 2 : 4).filter(Boolean) : undefined,
         },
       }
