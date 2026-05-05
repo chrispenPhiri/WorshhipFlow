@@ -44,7 +44,7 @@ interface Props {
   onSendToScreen: (text: string, ref: string, abbr: string) => void;
 }
 
-type Scope = "chapter" | "book";
+type Scope = "chapter" | "book" | "bible";
 
 export function BiblePhraseSearch({ book, chapter, currentVerses, onGoTo, onSendToScreen }: Props) {
   const [open, setOpen] = useState(false);
@@ -96,45 +96,68 @@ export function BiblePhraseSearch({ book, chapter, currentVerses, onGoTo, onSend
       return;
     }
 
+    // Helper to search one book
+    const searchBook = async (
+      targetBook: string,
+      bookNum: number,
+      totalChapters: number,
+      progressOffset: number,
+      allHits: SearchHit[],
+    ) => {
+      const BATCH = 12;
+      for (let start = 1; start <= totalChapters; start += BATCH) {
+        if (ctrl.signal.aborted) return;
+        const end = Math.min(start + BATCH - 1, totalChapters);
+        const batch = Array.from({ length: end - start + 1 }, (_, i) => start + i);
+        const results = await Promise.allSettled(
+          batch.map(ch =>
+            fetch(`https://api.getbible.net/v2/kjv/${bookNum}/${ch}.json`, { signal: ctrl.signal })
+              .then(r => r.json())
+              .then((data: { chapter: Record<string, { verse: number; text: string }> }) => {
+                const verses = Object.values(data.chapter ?? {});
+                return verses
+                  .filter(v => v.text.toLowerCase().includes(lower))
+                  .map(v => ({
+                    book: targetBook, chapter: ch, verse: v.verse, text: v.text,
+                    reference: `${targetBook} ${ch}:${v.verse}`,
+                  }));
+              })
+              .catch(() => [] as SearchHit[])
+          )
+        );
+        for (const r of results) {
+          if (r.status === "fulfilled") allHits.push(...r.value);
+        }
+        setProgress(progressOffset + Math.min(end, totalChapters));
+        setHits([...allHits]);
+      }
+    };
+
+    if (scope === "bible") {
+      // Whole-Bible search — iterate all 66 books sequentially in small batches
+      const totalChaptersAll = CHAPTER_COUNTS.reduce((a, b) => a + b, 0);
+      setProgressTotal(totalChaptersAll);
+      const allHits: SearchHit[] = [];
+      let chaptersDone = 0;
+      for (let bi = 0; bi < BIBLE_BOOKS.length; bi++) {
+        if (ctrl.signal.aborted) break;
+        const bName = BIBLE_BOOKS[bi];
+        const bChapters = CHAPTER_COUNTS[bi] ?? 1;
+        await searchBook(bName, bi + 1, bChapters, chaptersDone, allHits);
+        chaptersDone += bChapters;
+      }
+      if (!ctrl.signal.aborted) { setSearched(true); setSearching(false); }
+      return;
+    }
+
     // Book-wide search via getbible.net KJV
     const bookIdx = BIBLE_BOOKS.indexOf(book);
     if (bookIdx < 0) { setSearching(false); return; }
     const bookNum = bookIdx + 1;
     const totalChapters = CHAPTER_COUNTS[bookIdx] ?? 1;
     setProgressTotal(totalChapters);
-
-    const BATCH = 12;
     const allHits: SearchHit[] = [];
-
-    for (let start = 1; start <= totalChapters; start += BATCH) {
-      if (ctrl.signal.aborted) break;
-      const end = Math.min(start + BATCH - 1, totalChapters);
-      const batch = Array.from({ length: end - start + 1 }, (_, i) => start + i);
-
-      const results = await Promise.allSettled(
-        batch.map(ch =>
-          fetch(`https://api.getbible.net/v2/kjv/${bookNum}/${ch}.json`, { signal: ctrl.signal })
-            .then(r => r.json())
-            .then((data: { chapter: Record<string, { verse: number; text: string }> }) => {
-              const verses = Object.values(data.chapter ?? {});
-              return verses
-                .filter(v => v.text.toLowerCase().includes(lower))
-                .map(v => ({
-                  book, chapter: ch, verse: v.verse, text: v.text,
-                  reference: `${book} ${ch}:${v.verse}`,
-                }));
-            })
-            .catch(() => [] as SearchHit[])
-        )
-      );
-
-      for (const r of results) {
-        if (r.status === "fulfilled") allHits.push(...r.value);
-      }
-
-      setProgress(Math.min(end, totalChapters));
-      setHits([...allHits]);
-    }
+    await searchBook(book, bookNum, totalChapters, 0, allHits);
 
     if (!ctrl.signal.aborted) {
       setSearched(true);
@@ -182,7 +205,7 @@ export function BiblePhraseSearch({ book, chapter, currentVerses, onGoTo, onSend
                 ref={inputRef}
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                placeholder={`Search ${scope === "chapter" ? `${book} ${chapter}` : `the book of ${book}`}…`}
+                placeholder={`Search ${scope === "chapter" ? `${book} ${chapter}` : scope === "book" ? `the book of ${book}` : "the whole Bible"}…`}
                 className="pl-9 pr-9"
                 autoComplete="off"
               />
@@ -204,21 +227,21 @@ export function BiblePhraseSearch({ book, chapter, currentVerses, onGoTo, onSend
           </form>
 
           {/* Scope toggle */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-muted-foreground">Search in:</span>
             <div className="flex rounded-lg border border-border overflow-hidden text-xs">
-              {(["chapter", "book"] as Scope[]).map(s => (
+              {(["chapter", "book", "bible"] as Scope[]).map(s => (
                 <button
                   key={s}
                   type="button"
                   onClick={() => { setScope(s); setHits([]); setSearched(false); }}
-                  className={`px-3 py-1 transition-colors ${
+                  className={`px-3 py-1 transition-colors border-r border-border/50 last:border-r-0 ${
                     scope === s
                       ? "bg-primary text-primary-foreground font-medium"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
                   }`}
                 >
-                  {s === "chapter" ? `This chapter (${book} ${chapter})` : `Whole book (${book})`}
+                  {s === "chapter" ? `Chapter (${book} ${chapter})` : s === "book" ? `Book (${book})` : "Whole Bible"}
                 </button>
               ))}
             </div>
@@ -233,7 +256,9 @@ export function BiblePhraseSearch({ book, chapter, currentVerses, onGoTo, onSend
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <Loader2 className="w-3 h-3 animate-spin" />
-                  Scanning {book}… chapter {progress} of {progressTotal}
+                  {scope === "bible"
+                    ? `Scanning Bible… ${progress} of ${progressTotal} chapters`
+                    : `Scanning ${book}… chapter ${progress} of ${progressTotal}`}
                 </span>
                 <button type="button" onClick={() => abortRef.current?.abort()}
                   className="text-muted-foreground hover:text-foreground">
@@ -258,8 +283,8 @@ export function BiblePhraseSearch({ book, chapter, currentVerses, onGoTo, onSend
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs text-muted-foreground">
                   {hits.length === 0
-                    ? `No matches for "${query}" in ${scope === "chapter" ? `${book} ${chapter}` : `the book of ${book}`}`
-                    : `${hits.length} match${hits.length !== 1 ? "es" : ""} for "${query}" in ${scope === "chapter" ? `${book} ${chapter}` : `the book of ${book}`}`}
+                    ? `No matches for "${query}" in ${scope === "chapter" ? `${book} ${chapter}` : scope === "book" ? `the book of ${book}` : "the whole Bible"}`
+                    : `${hits.length} match${hits.length !== 1 ? "es" : ""} for "${query}" in ${scope === "chapter" ? `${book} ${chapter}` : scope === "book" ? `the book of ${book}` : "the whole Bible"}`}
                 </p>
                 <button type="button" onClick={clear}
                   className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">

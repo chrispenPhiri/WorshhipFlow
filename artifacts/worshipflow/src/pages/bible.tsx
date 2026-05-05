@@ -467,6 +467,8 @@ export default function BiblePage() {
         <CharacterPerspective
           verses={result?.verses ?? []}
           reference={result?.reference ?? `${book} ${chapter}`}
+          book={book}
+          chapter={chapter}
           onSendVerses={sendCharacterVerses}
         />
       </div>

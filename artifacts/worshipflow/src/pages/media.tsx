@@ -64,6 +64,7 @@ export default function MediaPage() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
+  const [broadcastOpen, setBroadcastOpen] = useState(true);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
@@ -1309,11 +1310,16 @@ export default function MediaPage() {
 
           {/* ── Broadcast Output (merged from former Broadcast tab) ── */}
           <div className="pt-4 border-t border-border">
-            <div className="flex items-center gap-2 mb-4">
-              <MonitorSpeaker className="w-5 h-5 text-primary" />
-              <h2 className="text-xl font-semibold">Broadcast Output</h2>
-            </div>
-            <div className="grid md:grid-cols-2 gap-6">
+            <button
+              type="button"
+              onClick={() => setBroadcastOpen(o => !o)}
+              className="w-full flex items-center gap-2 mb-4 hover:opacity-80 transition-opacity text-left group"
+            >
+              <MonitorSpeaker className="w-5 h-5 text-primary shrink-0" />
+              <h2 className="text-xl font-semibold flex-1">Broadcast Output</h2>
+              <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform duration-200 ${broadcastOpen ? "rotate-180" : ""}`} />
+            </button>
+            {broadcastOpen && <div className="grid md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2"><MonitorSpeaker className="w-4 h-4" /> Display Selection</CardTitle>
@@ -1408,7 +1414,7 @@ export default function MediaPage() {
                 </Card>
 
               </div>
-            </div>
+            </div>}
           </div>
 
           {/* ── Live Studio ── */}

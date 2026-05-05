@@ -124,6 +124,45 @@ Never be condescending. Be warm, clear, and encouraging.`,
   );
 });
 
+/* ── Text Enhancement / Correction ─────────────────────────── */
+router.post("/enhance-text", async (req, res) => {
+  const { text } = req.body as { text: string };
+  if (!text?.trim()) {
+    res.status(400).json({ error: "text is required" });
+    return;
+  }
+  await streamCompletion(
+    res,
+    `You are a professional proofreader and editor for a church worship presentation app.
+When given worship text for a church presentation slide, you:
+- Fix spelling, grammar and punctuation mistakes
+- Improve clarity and flow for spoken worship contexts
+- Capitalise proper nouns (God, Jesus, Holy Spirit, Lord, Father, etc.)
+- Preserve the original meaning, tone and intent faithfully
+- Keep line breaks if they are intentional (for poetry/lyrics)
+- Return ONLY the corrected text, with no commentary, explanation, or surrounding quotes`,
+    `Please correct and improve this worship text:\n\n${text}`
+  );
+});
+
+/* ── Custom AI Image Generation ─────────────────────────────── */
+router.post("/custom-image", async (req, res) => {
+  const { prompt } = req.body as { prompt: string };
+  if (!prompt?.trim()) {
+    res.status(400).json({ error: "prompt is required" });
+    return;
+  }
+  try {
+    const { generateImageBuffer } = await import("@workspace/integrations-openai-ai-server/image");
+    const enhancedPrompt = `${prompt}. Style: cinematic, high quality, suitable for a church worship presentation background. No text, no letters, no words anywhere in the image.`;
+    const buffer = await generateImageBuffer(enhancedPrompt, "1792x1024");
+    res.json({ b64_json: buffer.toString("base64") });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Image generation failed";
+    res.status(500).json({ error: msg });
+  }
+});
+
 /* ── Verse-to-Art ───────────────────────────────────────────── */
 router.post("/verse-art", async (req, res) => {
   const { verse, reference, book } = req.body as { verse: string; reference: string; book?: string };

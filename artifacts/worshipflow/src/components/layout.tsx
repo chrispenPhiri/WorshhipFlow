@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ChevronsLeft, ChevronsRight, LogOut, Menu, Tv, User as UserIcon, BookOpen } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, LogOut, Menu, Tv, User as UserIcon, BookOpen, Radio } from "lucide-react";
 import { LivePreview } from "./live-preview";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -12,6 +12,7 @@ import {
 } from "@/lib/menu-customization";
 import { useAuth } from "@/lib/auth/context";
 import { useBibleOnlyMode, isPathAllowedInBibleOnly } from "@/lib/bible-only-mode";
+import { useGetScreenState, getGetScreenStateQueryKey } from "@workspace/api-client-react";
 
 /**
  * Three viewport modes drive the layout shape:
@@ -117,6 +118,11 @@ export function Layout({ children }: { children: ReactNode }) {
   const [emojiMode] = useEmojiMode();
   const [menuOpen, setMenuOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+
+  const { data: screenState } = useGetScreenState({
+    query: { queryKey: getGetScreenStateQueryKey(), refetchInterval: 3000 },
+  });
+  const isLive = !!(screenState as { isLive?: boolean } | undefined)?.isLive;
 
   const isDesktop = mode === "desktop";
 
@@ -228,6 +234,13 @@ export function Layout({ children }: { children: ReactNode }) {
           <h1 className="text-base font-bold text-primary flex items-center gap-2 truncate min-w-0">
             <span className="bg-primary text-primary-foreground p-1 rounded text-xs shrink-0">PW</span>
             <span className="truncate">Phiri WorshipFlow</span>
+            {isLive && (
+              <Link href="/media">
+                <span className="inline-flex items-center gap-1 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded animate-pulse shrink-0 cursor-pointer">
+                  <Radio className="w-2.5 h-2.5" /> LIVE
+                </span>
+              </Link>
+            )}
           </h1>
           <button
             type="button"
@@ -294,6 +307,26 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
 
           {renderNav(!sidebarCollapsed)}
+
+          {/* ── LIVE indicator ───────────────────────────────── */}
+          {isLive && (
+            <div className={`${sidebarCollapsed ? "px-2 flex justify-center" : "px-3"} pb-2`}>
+              <Link href="/media">
+                <div className={`flex items-center gap-2 bg-red-600/15 border border-red-600/40 rounded-lg cursor-pointer hover:bg-red-600/25 transition-colors ${sidebarCollapsed ? "h-10 w-10 justify-center" : "px-3 py-2"}`}>
+                  <span className="relative flex h-2.5 w-2.5 shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+                  </span>
+                  {!sidebarCollapsed && (
+                    <span className="text-xs font-bold text-red-400 tracking-widest">LIVE</span>
+                  )}
+                  {!sidebarCollapsed && (
+                    <Radio className="w-3.5 h-3.5 text-red-400 ml-auto" />
+                  )}
+                </div>
+              </Link>
+            </div>
+          )}
 
           <div className={`border-t border-border ${sidebarCollapsed ? "px-2" : "px-3"} py-3`}>
             <UserMenu collapsed={sidebarCollapsed} />

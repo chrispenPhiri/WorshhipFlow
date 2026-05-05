@@ -1,4 +1,5 @@
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,7 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   Type, Cast, AlignLeft, AlignCenter, AlignRight, Bold, Italic,
   ArrowUp, ArrowDown, ArrowLeft, ArrowRight, AlignVerticalJustifyCenter,
-  MoveVertical,
+  MoveVertical, Sparkles, Wand2, ImagePlus, Loader2, Check, X,
 } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -37,6 +38,15 @@ export default function CustomTextPage() {
   const [bgGradient, setBgGradient]     = useLocalStorage("wf-custom-bg-gradient", DEFAULT_GRADIENT);
   const [bgWallpaper, setBgWallpaper]   = useLocalStorage("wf-custom-bg-wallpaper", "aurora");
   const [bgOverlay, setBgOverlay]       = useLocalStorage<number[]>("wf-custom-bg-overlay", [30]);
+
+  // ── AI state (not persisted) ────────────────────────────────────────────
+  const [aiCorrecting, setAiCorrecting] = useState(false);
+  const [aiCorrected, setAiCorrected]   = useState(false);
+  const [imgPrompt, setImgPrompt]       = useState("");
+  const [imgGenerating, setImgGenerating] = useState(false);
+  const [generatedImg, setGeneratedImg] = useState<string | null>(null);
+  const [imgError, setImgError]         = useState<string | null>(null);
+  const correctionAbort = useRef<AbortController | null>(null);
 
   // ── Position / Layout (all persisted) ──────────────────────────────────
   const [vAlign, setVAlign]             = useLocalStorage<"top" | "center" | "bottom">("wf-custom-valign", "center");
@@ -94,6 +104,67 @@ export default function CustomTextPage() {
       ? { background: bgGradient }
       : {};
 
+  const handleAiCorrect = async () => {
+    if (!content.trim() || aiCorrecting) return;
+    correctionAbort.current?.abort();
+    const ctrl = new AbortController();
+    correctionAbort.current = ctrl;
+    setAiCorrecting(true);
+    setAiCorrected(false);
+    try {
+      const res = await fetch(`${import.meta.env.BASE_URL}api/ai/enhance-text`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: content }),
+        signal: ctrl.signal,
+      });
+      if (!res.ok || !res.body) throw new Error("AI error");
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let out = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const lines = dec.decode(value).split("\n");
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              const d = JSON.parse(line.slice(6));
+              if (d.content) { out += d.content; setContent(out); }
+            } catch { /* ignore */ }
+          }
+        }
+      }
+      setAiCorrected(true);
+      setTimeout(() => setAiCorrected(false), 3000);
+    } catch { /* ignore abort */ } finally {
+      setAiCorrecting(false);
+    }
+  };
+
+  const handleAiImage = async () => {
+    if (!imgPrompt.trim() || imgGenerating) return;
+    setImgGenerating(true);
+    setImgError(null);
+    setGeneratedImg(null);
+    try {
+      const res = await fetch(`${import.meta.env.BASE_URL}api/ai/custom-image`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: imgPrompt }),
+      });
+      const data = await res.json() as { b64_json?: string; error?: string };
+      if (data.error) throw new Error(data.error);
+      if (data.b64_json) {
+        setGeneratedImg(`data:image/png;base64,${data.b64_json}`);
+      }
+    } catch (e) {
+      setImgError(e instanceof Error ? e.message : "Generation failed");
+    } finally {
+      setImgGenerating(false);
+    }
+  };
+
   const nudge = (dir: "up" | "down" | "left" | "right") => {
     const step = 4;
     if (dir === "up")    setPadY(v => Math.max(0, v - step));
@@ -146,27 +217,101 @@ export default function CustomTextPage() {
               </div>
             </div>
 
-            <Textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Type your custom text here..."
-              className="flex-1 min-h-[200px] text-lg resize-none"
-              style={{
-                fontFamily,
-                fontWeight: bold ? "bold" : "normal",
-                fontStyle: italic ? "italic" : "normal",
-                textAlign: alignment,
-              }}
-            />
+            <div className="relative flex-1">
+              <Textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Type your custom text here..."
+                className="flex-1 min-h-[200px] text-lg resize-none w-full"
+                style={{
+                  fontFamily,
+                  fontWeight: bold ? "bold" : "normal",
+                  fontStyle: italic ? "italic" : "normal",
+                  textAlign: alignment,
+                }}
+              />
+            </div>
 
-            <Button onClick={handleSendToScreen} className="w-full gap-2 mt-auto">
-              <Cast className="w-4 h-4" /> Send to Screen
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={handleSendToScreen} className="flex-1 gap-2">
+                <Cast className="w-4 h-4" /> Send to Screen
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleAiCorrect}
+                disabled={aiCorrecting || !content.trim()}
+                className="gap-1.5 shrink-0"
+                title="AI Text Correction — fixes spelling, grammar and capitalisation"
+              >
+                {aiCorrecting
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : aiCorrected
+                  ? <Check className="w-4 h-4 text-green-500" />
+                  : <Wand2 className="w-4 h-4" />}
+                {aiCorrecting ? "Fixing…" : aiCorrected ? "Fixed!" : "Fix Text"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
         {/* ── Right: Typography + Position + Background ─────────────────────── */}
         <div className="space-y-4">
+          {/* AI Image Generator */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                AI Image Generator
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground">Describe a worship background image and AI will generate it for you.</p>
+              <div className="flex gap-2">
+                <Input
+                  value={imgPrompt}
+                  onChange={e => setImgPrompt(e.target.value)}
+                  placeholder="e.g. purple sunset with a cross on a hill…"
+                  className="flex-1 text-sm h-9"
+                  onKeyDown={e => { if (e.key === "Enter") handleAiImage(); }}
+                />
+                <Button
+                  size="sm"
+                  onClick={handleAiImage}
+                  disabled={imgGenerating || !imgPrompt.trim()}
+                  className="gap-1.5 shrink-0 h-9"
+                >
+                  {imgGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
+                  {imgGenerating ? "Generating…" : "Generate"}
+                </Button>
+              </div>
+              {imgError && (
+                <p className="text-xs text-destructive flex items-center gap-1"><X className="w-3 h-3" />{imgError}</p>
+              )}
+              {generatedImg && (
+                <div className="space-y-2">
+                  <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-border">
+                    <img src={generatedImg} alt="AI generated background" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex gap-2">
+                    <a
+                      href={generatedImg}
+                      download="worship-background.png"
+                      className="flex-1 flex items-center justify-center gap-1.5 h-8 text-xs rounded-md border border-border hover:bg-muted/40 transition-colors"
+                    >
+                      Download
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => setGeneratedImg(null)}
+                      className="h-8 px-3 text-xs rounded-md border border-border text-muted-foreground hover:bg-muted/40 transition-colors"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
           {/* Typography */}
           <Card>
             <CardHeader className="pb-3">
