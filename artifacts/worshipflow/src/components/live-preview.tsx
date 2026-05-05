@@ -1,13 +1,12 @@
 import { useState, useEffect } from "react";
 import { useGetScreenState, useUpdateScreenState, getGetScreenStateQueryKey } from "@workspace/api-client-react";
 import { Button } from "./ui/button";
-import { SliderWithButtons } from "./slider-with-buttons";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle, ExternalLink, Monitor, MonitorSpeaker, ChevronDown, Loader2,
   ZoomIn, AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   Maximize2, Minimize2, EyeOff, Eye, RotateCcw, CheckCircle2, Tv2, PictureInPicture2,
-  MonitorOff
+  MonitorOff, ChevronUp, ArrowUp, ArrowDown, RefreshCw,
 } from "lucide-react";
 import { useBroadcast, CHANNEL_NAME } from "@/hooks/use-broadcast";
 import {
@@ -381,6 +380,33 @@ export function LivePreview() {
                 destructive
               />
             </div>
+
+            {/* Text scroll controls */}
+            <div className="pt-1.5 border-t border-border/40">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium mb-1.5">Text Scroll</p>
+              <div className="grid grid-cols-3 gap-1.5">
+                <RemoteBtn
+                  onClick={() => sendCommand({ type: "scroll_up" })}
+                  icon={<ArrowUp className="w-4 h-4" />}
+                  label="Scroll Up"
+                  disabled={!broadcastLive}
+                />
+                <RemoteBtn
+                  onClick={() => sendCommand({ type: "scroll_reset" })}
+                  icon={<RefreshCw className="w-3.5 h-3.5" />}
+                  label="Reset"
+                  disabled={!broadcastLive}
+                />
+                <RemoteBtn
+                  onClick={() => sendCommand({ type: "scroll_down" })}
+                  icon={<ArrowDown className="w-4 h-4" />}
+                  label="Scroll Down"
+                  disabled={!broadcastLive}
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground text-center mt-1">↑↓ arrow keys also work in broadcast window</p>
+            </div>
+
             {broadcastLive && (
               <button
                 onClick={() => { broadcastWin?.close(); }}
@@ -406,98 +432,96 @@ export function LivePreview() {
           <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${layoutOpen ? "rotate-180" : ""}`} />
         </button>
 
-        {layoutOpen && <div className="mt-2 space-y-3 px-1">
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs flex items-center gap-1.5 text-muted-foreground"><ZoomIn className="w-3 h-3" /> Zoom</label>
-              <span className="text-xs font-mono text-foreground" data-testid="text-stage-zoom-value">{Math.round((layout.textScale ?? 1) * 100)}%</span>
-            </div>
-            {/* Big +/- buttons either side of the slider so the operator can
-                nudge zoom one step at a time without precise pointer work. */}
-            <SliderWithButtons
-              data-testid="slider-stage-zoom"
-              value={[Math.round((layout.textScale ?? 1) * 100)]}
-              onValueChange={([v]) => updateLayout({ textScale: (v ?? 100) / 100 })}
-              min={40} max={400} step={5}
-            />
-          </div>
+        {layoutOpen && (
+          <div className="mt-2 space-y-3 px-1">
 
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs text-muted-foreground">Text Width</label>
-              <span className="text-xs font-mono text-foreground">{layout.textWidthPct ?? 100}%</span>
-            </div>
-            <SliderWithButtons
-              value={[layout.textWidthPct ?? 100]}
-              onValueChange={([v]) => updateLayout({ textWidthPct: v ?? 100 })}
-              min={30} max={100} step={5}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground">Vertical Position</label>
-            <div className="grid grid-cols-3 gap-1">
-              {(["top", "center", "bottom"] as const).map(v => (
-                <button key={v} onClick={() => updateLayout({ verticalAlign: v })}
-                  className={`flex flex-col items-center gap-1 py-1.5 rounded-md text-xs transition-colors border ${vAlign === v ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/60"}`}
-                >
-                  {v === "top" && <AlignStartVertical className="w-4 h-4" />}
-                  {v === "center" && <AlignCenterVertical className="w-4 h-4" />}
-                  {v === "bottom" && <AlignEndVertical className="w-4 h-4" />}
-                  <span className="capitalize">{v}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground">Horizontal Position</label>
-            <div className="grid grid-cols-3 gap-1">
-              {(["left", "center", "right"] as const).map(h => (
-                <button key={h} onClick={() => updateLayout({ horizontalAlign: h })}
-                  className={`flex flex-col items-center gap-1 py-1.5 rounded-md text-xs transition-colors border ${hAlign === h ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/60"}`}
-                >
-                  {h === "left" && <AlignLeft className="w-4 h-4" />}
-                  {h === "center" && <AlignCenter className="w-4 h-4" />}
-                  {h === "right" && <AlignRight className="w-4 h-4" />}
-                  <span className="capitalize">{h}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs text-muted-foreground">H Padding</label>
-                <span className="text-xs font-mono">{layout.paddingX ?? 8}%</span>
+            {/* Zoom */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs flex items-center gap-1.5 text-muted-foreground">
+                  <ZoomIn className="w-3 h-3" /> Zoom
+                </label>
               </div>
-              <SliderWithButtons
-                value={[layout.paddingX ?? 8]}
-                onValueChange={([v]) => updateLayout({ paddingX: v ?? 8 })}
-                min={0} max={30} step={1}
+              <NudgeControl
+                data-testid="text-stage-zoom-value"
+                value={Math.round((layout.textScale ?? 1) * 100)}
+                onChange={v => updateLayout({ textScale: v / 100 })}
+                min={40} max={400} step={5} unit="%" bigStep={25}
               />
             </div>
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs text-muted-foreground">V Padding</label>
-                <span className="text-xs font-mono">{layout.paddingY ?? 8}%</span>
-              </div>
-              <SliderWithButtons
-                value={[layout.paddingY ?? 8]}
-                onValueChange={([v]) => updateLayout({ paddingY: v ?? 8 })}
-                min={0} max={30} step={1}
+
+            {/* Text Width */}
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1.5">Text Width</label>
+              <NudgeControl
+                value={layout.textWidthPct ?? 100}
+                onChange={v => updateLayout({ textWidthPct: v })}
+                min={30} max={100} step={5} unit="%"
               />
             </div>
-          </div>
 
-          <button
-            onClick={() => updateLayout({ textScale: 1, verticalAlign: "center", horizontalAlign: "center", paddingX: 8, paddingY: 8, textWidthPct: 100 })}
-            className="w-full text-xs text-muted-foreground hover:text-foreground py-1 transition-colors"
-          >
-            Reset to defaults
-          </button>
-        </div>}
+            {/* Vertical Position */}
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Vertical Position</label>
+              <div className="grid grid-cols-3 gap-1">
+                {(["top", "center", "bottom"] as const).map(v => (
+                  <button key={v} onClick={() => updateLayout({ verticalAlign: v })}
+                    className={`flex flex-col items-center gap-1 py-1.5 rounded-md text-xs transition-colors border ${vAlign === v ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/60"}`}
+                  >
+                    {v === "top" && <AlignStartVertical className="w-4 h-4" />}
+                    {v === "center" && <AlignCenterVertical className="w-4 h-4" />}
+                    {v === "bottom" && <AlignEndVertical className="w-4 h-4" />}
+                    <span className="capitalize">{v}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Horizontal Position */}
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Horizontal Position</label>
+              <div className="grid grid-cols-3 gap-1">
+                {(["left", "center", "right"] as const).map(h => (
+                  <button key={h} onClick={() => updateLayout({ horizontalAlign: h })}
+                    className={`flex flex-col items-center gap-1 py-1.5 rounded-md text-xs transition-colors border ${hAlign === h ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/60"}`}
+                  >
+                    {h === "left" && <AlignLeft className="w-4 h-4" />}
+                    {h === "center" && <AlignCenter className="w-4 h-4" />}
+                    {h === "right" && <AlignRight className="w-4 h-4" />}
+                    <span className="capitalize">{h}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Padding */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-muted-foreground block mb-1.5">H Padding</label>
+                <NudgeControl
+                  value={layout.paddingX ?? 8}
+                  onChange={v => updateLayout({ paddingX: v })}
+                  min={0} max={30} step={1} unit="%"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground block mb-1.5">V Padding</label>
+                <NudgeControl
+                  value={layout.paddingY ?? 8}
+                  onChange={v => updateLayout({ paddingY: v })}
+                  min={0} max={30} step={1} unit="%"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={() => updateLayout({ textScale: 1, verticalAlign: "center", horizontalAlign: "center", paddingX: 8, paddingY: 8, textWidthPct: 100 })}
+              className="w-full text-xs text-muted-foreground hover:text-foreground py-1 transition-colors"
+            >
+              Reset to defaults
+            </button>
+          </div>
+        )}
       </div>
 
       <style dangerouslySetInnerHTML={{ __html: `
@@ -534,5 +558,43 @@ function RemoteBtn({
       {icon}
       <span className="truncate">{label}</span>
     </button>
+  );
+}
+
+/** Replaces the old SliderWithButtons — a clean ± nudge control with value chip. */
+function NudgeControl({
+  value, onChange, min, max, step, unit = "", bigStep,
+  "data-testid": testId,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  min: number; max: number; step: number; unit?: string; bigStep?: number;
+  "data-testid"?: string;
+}) {
+  const dec = () => onChange(Math.max(min, value - step));
+  const inc = () => onChange(Math.min(max, value + step));
+  const decBig = () => bigStep !== undefined && onChange(Math.max(min, value - bigStep));
+  const incBig = () => bigStep !== undefined && onChange(Math.min(max, value + bigStep));
+
+  const btnCls = "w-7 h-7 rounded border border-border bg-muted/40 hover:bg-muted/70 hover:border-primary/40 text-foreground text-sm font-bold flex items-center justify-center transition-all active:scale-95 select-none";
+  const bigBtnCls = "w-6 h-7 rounded border border-border/50 bg-transparent hover:bg-muted/50 text-muted-foreground text-[10px] font-bold flex items-center justify-center transition-all active:scale-95 select-none";
+
+  return (
+    <div className="flex items-center gap-1">
+      {bigStep !== undefined && (
+        <button onClick={decBig} className={bigBtnCls} title={`−${bigStep}`}>«</button>
+      )}
+      <button onClick={dec} className={btnCls}>−</button>
+      <span
+        data-testid={testId}
+        className="flex-1 text-center text-xs font-mono font-semibold bg-muted/30 rounded py-1 px-1 min-w-0 tabular-nums"
+      >
+        {value}{unit}
+      </span>
+      <button onClick={inc} className={btnCls}>+</button>
+      {bigStep !== undefined && (
+        <button onClick={incBig} className={bigBtnCls} title={`+${bigStep}`}>»</button>
+      )}
+    </div>
   );
 }

@@ -28,7 +28,10 @@ export type BroadcastCommand =
   | { type: "reload" }
   | { type: "pip_open" }
   | { type: "pip_close" }
-  | { type: "get_fullscreen_state" };
+  | { type: "get_fullscreen_state" }
+  | { type: "scroll_up" }
+  | { type: "scroll_down" }
+  | { type: "scroll_reset" };
 
 /** Status events posted BY the broadcast window back to controllers. */
 export type BroadcastStatus =

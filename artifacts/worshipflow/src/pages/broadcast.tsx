@@ -8,6 +8,7 @@ import { tryDecodeGamePayload } from "@/lib/game-stage-payload";
 import { LiveBadgeOverlay, LIVE_OVERLAY_STYLES } from "@/components/live-overlays";
 
 const CHANNEL_NAME = "wf-broadcast-cmd";
+const SCROLL_STEP = 80; // pixels per scroll command / arrow key press
 
 const ANIMATION_STYLES = LIVE_OVERLAY_STYLES + `
 @keyframes wf-fade-in {
@@ -455,6 +456,9 @@ function TimerOverlay({ mode, startedAt, accumulatedMs, durationSec, position, f
 }
 
 // ── Camera PiP / side-by-side overlay ────────────────────────────────────────
+// Shared transition for smooth camera switch
+const CAM_TRANSITION = "opacity 0.45s ease";
+
 function CameraOverlay({ stream, layout, shape, pipSize, brightness = 100, contrast = 100, saturate = 100, mirror = false, borderWidth = 0, borderColor = "#ffffff" }: {
   stream: MediaStream | null; layout: string; shape: string; pipSize: number;
   brightness?: number; contrast?: number; saturate?: number; mirror?: boolean;
@@ -491,7 +495,7 @@ function CameraOverlay({ stream, layout, shape, pipSize, brightness = 100, contr
         boxSizing: "border-box",
       }}>
         <video ref={ref} autoPlay muted playsInline className="w-full h-full object-cover"
-          style={{ filter: filterStyle, transform: transformStyle }} />
+          style={{ filter: filterStyle, transform: transformStyle, transition: CAM_TRANSITION }} />
       </div>
     );
   }
@@ -515,7 +519,7 @@ function CameraOverlay({ stream, layout, shape, pipSize, brightness = 100, contr
       ...pos,
     }}>
       <video ref={ref} autoPlay muted playsInline className="w-full h-full object-cover"
-        style={{ filter: filterStyle, transform: transformStyle }} />
+        style={{ filter: filterStyle, transform: transformStyle, transition: CAM_TRANSITION }} />
     </div>
   );
 }
@@ -684,7 +688,14 @@ function BackgroundLayer({ background, cameraStream }: {
     const camTransform = background.cameraMirror ? "scaleX(-1)" : undefined;
     return (
       <div className="absolute inset-0 bg-black">
-        {cameraStream && <video ref={cameraRef} className="w-full h-full object-cover" autoPlay muted playsInline style={{ filter: camFilter, transform: camTransform }} />}
+        {cameraStream && (
+          <video
+            ref={cameraRef}
+            className="w-full h-full object-cover"
+            autoPlay muted playsInline
+            style={{ filter: camFilter, transform: camTransform, transition: "opacity 0.45s ease", opacity: 1 }}
+          />
+        )}
         {overlayStyle && <div className="absolute inset-0" style={overlayStyle} />}
       </div>
     );
@@ -698,9 +709,12 @@ function BackgroundLayer({ background, cameraStream }: {
 
 export default function BroadcastPage() {
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
   const [hideCursor, setHideCursor] = useState(false);
   const [contentKey, setContentKey] = useState(0);
   const [autoFitFactor, setAutoFitFactor] = useState(1);
+  const [scrollOffset, setScrollOffset] = useState(0);
+  const [textOverflowH, setTextOverflowH] = useState(0);
   const autoFitTextRef = useRef<HTMLDivElement>(null);
   const prevContentRef = useRef<string>("");
   const pipWinRef = useRef<Window | null>(null);
@@ -820,7 +834,7 @@ export default function BroadcastPage() {
     return () => { document.removeEventListener("fullscreenchange", sync); ch.close(); ctrlChannelRef.current = null; };
   }, []);
 
-  // F key — quick toggle fullscreen (works because keyboard input is a user gesture)
+  // F key — quick toggle fullscreen; arrow keys — scroll text
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
@@ -836,9 +850,18 @@ export default function BroadcastPage() {
         if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
         else tryEnterFullscreen();
       }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setScrollOffset(v => Math.min(v + SCROLL_STEP, textOverflowHRef.current));
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setScrollOffset(v => Math.max(0, v - SCROLL_STEP));
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Listen for remote commands from the control screen
@@ -860,7 +883,6 @@ export default function BroadcastPage() {
           else tryEnterFullscreen();
           break;
         case "get_fullscreen_state":
-          // Late-mounting controllers ask for current state on subscribe — reply immediately.
           ch.postMessage({ type: "fullscreen_state", value: !!document.fullscreenElement });
           break;
         case "hide_cursor":
@@ -886,6 +908,15 @@ export default function BroadcastPage() {
         case "pip_close":
           pipWinRef.current?.close();
           break;
+        case "scroll_down":
+          setScrollOffset(v => Math.min(v + SCROLL_STEP, textOverflowHRef.current));
+          break;
+        case "scroll_up":
+          setScrollOffset(v => Math.max(0, v - SCROLL_STEP));
+          break;
+        case "scroll_reset":
+          setScrollOffset(0);
+          break;
       }
     };
     return () => ch.close();
@@ -906,7 +937,11 @@ export default function BroadcastPage() {
     if (id !== prevContentRef.current) { prevContentRef.current = id; setContentKey(k => k + 1); }
   }, [currentTitle, currentContent]);
 
-  // Auto-fit: scale font down when text overflows the available container height
+  // Reset scroll when content changes
+  useEffect(() => { setScrollOffset(0); setTextOverflowH(0); }, [contentKey]);
+
+  // Auto-fit: scale font down when text overflows the available container height.
+  // Also tracks overflow height for the scroll feature.
   useEffect(() => {
     setAutoFitFactor(1);
     const raf = requestAnimationFrame(() => {
@@ -916,7 +951,10 @@ export default function BroadcastPage() {
       const availH = parent.clientHeight;
       if (availH <= 0) return;
       const contentH = el.scrollHeight;
-      if (contentH <= availH) return;
+      const overflow = Math.max(0, contentH - availH);
+      setTextOverflowH(overflow);
+      // Only auto-fit when not in manual scroll mode
+      if (contentH <= availH || overflow === 0) return;
       const factor = Math.max(0.12, Math.min(1, (availH / contentH) * 0.93));
       setAutoFitFactor(factor);
     });
@@ -924,29 +962,42 @@ export default function BroadcastPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contentKey]);
 
-  // Camera lifecycle — re-acquire whenever the type changes OR the selected device changes
+  // Keep a ref to the current overflow for use in the keyboard handler closure
+  const textOverflowHRef = useRef(0);
+  useEffect(() => { textOverflowHRef.current = textOverflowH; }, [textOverflowH]);
+
+  // Camera lifecycle — re-acquire when type or deviceId changes.
+  // Strategy: acquire NEW stream first, then stop the old one — prevents the
+  // black-screen flash that occurs when we null the stream before the new one arrives.
   useEffect(() => {
     const bg = screenState?.background;
     if (bg?.type !== "camera") {
-      if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); setCameraStream(null); }
+      if (cameraStreamRef.current) {
+        cameraStreamRef.current.getTracks().forEach(t => t.stop());
+        cameraStreamRef.current = null;
+        setCameraStream(null);
+      }
       return;
     }
-    // Use the deviceId stored in the background so the correct camera is opened
     const deviceId = (bg as { cameraDeviceId?: string }).cameraDeviceId;
     const constraints: MediaStreamConstraints = {
       video: deviceId ? { deviceId: { exact: deviceId } } : true,
       audio: false,
     };
-    // Stop any existing stream before acquiring the new one
-    if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); setCameraStream(null); }
-    navigator.mediaDevices.getUserMedia(constraints)
-      .then(stream => setCameraStream(stream))
-      .catch(() => {
-        // If exact deviceId fails (e.g. device disconnected), fall back to default
-        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-          .then(stream => setCameraStream(stream))
-          .catch(() => {});
+    let cancelled = false;
+    const acquire = (c: MediaStreamConstraints) =>
+      navigator.mediaDevices.getUserMedia(c).then(stream => {
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
+        // Stop previous stream AFTER new one is ready — no black-screen gap
+        if (cameraStreamRef.current) cameraStreamRef.current.getTracks().forEach(t => t.stop());
+        cameraStreamRef.current = stream;
+        setCameraStream(stream);
       });
+    acquire(constraints).catch(() => {
+      // Exact deviceId failed — fall back to any camera
+      if (!cancelled) acquire({ video: true, audio: false }).catch(() => {});
+    });
+    return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screenState?.background?.type, (screenState?.background as { cameraDeviceId?: string } | undefined)?.cameraDeviceId]);
 
@@ -973,10 +1024,13 @@ export default function BroadcastPage() {
   const flexAlign = hAlign === "left" ? "flex-start" : hAlign === "right" ? "flex-end" : "center";
   const textAlignValue = hAlign === "left" ? "left" : hAlign === "right" ? "right" : (textStyle?.alignment ?? "center");
 
+  // When in manual scroll mode, disable auto-fit so text stays at full size
+  const effectiveAutoFitFactor = scrollOffset > 0 ? 1 : autoFitFactor;
+
   const contentStyle: React.CSSProperties = textStyle
     ? {
         fontFamily: textStyle.fontFamily,
-        fontSize: `${textStyle.fontSize * textScale * autoFitFactor}px`,
+        fontSize: `${textStyle.fontSize * textScale * effectiveAutoFitFactor}px`,
         color: textStyle.textColor,
         fontWeight: textStyle.bold ? "bold" : "normal",
         fontStyle: textStyle.italic ? "italic" : "normal",
@@ -984,7 +1038,7 @@ export default function BroadcastPage() {
         lineHeight: 1.4,
         ...getAnimationStyle(textStyle.animation),
       }
-    : { color: "#ffffff", fontSize: `${64 * textScale * autoFitFactor}px`, textAlign: "center" };
+    : { color: "#ffffff", fontSize: `${64 * textScale * effectiveAutoFitFactor}px`, textAlign: "center" };
 
   const showContent = screenState && !screenState.isBlack && !screenState.isClear && screenState.content;
 
@@ -1253,11 +1307,17 @@ export default function BroadcastPage() {
           <div
             key={contentKey}
             className="absolute z-20 flex"
-            style={containerStyle}
+            style={{ ...containerStyle, overflow: "hidden" }}
           >
             <div
               ref={autoFitTextRef}
-              style={{ ...contentStyle, width: `${textWidthPct}%`, maxWidth: "100%" }}
+              style={{
+                ...contentStyle,
+                width: `${textWidthPct}%`,
+                maxWidth: "100%",
+                transform: scrollOffset > 0 ? `translateY(-${scrollOffset}px)` : undefined,
+                transition: "transform 0.25s ease",
+              }}
               className="whitespace-pre-wrap drop-shadow-lg"
             >
               {contentType === "verse"

@@ -16,10 +16,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
   Radio, Youtube, Tv, Twitch, Zap, Mic2, Users, MonitorPlay,
-  Play, Square, Copy, Eye, EyeOff, RefreshCw, Plus, Pencil,
+  Play, Square, Copy, Eye, EyeOff, RefreshCw, Plus, Pencil, Trash2,
   ChevronRight, Layers3, Sparkles, AlertTriangle, CheckCircle2,
   Hash, AtSign, Star, Clapperboard, Loader2, FlipHorizontal,
   Maximize2, Minimize2, RotateCcw, ChevronDown, ChevronUp,
+  Camera, SwitchCamera, Save, X,
 } from "lucide-react";
 
 const BROADCAST_SRC = (() => {
@@ -68,7 +69,7 @@ const DEFAULT_SCENES: Scene[] = [
   { id: "4", name: "Prayer",        icon: "🙏" },
 ];
 
-const GRAPHIC_PRESETS: GraphicPreset[] = [
+const DEFAULT_GRAPHIC_PRESETS: GraphicPreset[] = [
   { id: "welcome",   label: "Welcome",   emoji: "👋", lowerThirdName: "Welcome",      lowerThirdTitle: "We're glad you're here!" },
   { id: "offering",  label: "Offering",  emoji: "💝", lowerThirdName: "Offering",     lowerThirdTitle: "Give generously • Visit our app" },
   { id: "prayer",    label: "Prayer",    emoji: "🙏", lowerThirdName: "Prayer Time",  lowerThirdTitle: "Come before God together" },
@@ -77,6 +78,31 @@ const GRAPHIC_PRESETS: GraphicPreset[] = [
   { id: "break",     label: "Break",     emoji: "☕", lowerThirdName: "Short Break",  lowerThirdTitle: "We'll be back shortly" },
   { id: "communion", label: "Communion", emoji: "🍞", lowerThirdName: "Communion",    lowerThirdTitle: "In remembrance of Him" },
   { id: "closing",   label: "Closing",   emoji: "✨", lowerThirdName: "God bless you!", lowerThirdTitle: "See you next time" },
+];
+
+interface CameraDevice { deviceId: string; label: string; }
+
+interface VisItem {
+  id: string;
+  label: string;
+  desc: string;
+  content: string;
+  position: string;
+  fontSize: number;
+  bg: string;
+  animation: string;
+  isLowerThird: boolean;
+  ltName: string;
+  ltTitle: string;
+  ltPosition: string;
+  ltStyle: string;
+}
+
+const DEFAULT_VIS_ITEMS: VisItem[] = [
+  { id: "scripture", label: "Scripture Banner",    desc: "Show verse as full-screen overlay",  content: "John 3:16 — For God so loved the world…", position: "center", fontSize: 32, bg: "rgba(0,0,0,0.75)", animation: "fade_in",  isLowerThird: false, ltName: "", ltTitle: "", ltPosition: "bottom-left", ltStyle: "modern" },
+  { id: "announce",  label: "Announcement Slide",  desc: "Full-screen announcement text",      content: "Join us next Sunday at 10:00 AM",          position: "center", fontSize: 36, bg: "rgba(0,0,0,0.75)", animation: "slide_up", isLowerThird: false, ltName: "", ltTitle: "", ltPosition: "bottom-left", ltStyle: "modern" },
+  { id: "offering",  label: "Offering Prompt",     desc: "On-screen giving prompt",            content: "",                                         position: "center", fontSize: 28, bg: "rgba(0,0,0,0.75)", animation: "fade_in",  isLowerThird: true,  ltName: "Support Our Ministry", ltTitle: "Scan QR code or visit our website to give", ltPosition: "bottom-center", ltStyle: "gradient" },
+  { id: "prayer",    label: "Prayer Request",      desc: "Invite viewers to send requests",    content: "",                                         position: "center", fontSize: 28, bg: "rgba(0,0,0,0.75)", animation: "glow",     isLowerThird: true,  ltName: "Send Your Prayer Request", ltTitle: "DM us or comment below", ltPosition: "bottom-left", ltStyle: "modern" },
 ];
 
 // ── Main Component ────────────────────────────────────────────────────────────
@@ -116,6 +142,61 @@ export function LiveStudioPanel() {
   const [presenterName, setPresenterName] = useState("");
   const [presenterTitle, setPresenterTitle] = useState("");
   const prevLiveBg = useRef<import("@workspace/api-client-react").Background | null>(null);
+
+  // ── Collapsible sections ─────────────────────────────────────────────────
+  const [openSections, setOpenSections] = useLocalStorage<Record<string, boolean>>("wf-studio-sections", {
+    platform: true, streamConfig: true, overlays: true,
+    scenes: true, presenter: true, checklist: false,
+    presets: true, visualizations: true, audience: false,
+    cameraSwitch: true,
+  });
+  const toggleSection = (key: string) =>
+    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+
+  // ── Editable graphic presets ─────────────────────────────────────────────
+  const [customPresets, setCustomPresets] = useLocalStorage<GraphicPreset[]>("wf-graphic-presets", DEFAULT_GRAPHIC_PRESETS);
+  const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
+  const [editPresetDraft, setEditPresetDraft] = useState<GraphicPreset | null>(null);
+
+  // ── Editable live visualizations ─────────────────────────────────────────
+  const [visItems, setVisItems] = useLocalStorage<VisItem[]>("wf-vis-items", DEFAULT_VIS_ITEMS);
+  const [editingVisId, setEditingVisId] = useState<string | null>(null);
+  const [editVisDraft, setEditVisDraft] = useState<VisItem | null>(null);
+
+  // ── Camera switcher ──────────────────────────────────────────────────────
+  const [cameraDevices, setCameraDevices] = useState<CameraDevice[]>([]);
+  const [detectingCams, setDetectingCams] = useState(false);
+  const currentCamId = (screenState?.background as { cameraDeviceId?: string } | undefined)?.cameraDeviceId ?? "";
+
+  const detectCameras = async () => {
+    setDetectingCams(true);
+    try {
+      // Need permission first
+      await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cams = devices
+        .filter(d => d.kind === "videoinput")
+        .map((d, i) => ({ deviceId: d.deviceId, label: d.label || `Camera ${i + 1}` }));
+      setCameraDevices(cams);
+    } catch {
+      toast({ title: "Camera access denied", description: "Allow camera permission to enumerate devices.", variant: "destructive" });
+    } finally {
+      setDetectingCams(false);
+    }
+  };
+
+  const switchCamera = (deviceId: string) => {
+    const bg = screenState?.background;
+    if (!bg) return;
+    updateScreen({
+      data: {
+        ...safeBase(),
+        background: { ...bg, cameraDeviceId: deviceId } as typeof bg,
+      },
+    });
+    const dev = cameraDevices.find(d => d.deviceId === deviceId);
+    toast({ title: "Camera switched", description: dev?.label ?? "Camera updated on broadcast." });
+  };
 
   // ── Live duration timer ──────────────────────────────────────────────────
   useEffect(() => {
@@ -335,7 +416,7 @@ export function LiveStudioPanel() {
             <div className="space-y-2">
               <p className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Quick Test Commands</p>
               <div className="flex flex-wrap gap-1.5">
-                {GRAPHIC_PRESETS.slice(0, 4).map(g => (
+                {customPresets.slice(0, 4).map(g => (
                   <button
                     key={g.id}
                     onClick={() => fireGraphic(g)}
@@ -653,82 +734,240 @@ export function LiveStudioPanel() {
           </Card>
         </div>
 
-        {/* ── Column 3: Graphic Presets + Quick Tools ── */}
+        {/* ── Column 3: Camera Switch + Graphic Presets + Visualizations ── */}
         <div className="space-y-4">
-          {/* Graphic Presets */}
+
+          {/* ── Camera Switcher ── */}
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2"><Sparkles className="w-4 h-4" /> Graphic Presets</CardTitle>
-              <CardDescription className="text-[11px]">One-click animated lower thirds</CardDescription>
+            <CardHeader className="pb-0 pt-3 px-4">
+              <button
+                className="flex items-center justify-between w-full text-left"
+                onClick={() => toggleSection("cameraSwitch")}
+              >
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <SwitchCamera className="w-4 h-4" /> Camera Switch
+                </CardTitle>
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${openSections.cameraSwitch ? "rotate-180" : ""}`} />
+              </button>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-2">
-                {GRAPHIC_PRESETS.map(g => (
-                  <button
-                    key={g.id}
-                    onClick={() => fireGraphic(g)}
-                    className="flex items-center gap-2 p-2.5 rounded-lg border border-border hover:bg-muted/40 hover:border-primary/50 transition-all text-left group"
-                  >
-                    <span className="text-xl leading-none shrink-0">{g.emoji}</span>
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium truncate">{g.label}</p>
-                      {g.lowerThirdTitle && (
-                        <p className="text-[10px] text-muted-foreground truncate">{g.lowerThirdTitle}</p>
-                      )}
-                    </div>
-                  </button>
-                ))}
-              </div>
-              <Button size="sm" variant="ghost" className="w-full mt-2 text-xs text-muted-foreground gap-1.5"
-                onClick={() => updateScreen({ data: { ...safeBase(), lowerThirdEnabled: false } })}>
-                Clear All Graphics
-              </Button>
-            </CardContent>
+            {openSections.cameraSwitch !== false && (
+              <CardContent className="px-4 pb-3 pt-3 space-y-2">
+                {cameraDevices.length === 0 ? (
+                  <div className="text-center py-2">
+                    <p className="text-[11px] text-muted-foreground mb-2">Detect available cameras to switch between them live.</p>
+                    <Button size="sm" variant="outline" className="gap-2 text-xs" onClick={detectCameras} disabled={detectingCams}>
+                      {detectingCams ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+                      Detect Cameras
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {cameraDevices.map(dev => (
+                      <button
+                        key={dev.deviceId}
+                        onClick={() => switchCamera(dev.deviceId)}
+                        className={`w-full flex items-center gap-2.5 p-2 rounded-lg border text-left text-xs transition-all ${
+                          currentCamId === dev.deviceId
+                            ? "bg-primary/15 border-primary text-primary font-medium"
+                            : "border-border hover:bg-muted/40"
+                        }`}
+                      >
+                        <Camera className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate flex-1">{dev.label}</span>
+                        {currentCamId === dev.deviceId && (
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-green-400 shrink-0">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> Active
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                    <Button size="sm" variant="ghost" className="w-full text-xs text-muted-foreground gap-1.5 mt-1"
+                      onClick={detectCameras} disabled={detectingCams}>
+                      {detectingCams ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                      Re-scan cameras
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            )}
           </Card>
 
-          {/* Visualization Overlays */}
+          {/* ── Graphic Presets (editable) ── */}
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2"><Star className="w-4 h-4" /> Live Visualizations</CardTitle>
+            <CardHeader className="pb-0 pt-3 px-4">
+              <button
+                className="flex items-center justify-between w-full text-left"
+                onClick={() => toggleSection("presets")}
+              >
+                <div>
+                  <CardTitle className="text-sm flex items-center gap-2"><Sparkles className="w-4 h-4" /> Graphic Presets</CardTitle>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${openSections.presets !== false ? "rotate-180" : ""}`} />
+              </button>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {([
-                { label: "Scripture Banner",   desc: "Show verse as full-screen overlay",   action: () => updateScreen({ data: { ...safeBase(), textOverlayEnabled: true, textOverlayContent: "John 3:16 — For God so loved the world…", textOverlayPosition: "center", textOverlayFontSize: 32, textOverlayBg: "rgba(0,0,0,0.75)", textOverlayAnimation: "fade_in" } }) },
-                { label: "Announcement Slide", desc: "Full-screen announcement text",        action: () => updateScreen({ data: { ...safeBase(), textOverlayEnabled: true, textOverlayContent: "Join us next Sunday at 10:00 AM", textOverlayPosition: "center", textOverlayFontSize: 36, textOverlayBg: "rgba(0,0,0,0.75)", textOverlayAnimation: "slide_up" } }) },
-                { label: "Offering Prompt",    desc: "On-screen giving prompt",              action: () => updateScreen({ data: { ...safeBase(), lowerThirdEnabled: true, lowerThirdName: "Support Our Ministry", lowerThirdTitle: "Scan QR code or visit our website to give", lowerThirdPosition: "bottom-center", lowerThirdStyle: "gradient", lowerThirdAutoDismissSec: 10 } }) },
-                { label: "Prayer Request",     desc: "Invite viewers to send requests",      action: () => updateScreen({ data: { ...safeBase(), lowerThirdEnabled: true, lowerThirdName: "Send Your Prayer Request", lowerThirdTitle: "DM us or comment below", lowerThirdPosition: "bottom-left", lowerThirdStyle: "modern", lowerThirdAutoDismissSec: 8 } }) },
-              ]).map(item => (
-                <button key={item.label} onClick={item.action}
-                  className="w-full flex items-center gap-3 p-2.5 rounded-lg border border-border hover:bg-muted/40 hover:border-primary/50 text-left transition-all group">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium">{item.label}</p>
-                    <p className="text-[11px] text-muted-foreground">{item.desc}</p>
+            {openSections.presets !== false && (
+              <CardContent className="px-4 pb-3 pt-3">
+                {/* Edit mode for a preset */}
+                {editingPresetId && editPresetDraft && (
+                  <div className="mb-3 p-3 rounded-lg border border-primary/40 bg-primary/5 space-y-2">
+                    <p className="text-xs font-semibold text-primary">Editing: {editPresetDraft.label}</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Input value={editPresetDraft.emoji} onChange={e => setEditPresetDraft(d => d && ({ ...d, emoji: e.target.value }))} placeholder="Emoji" className="h-7 text-xs text-center" />
+                      <Input value={editPresetDraft.label} onChange={e => setEditPresetDraft(d => d && ({ ...d, label: e.target.value }))} placeholder="Label" className="h-7 text-xs col-span-2" />
+                    </div>
+                    <Input value={editPresetDraft.lowerThirdName} onChange={e => setEditPresetDraft(d => d && ({ ...d, lowerThirdName: e.target.value }))} placeholder="Lower Third Name" className="h-7 text-xs" />
+                    <Input value={editPresetDraft.lowerThirdTitle} onChange={e => setEditPresetDraft(d => d && ({ ...d, lowerThirdTitle: e.target.value }))} placeholder="Lower Third Subtitle" className="h-7 text-xs" />
+                    <div className="flex gap-1.5">
+                      <Button size="sm" className="flex-1 gap-1 h-7 text-xs" onClick={() => {
+                        setCustomPresets(prev => prev.map(p => p.id === editingPresetId ? editPresetDraft! : p));
+                        setEditingPresetId(null); setEditPresetDraft(null);
+                      }}><Save className="w-3 h-3" /> Save</Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setEditingPresetId(null); setEditPresetDraft(null); }}><X className="w-3 h-3" /></Button>
+                    </div>
                   </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground shrink-0" />
-                </button>
-              ))}
-            </CardContent>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  {customPresets.map(g => (
+                    <div key={g.id} className="group relative">
+                      <button
+                        onClick={() => fireGraphic(g)}
+                        className="w-full flex items-center gap-2 p-2.5 rounded-lg border border-border hover:bg-muted/40 hover:border-primary/50 transition-all text-left"
+                      >
+                        <span className="text-xl leading-none shrink-0">{g.emoji}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium truncate">{g.label}</p>
+                          {g.lowerThirdTitle && (
+                            <p className="text-[10px] text-muted-foreground truncate">{g.lowerThirdTitle}</p>
+                          )}
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => { setEditingPresetId(g.id); setEditPresetDraft({ ...g }); }}
+                        className="absolute top-1.5 right-1.5 w-5 h-5 rounded flex items-center justify-center bg-background/80 border border-border opacity-0 group-hover:opacity-100 transition-opacity hover:border-primary/50 text-muted-foreground hover:text-foreground"
+                        title="Edit preset"
+                      >
+                        <Pencil className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <Button size="sm" variant="ghost" className="flex-1 text-xs text-muted-foreground gap-1.5"
+                    onClick={() => updateScreen({ data: { ...safeBase(), lowerThirdEnabled: false } })}>
+                    Clear All Graphics
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-xs text-muted-foreground gap-1.5"
+                    onClick={() => setCustomPresets(DEFAULT_GRAPHIC_PRESETS)} title="Reset to defaults">
+                    <RotateCcw className="w-3 h-3" />
+                  </Button>
+                </div>
+              </CardContent>
+            )}
+          </Card>
+
+          {/* ── Live Visualizations (editable) ── */}
+          <Card>
+            <CardHeader className="pb-0 pt-3 px-4">
+              <button
+                className="flex items-center justify-between w-full text-left"
+                onClick={() => toggleSection("visualizations")}
+              >
+                <CardTitle className="text-sm flex items-center gap-2"><Star className="w-4 h-4" /> Live Visualizations</CardTitle>
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${openSections.visualizations !== false ? "rotate-180" : ""}`} />
+              </button>
+            </CardHeader>
+            {openSections.visualizations !== false && (
+              <CardContent className="px-4 pb-3 pt-3 space-y-2">
+                {/* Edit mode for a vis item */}
+                {editingVisId && editVisDraft && (
+                  <div className="mb-2 p-3 rounded-lg border border-primary/40 bg-primary/5 space-y-2">
+                    <p className="text-xs font-semibold text-primary">Editing: {editVisDraft.label}</p>
+                    {editVisDraft.isLowerThird ? (
+                      <>
+                        <Input value={editVisDraft.ltName} onChange={e => setEditVisDraft(d => d && ({ ...d, ltName: e.target.value }))} placeholder="Lower Third Name" className="h-7 text-xs" />
+                        <Input value={editVisDraft.ltTitle} onChange={e => setEditVisDraft(d => d && ({ ...d, ltTitle: e.target.value }))} placeholder="Lower Third Subtitle" className="h-7 text-xs" />
+                      </>
+                    ) : (
+                      <textarea
+                        value={editVisDraft.content}
+                        onChange={e => setEditVisDraft(d => d && ({ ...d, content: e.target.value }))}
+                        placeholder="Overlay text content"
+                        className="w-full h-16 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    )}
+                    <div className="flex gap-1.5">
+                      <Button size="sm" className="flex-1 gap-1 h-7 text-xs" onClick={() => {
+                        setVisItems(prev => prev.map(v => v.id === editingVisId ? editVisDraft! : v));
+                        setEditingVisId(null); setEditVisDraft(null);
+                      }}><Save className="w-3 h-3" /> Save</Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setEditingVisId(null); setEditVisDraft(null); }}><X className="w-3 h-3" /></Button>
+                    </div>
+                  </div>
+                )}
+                {visItems.map(item => (
+                  <div key={item.id} className="group relative">
+                    <button
+                      onClick={() => {
+                        if (item.isLowerThird) {
+                          updateScreen({ data: { ...safeBase(), lowerThirdEnabled: true, lowerThirdName: item.ltName, lowerThirdTitle: item.ltTitle, lowerThirdPosition: item.ltPosition as "bottom-left" | "bottom-center" | "bottom-right", lowerThirdStyle: item.ltStyle as "modern" | "gradient" | "minimal" | "classic", lowerThirdAutoDismissSec: 8 } });
+                        } else {
+                          updateScreen({ data: { ...safeBase(), textOverlayEnabled: true, textOverlayContent: item.content, textOverlayPosition: item.position as "top-left" | "top-center" | "top-right" | "center" | "bottom-left" | "bottom-center" | "bottom-right", textOverlayFontSize: item.fontSize, textOverlayBg: item.bg, textOverlayAnimation: item.animation as "none" | "fade_in" | "slide_up" | "glow" | "pulse" } });
+                        }
+                      }}
+                      className="w-full flex items-center gap-3 p-2.5 rounded-lg border border-border hover:bg-muted/40 hover:border-primary/50 text-left transition-all"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium">{item.label}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          {item.isLowerThird ? item.ltName : item.content}
+                        </p>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    </button>
+                    <button
+                      onClick={() => { setEditingVisId(item.id); setEditVisDraft({ ...item }); }}
+                      className="absolute top-1.5 right-6 w-5 h-5 rounded flex items-center justify-center bg-background/80 border border-border opacity-0 group-hover:opacity-100 transition-opacity hover:border-primary/50 text-muted-foreground hover:text-foreground"
+                      title="Edit visualization"
+                    >
+                      <Pencil className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
+                ))}
+                <Button size="sm" variant="ghost" className="w-full text-xs text-muted-foreground gap-1.5"
+                  onClick={() => setVisItems(DEFAULT_VIS_ITEMS)} title="Reset visualizations">
+                  <RotateCcw className="w-3 h-3" /> Reset to defaults
+                </Button>
+              </CardContent>
+            )}
           </Card>
 
           {/* Audience Engagement */}
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2"><Users className="w-4 h-4" /> Audience Tools</CardTitle>
+            <CardHeader className="pb-0 pt-3 px-4">
+              <button
+                className="flex items-center justify-between w-full text-left"
+                onClick={() => toggleSection("audience")}
+              >
+                <CardTitle className="text-sm flex items-center gap-2"><Users className="w-4 h-4" /> Audience Tools</CardTitle>
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${openSections.audience ? "rotate-180" : ""}`} />
+              </button>
             </CardHeader>
-            <CardContent className="space-y-2 text-xs text-muted-foreground">
-              <div className="bg-muted/30 rounded p-2.5 space-y-1.5">
-                <p className="font-medium text-foreground">YouTube Live Chat</p>
-                <p>Access chat from YouTube Studio or the YouTube mobile app while streaming.</p>
-              </div>
-              <div className="bg-muted/30 rounded p-2.5 space-y-1.5">
-                <p className="font-medium text-foreground">Facebook Live Reactions</p>
-                <p>Monitor comments and reactions in Facebook Live Producer dashboard.</p>
-              </div>
-              <div className="bg-muted/30 rounded p-2.5 space-y-1.5">
-                <p className="font-medium text-foreground">Member Camera Feeds</p>
-                <p>Use Zoom or Google Meet, then capture the window as a camera source in OBS.</p>
-              </div>
-            </CardContent>
+            {openSections.audience && (
+              <CardContent className="px-4 pb-3 pt-3 space-y-2 text-xs text-muted-foreground">
+                <div className="bg-muted/30 rounded p-2.5 space-y-1.5">
+                  <p className="font-medium text-foreground">YouTube Live Chat</p>
+                  <p>Access chat from YouTube Studio or the YouTube mobile app while streaming.</p>
+                </div>
+                <div className="bg-muted/30 rounded p-2.5 space-y-1.5">
+                  <p className="font-medium text-foreground">Facebook Live Reactions</p>
+                  <p>Monitor comments and reactions in Facebook Live Producer dashboard.</p>
+                </div>
+                <div className="bg-muted/30 rounded p-2.5 space-y-1.5">
+                  <p className="font-medium text-foreground">Member Camera Feeds</p>
+                  <p>Use Zoom or Google Meet, then capture the window as a camera source in OBS.</p>
+                </div>
+              </CardContent>
+            )}
           </Card>
         </div>
       </div>
