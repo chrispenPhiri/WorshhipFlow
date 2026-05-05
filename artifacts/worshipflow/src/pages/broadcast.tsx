@@ -1407,12 +1407,21 @@ export default function BroadcastPage() {
           !!screenState?.comparisonMode &&
           !!screenState.secondaryContent;
 
+        // When the operator has engaged scroll mode (manual offset > 0 or
+        // auto-scroll running), anchor the text to the top of the available
+        // area instead of centering it.  Centering long text that overflows
+        // splits the hidden portion equally above & below — so scrollOffset=0
+        // would actually show the MIDDLE of the passage and pressing arrow-down
+        // a couple of times would push the text off-screen entirely.  Top-
+        // anchoring makes scrollOffset=0 mean "start of text" so a long
+        // chapter scrolls naturally from beginning to end.
+        const inScrollMode = scrollOffset > 0 || !!autoScrollTimerRef.current;
         const containerStyle: React.CSSProperties = {
           top: 0,
           bottom: 0,
           left: showCameraOverlay && camLayout === "side-left" ? "50%" : 0,
           right: showCameraOverlay && camLayout === "side-right" ? "50%" : 0,
-          alignItems: flexJustify,
+          alignItems: inScrollMode ? "flex-start" : flexJustify,
           justifyContent: flexAlign,
           paddingTop: `${paddingY}%`,
           paddingBottom: `${paddingY + (tickerH > 0 ? 4 : 0)}%`,
