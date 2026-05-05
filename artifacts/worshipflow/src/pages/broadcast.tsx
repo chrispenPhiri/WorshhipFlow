@@ -521,8 +521,9 @@ function CameraOverlay({ stream, layout, shape, pipSize, brightness = 100, contr
 }
 
 // ── Quad camera: 2×2 grid ─────────────────────────────────────────────────────
-function QuadCameraLayer({ deviceIds, brightness = 100, contrast = 100, saturate = 100, mirror = false, borderWidth = 0, borderColor = "#ffffff" }: {
+function QuadCameraLayer({ deviceIds, maxSlots = 4, brightness = 100, contrast = 100, saturate = 100, mirror = false, borderWidth = 0, borderColor = "#ffffff" }: {
   deviceIds: string[];
+  maxSlots?: number;
   brightness?: number; contrast?: number; saturate?: number; mirror?: boolean;
   borderWidth?: number; borderColor?: string;
 }) {
@@ -531,9 +532,9 @@ function QuadCameraLayer({ deviceIds, brightness = 100, contrast = 100, saturate
 
   useEffect(() => {
     const active: MediaStream[] = [];
-    const ids = deviceIds.slice(0, 4);
+    const ids = deviceIds.slice(0, maxSlots);
     ids.forEach((deviceId, i) => {
-      if (!deviceId) return;
+      if (!deviceId || deviceId === "__screen__") return;
       const constraints: MediaStreamConstraints = { video: { deviceId: { exact: deviceId } }, audio: false };
       navigator.mediaDevices.getUserMedia(constraints)
         .then(stream => {
@@ -546,7 +547,7 @@ function QuadCameraLayer({ deviceIds, brightness = 100, contrast = 100, saturate
     });
     return () => { active.forEach(s => s.getTracks().forEach(t => t.stop())); setStreams([null, null, null, null]); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deviceIds.join(",")]);
+  }, [deviceIds.join(","), maxSlots]);
 
   useEffect(() => {
     streams.forEach((stream, i) => {
@@ -558,27 +559,48 @@ function QuadCameraLayer({ deviceIds, brightness = 100, contrast = 100, saturate
     });
   }, [streams]);
 
+  const captureScreen = async (i: number) => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      setStreams(prev => { const n = [...prev]; n[i] = stream; return n; });
+      const el = videoRefs.current[i];
+      if (el) { el.srcObject = stream; el.play().catch(() => {}); }
+      stream.getVideoTracks()[0]?.addEventListener("ended", () => {
+        setStreams(prev => { const n = [...prev]; n[i] = null; return n; });
+      });
+    } catch { /* cancelled */ }
+  };
+
   const filterStyle = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturate}%)`;
   const transformStyle = mirror ? "scaleX(-1)" : undefined;
   const cellBorder = borderWidth > 0 ? `${borderWidth}px solid ${borderColor}` : undefined;
+  const gridRows = maxSlots === 2 ? "1fr" : "1fr 1fr";
 
-  const slots = [0, 1, 2, 3];
   return (
-    <div style={{ position: "absolute", inset: 0, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: borderWidth > 0 ? 2 : 0, background: "#000", zIndex: 5 }}>
-      {slots.map(i => (
-        <div key={i} style={{ position: "relative", overflow: "hidden", border: cellBorder, boxSizing: "border-box" }}>
-          {streams[i]
-            ? <video ref={el => { videoRefs.current[i] = el; }} autoPlay muted playsInline
-                style={{ width: "100%", height: "100%", objectFit: "cover", filter: filterStyle, transform: transformStyle }} />
-            : <div style={{ width: "100%", height: "100%", background: "#111", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ color: "#555", fontSize: 12 }}>Cam {i + 1}</span>
-              </div>
-          }
-          <div style={{ position: "absolute", top: 6, left: 8, background: "rgba(0,0,0,0.55)", color: "#fff", fontSize: 10, padding: "1px 5px", borderRadius: 3 }}>
-            {i + 1}
+    <div style={{ position: "absolute", inset: 0, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: gridRows, gap: borderWidth > 0 ? 2 : 0, background: "#000", zIndex: 5 }}>
+      {Array.from({ length: maxSlots }).map((_, i) => {
+        const isScreenSlot = deviceIds[i] === "__screen__";
+        return (
+          <div key={i} style={{ position: "relative", overflow: "hidden", border: cellBorder, boxSizing: "border-box" }}>
+            {streams[i]
+              ? <video ref={el => { videoRefs.current[i] = el; }} autoPlay muted playsInline
+                  style={{ width: "100%", height: "100%", objectFit: "cover", filter: filterStyle, transform: transformStyle }} />
+              : isScreenSlot
+              ? <div style={{ width: "100%", height: "100%", background: "#0a0a1a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", gap: 8 }}
+                  onClick={() => captureScreen(i)}>
+                  <span style={{ fontSize: 28 }}>🖥️</span>
+                  <span style={{ color: "#aaa", fontSize: 11, textAlign: "center" }}>Click to capture screen</span>
+                </div>
+              : <div style={{ width: "100%", height: "100%", background: "#111", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ color: "#555", fontSize: 12 }}>Slot {i + 1}</span>
+                </div>
+            }
+            <div style={{ position: "absolute", top: 6, left: 8, background: "rgba(0,0,0,0.55)", color: "#fff", fontSize: 10, padding: "1px 5px", borderRadius: 3 }}>
+              {i + 1}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -1027,8 +1049,8 @@ export default function BroadcastPage() {
 
   // ── Camera layout ────────────────────────────────────────────────────────
   const camLayout = bg?.cameraLayout ?? "fullscreen";
-  const showCameraOverlay = bg?.type === "camera" && camLayout !== "fullscreen" && camLayout !== "quad" && cameraStream;
-  const showQuadCamera = bg?.type === "camera" && camLayout === "quad";
+  const showCameraOverlay = bg?.type === "camera" && camLayout !== "fullscreen" && camLayout !== "quad" && camLayout !== "dual" && cameraStream;
+  const showQuadCamera = bg?.type === "camera" && (camLayout === "quad" || camLayout === "dual");
 
   // Horizontal centering for top/bottom labels — centers within the content half
   // (not the viewport) when a side-by-side camera layout is active.
@@ -1060,6 +1082,7 @@ export default function BroadcastPage() {
       {showQuadCamera && (
         <QuadCameraLayer
           deviceIds={bg?.cameraDeviceIds ?? []}
+          maxSlots={camLayout === "dual" ? 2 : 4}
           brightness={bg?.cameraBrightness}
           contrast={bg?.cameraContrast}
           saturate={bg?.cameraSaturate}

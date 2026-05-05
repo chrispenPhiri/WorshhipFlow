@@ -229,6 +229,7 @@ export const BackgroundCameraLayout = {
   "side-left": "side-left",
   "side-right": "side-right",
   quad: "quad",
+  dual: "dual",
 } as const;
 
 export type BackgroundCameraShape =

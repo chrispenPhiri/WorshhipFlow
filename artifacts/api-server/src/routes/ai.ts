@@ -182,4 +182,118 @@ router.post("/verse-art", async (req, res) => {
   }
 });
 
+/* ── Sermon Outline Generator ────────────────────────────────── */
+router.post("/sermon-outline", async (req, res) => {
+  const { topic, verse, style } = req.body as { topic: string; verse?: string; style?: string };
+  if (!topic?.trim()) { res.status(400).json({ error: "topic is required" }); return; }
+  const verseCtx = verse?.trim() ? ` anchored on the passage: "${verse}"` : "";
+  const styleCtx = style?.trim() ? ` Preaching style: ${style}.` : "";
+  await streamCompletion(res,
+    `You are an experienced pastor and theologian helping prepare church sermons. Generate a clear, structured, Scripture-rich sermon outline suitable for a Sunday service.${styleCtx}
+Format the outline with:
+- A compelling title
+- Key Scripture reference(s)
+- Introduction (hook + context)
+- 3-5 main points, each with sub-points and Bible references
+- Practical application for each point
+- Conclusion with a call to action or altar call
+- Suggested closing prayer topic
+Keep it pastoral, warm, and grounded in Scripture.`,
+    `Create a full sermon outline on the topic: "${topic}"${verseCtx}`
+  );
+});
+
+/* ── Prayer Generator ────────────────────────────────────────── */
+router.post("/prayer", async (req, res) => {
+  const { type, topic, occasion } = req.body as { type?: string; topic: string; occasion?: string };
+  if (!topic?.trim()) { res.status(400).json({ error: "topic is required" }); return; }
+  const occasionCtx = occasion?.trim() ? ` for ${occasion}` : "";
+  const prayerType = type?.trim() || "worship";
+  await streamCompletion(res,
+    `You are a worship leader and intercessor helping write heartfelt, Scripture-inspired prayers for church services. Write prayers that are reverent, sincere, and suitable for congregational use.
+Guidelines:
+- Open with praise and acknowledgement of God
+- Be specific about the topic or need
+- Include Scripture references naturally woven in
+- Close with thanksgiving and surrender
+- Appropriate length for corporate worship (not too long)`,
+    `Write a ${prayerType} prayer${occasionCtx} about: "${topic}"`
+  );
+});
+
+/* ── Worship Set Planner ─────────────────────────────────────── */
+router.post("/worship-set", async (req, res) => {
+  const { theme, occasion, numSongs } = req.body as { theme: string; occasion?: string; numSongs?: number };
+  if (!theme?.trim()) { res.status(400).json({ error: "theme is required" }); return; }
+  const n = numSongs ?? 5;
+  const occasionCtx = occasion?.trim() ? ` for ${occasion}` : "";
+  await streamCompletion(res,
+    `You are an experienced worship director helping plan Sunday service worship sets. Suggest well-known contemporary and classic worship songs that flow together thematically.
+For each song provide:
+- Song title & artist/songwriter
+- Key & tempo (slow/medium/upbeat)
+- Why it fits the theme
+- Flow note (opener, build, peak, response, closing)
+Also suggest:
+- Scripture reading that fits between songs
+- A brief transition thought for the worship leader
+- Overall arc of the set (from gathering to encounter to response)`,
+    `Plan a worship set of ${n} songs${occasionCtx} with the theme: "${theme}"`
+  );
+});
+
+/* ── Church Announcement Writer ──────────────────────────────── */
+router.post("/announcement", async (req, res) => {
+  const { topic, details, tone } = req.body as { topic: string; details?: string; tone?: string };
+  if (!topic?.trim()) { res.status(400).json({ error: "topic is required" }); return; }
+  const detailsCtx = details?.trim() ? `\n\nDetails provided: ${details}` : "";
+  const toneCtx = tone?.trim() || "warm and inviting";
+  await streamCompletion(res,
+    `You are a church communications assistant writing engaging church announcements for Sunday services, bulletins, and presentations.
+Style: ${toneCtx}. Write clearly and concisely, using friendly church-appropriate language.
+Format: Start with a catchy 1-line headline, then 2-3 sentences of detail, then a clear call-to-action.`,
+    `Write a church announcement about: "${topic}"${detailsCtx}`
+  );
+});
+
+/* ── AI Song Generator ────────────────────────────────────────── */
+router.post("/generate-song", async (req, res) => {
+  const { title, theme, style, numVerses } = req.body as { title?: string; theme: string; style?: string; numVerses?: number };
+  if (!theme?.trim()) { res.status(400).json({ error: "theme is required" }); return; }
+  const n = numVerses ?? 2;
+  const titleCtx = title?.trim() ? `Song title: "${title}". ` : "";
+  const styleCtx = style?.trim() ? ` Musical style: ${style}.` : " Musical style: contemporary gospel worship.";
+  await streamCompletion(res,
+    `You are a gifted gospel worship songwriter. Write complete, singable worship songs with strong theology and emotional depth.
+${styleCtx}
+Format the song EXACTLY like this (with brackets for labels):
+[Verse 1]
+(verse lyrics here)
+
+[Pre-Chorus]
+(optional pre-chorus)
+
+[Chorus]
+(chorus lyrics — the main hook, repeated)
+
+[Verse 2]
+(second verse)
+
+[Bridge]
+(bridge lyrics — climactic moment)
+
+[Outro]
+(optional closing lines)
+
+Guidelines:
+- Each section should be 4-8 lines
+- Rhyme scheme should feel natural, not forced
+- Include Scripture themes naturally — no need to cite references directly
+- Chorus should be memorable and congregationally singable
+- Avoid clichés; aim for fresh, heartfelt expression
+- Keep the overall message clear and focused on the theme`,
+    `${titleCtx}Write a complete worship song about: "${theme}"`
+  );
+});
+
 export default router;

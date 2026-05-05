@@ -106,7 +106,7 @@ export default function MediaPage() {
   const [draggingOver, setDraggingOver] = useState(false);
 
   // Camera layout settings
-  const [camLayout, setCamLayout] = useState<"fullscreen" | "pip-topright" | "pip-topleft" | "pip-bottomright" | "pip-bottomleft" | "side-left" | "side-right" | "quad">("fullscreen");
+  const [camLayout, setCamLayout] = useState<"fullscreen" | "pip-topright" | "pip-topleft" | "pip-bottomright" | "pip-bottomleft" | "side-left" | "side-right" | "dual" | "quad">("fullscreen");
   const [camShape, setCamShape] = useState<"rect" | "circle" | "rounded">("rect");
   const [camPipSize, setCamPipSize] = useState(30);
   // Side-by-side: CSS background applied to the OTHER (text) half so it isn't pure black.
@@ -647,8 +647,8 @@ export default function MediaPage() {
           cameraMirror: camMirror,
           cameraBorderWidth: camBorderWidth,
           cameraBorderColor: camBorderColor,
-          cameraDeviceId: camLayout !== "quad" ? selectedCameraId : undefined,
-          cameraDeviceIds: camLayout === "quad" ? quadSlots.filter(Boolean) : undefined,
+          cameraDeviceId: (camLayout !== "quad" && camLayout !== "dual") ? selectedCameraId : undefined,
+          cameraDeviceIds: (camLayout === "quad" || camLayout === "dual") ? quadSlots.slice(0, camLayout === "dual" ? 2 : 4).filter(Boolean) : undefined,
         },
       }
     });
@@ -1105,6 +1105,7 @@ export default function MediaPage() {
                       <div className="grid grid-cols-2 gap-1.5">
                         {([
                           { value: "fullscreen",       label: "Fullscreen" },
+                          { value: "dual",             label: "⊟ 2-Cam Side" },
                           { value: "quad",             label: "⊞ 4-Cam Quad" },
                           { value: "pip-topright",     label: "PiP Top-Right" },
                           { value: "pip-topleft",      label: "PiP Top-Left" },
@@ -1120,13 +1121,15 @@ export default function MediaPage() {
                         ))}
                       </div>
 
-                      {/* Quad camera slot pickers */}
-                      {camLayout === "quad" && (
+                      {/* Multi-cam slot pickers (dual or quad) */}
+                      {(camLayout === "quad" || camLayout === "dual") && (
                         <div className="pt-2 border-t border-border/50 space-y-2">
-                          <label className="text-sm font-medium">Camera Slots (2×2 Grid)</label>
-                          {([0, 1, 2, 3] as const).map(i => (
+                          <label className="text-sm font-medium">
+                            {camLayout === "dual" ? "Camera Slots (1×2)" : "Camera Slots (2×2 Grid)"}
+                          </label>
+                          {(camLayout === "dual" ? [0, 1] : [0, 1, 2, 3]).map(i => (
                             <div key={i} className="flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground w-12 shrink-0">Cam {i + 1}</span>
+                              <span className="text-xs text-muted-foreground w-12 shrink-0">Slot {i + 1}</span>
                               <select
                                 value={quadSlots[i]}
                                 onChange={e => {
@@ -1137,6 +1140,7 @@ export default function MediaPage() {
                                 className="flex-1 h-8 rounded border border-input bg-background text-xs px-2 text-foreground"
                               >
                                 <option value="">— None —</option>
+                                <option value="__screen__">🖥 Screen Capture</option>
                                 {cameras.map((d: MediaDeviceInfo) => (
                                   <option key={d.deviceId} value={d.deviceId}>{d.label || `Camera ${d.deviceId.slice(0, 6)}`}</option>
                                 ))}

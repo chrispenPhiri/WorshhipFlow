@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   Sparkles, Send, Loader2, BookOpen, AlignLeft, Lightbulb, RotateCcw,
   ChevronDown, ChevronUp, X, User, Bot, Monitor, FileDown,
+  FileText, HandHeart, ListMusic, Megaphone,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -427,6 +428,256 @@ function ContextLens({ onSendToScreen }: { onSendToScreen?: (content: string, ti
   );
 }
 
+function SermonOutline({ onSendToScreen }: { onSendToScreen?: (content: string, title: string) => void }) {
+  const [topic, setTopic]   = useState("");
+  const [verse, setVerse]   = useState("");
+  const [style, setStyle]   = useState("");
+  const [result, setResult] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError]   = useState<string | null>(null);
+
+  const QUICK = [
+    { topic: "Faith over Fear",       verse: "Isaiah 41:10" },
+    { topic: "Grace & Forgiveness",   verse: "Ephesians 2:8-9" },
+    { topic: "The Holy Spirit",        verse: "Acts 2:1-4" },
+    { topic: "Power of Prayer",       verse: "Matthew 6:5-15" },
+    { topic: "Hope in Suffering",     verse: "Romans 5:3-5" },
+    { topic: "Love Your Neighbour",   verse: "Luke 10:25-37" },
+  ];
+
+  async function generate(t = topic) {
+    if (!t.trim()) return;
+    setLoading(true); setResult(""); setError(null);
+    try {
+      await streamPost("/sermon-outline", { topic: t, verse: verse || undefined, style: style || undefined }, chunk => setResult(p => p + chunk));
+    } catch (e) { setError(e instanceof Error ? e.message : "Error"); } finally { setLoading(false); }
+  }
+
+  const outlineTitle = topic ? `Sermon Outline: ${topic}` : "Sermon Outline";
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">Generate a structured, Scripture-rich sermon outline for any topic or passage.</p>
+      <div className="grid grid-cols-2 gap-2">
+        <Input value={topic} onChange={e => setTopic(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") generate(); }}
+          placeholder="Topic (e.g. Faith over Fear)" className="col-span-2" disabled={loading} />
+        <Input value={verse} onChange={e => setVerse(e.target.value)} placeholder="Key verse (optional)" disabled={loading} />
+        <Input value={style} onChange={e => setStyle(e.target.value)} placeholder="Style (e.g. expository)" disabled={loading} />
+      </div>
+      <Button onClick={() => generate()} disabled={!topic.trim() || loading} className="gap-2">
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+        Generate Outline
+      </Button>
+      <div className="flex flex-wrap gap-1.5">
+        {QUICK.map(q => (
+          <button key={q.topic} type="button" onClick={() => { setTopic(q.topic); setVerse(q.verse); setTimeout(() => generate(q.topic), 0); }}
+            className="text-xs px-2.5 py-1 rounded-full border border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors">
+            {q.topic}
+          </button>
+        ))}
+      </div>
+      {error && <p className="text-destructive text-sm">{error}</p>}
+      {result && (
+        <div className="space-y-2 p-4 rounded-xl border border-border bg-muted/20">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{outlineTitle}</p>
+            <div className="flex items-center gap-1.5">
+              {onSendToScreen && <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={() => onSendToScreen(result, outlineTitle)}><Monitor className="w-3 h-3" /> Send to screen</Button>}
+              <Button size="sm" variant="ghost" className="gap-1.5 h-7 text-xs" onClick={() => exportToPDF(outlineTitle, result)}><FileDown className="w-3 h-3" /> PDF</Button>
+              <button type="button" onClick={() => setResult("")} className="text-muted-foreground hover:text-foreground ml-1"><X className="w-3.5 h-3.5" /></button>
+            </div>
+          </div>
+          <p className="text-sm leading-relaxed whitespace-pre-wrap">{result}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PrayerGenerator({ onSendToScreen }: { onSendToScreen?: (content: string, title: string) => void }) {
+  const [topic, setTopic]     = useState("");
+  const [type, setType]       = useState("opening");
+  const [occasion, setOccasion] = useState("");
+  const [result, setResult]   = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+
+  const TYPES = [
+    { value: "opening", label: "Opening" }, { value: "closing", label: "Closing" },
+    { value: "intercessory", label: "Intercessory" }, { value: "thanksgiving", label: "Thanksgiving" },
+    { value: "consecration", label: "Consecration" }, { value: "communion", label: "Communion" },
+  ];
+
+  async function generate() {
+    if (!topic.trim()) return;
+    setLoading(true); setResult(""); setError(null);
+    try {
+      await streamPost("/prayer", { type, topic, occasion: occasion || undefined }, chunk => setResult(p => p + chunk));
+    } catch (e) { setError(e instanceof Error ? e.message : "Error"); } finally { setLoading(false); }
+  }
+
+  const prayerTitle = `${type.charAt(0).toUpperCase() + type.slice(1)} Prayer: ${topic}`;
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">Generate heartfelt, Scripture-inspired prayers for any church occasion.</p>
+      <div className="grid grid-cols-3 gap-1.5">
+        {TYPES.map(t => (
+          <button key={t.value} type="button" onClick={() => setType(t.value)}
+            className={`py-1.5 rounded text-xs border transition-colors ${type === t.value ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <Input value={topic} onChange={e => setTopic(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") generate(); }}
+          placeholder="Prayer focus (e.g. healing, our nation, Sunday service)" className="flex-1" disabled={loading} />
+        <Input value={occasion} onChange={e => setOccasion(e.target.value)} placeholder="Occasion (optional)" className="w-40" disabled={loading} />
+      </div>
+      <Button onClick={() => generate()} disabled={!topic.trim() || loading} className="gap-2">
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <HandHeart className="w-4 h-4" />}
+        Write Prayer
+      </Button>
+      {error && <p className="text-destructive text-sm">{error}</p>}
+      {result && (
+        <div className="space-y-2 p-4 rounded-xl border border-border bg-muted/20">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{prayerTitle}</p>
+            <div className="flex items-center gap-1.5">
+              {onSendToScreen && <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={() => onSendToScreen(result, prayerTitle)}><Monitor className="w-3 h-3" /> Send to screen</Button>}
+              <Button size="sm" variant="ghost" className="gap-1.5 h-7 text-xs" onClick={() => exportToPDF(prayerTitle, result)}><FileDown className="w-3 h-3" /> PDF</Button>
+              <button type="button" onClick={() => setResult("")} className="text-muted-foreground hover:text-foreground ml-1"><X className="w-3.5 h-3.5" /></button>
+            </div>
+          </div>
+          <p className="text-sm leading-relaxed whitespace-pre-wrap">{result}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WorshipSetPlanner({ onSendToScreen }: { onSendToScreen?: (content: string, title: string) => void }) {
+  const [theme, setTheme]     = useState("");
+  const [occasion, setOccasion] = useState("");
+  const [numSongs, setNumSongs] = useState(5);
+  const [result, setResult]   = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+
+  const QUICK_THEMES = ["Grace & Mercy", "Victory & Praise", "Holy Spirit", "Christmas", "Easter / Resurrection", "Healing & Restoration", "Mission & Evangelism"];
+
+  async function generate(t = theme) {
+    if (!t.trim()) return;
+    setLoading(true); setResult(""); setError(null);
+    try {
+      await streamPost("/worship-set", { theme: t, occasion: occasion || undefined, numSongs }, chunk => setResult(p => p + chunk));
+    } catch (e) { setError(e instanceof Error ? e.message : "Error"); } finally { setLoading(false); }
+  }
+
+  const setTitle = theme ? `Worship Set: ${theme}` : "Worship Set Plan";
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">Plan a cohesive worship set with suggested songs, flow, and Scripture readings.</p>
+      <div className="grid grid-cols-3 gap-2">
+        <Input value={theme} onChange={e => setTheme(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") generate(); }}
+          placeholder="Theme (e.g. Grace & Mercy)" className="col-span-2" disabled={loading} />
+        <select value={numSongs} onChange={e => setNumSongs(Number(e.target.value))}
+          className="h-9 rounded border border-input bg-background text-sm px-2 text-foreground" disabled={loading}>
+          {[3,4,5,6,7,8].map(n => <option key={n} value={n}>{n} songs</option>)}
+        </select>
+      </div>
+      <Input value={occasion} onChange={e => setOccasion(e.target.value)} placeholder="Occasion (e.g. Christmas Service, Youth Night) — optional" disabled={loading} />
+      <Button onClick={() => generate()} disabled={!theme.trim() || loading} className="gap-2">
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ListMusic className="w-4 h-4" />}
+        Plan Worship Set
+      </Button>
+      <div className="flex flex-wrap gap-1.5">
+        {QUICK_THEMES.map(t => (
+          <button key={t} type="button" onClick={() => { setTheme(t); generate(t); }}
+            className="text-xs px-2.5 py-1 rounded-full border border-border text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors">
+            {t}
+          </button>
+        ))}
+      </div>
+      {error && <p className="text-destructive text-sm">{error}</p>}
+      {result && (
+        <div className="space-y-2 p-4 rounded-xl border border-border bg-muted/20">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{setTitle}</p>
+            <div className="flex items-center gap-1.5">
+              {onSendToScreen && <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={() => onSendToScreen(result, setTitle)}><Monitor className="w-3 h-3" /> Send to screen</Button>}
+              <Button size="sm" variant="ghost" className="gap-1.5 h-7 text-xs" onClick={() => exportToPDF(setTitle, result)}><FileDown className="w-3 h-3" /> PDF</Button>
+              <button type="button" onClick={() => setResult("")} className="text-muted-foreground hover:text-foreground ml-1"><X className="w-3.5 h-3.5" /></button>
+            </div>
+          </div>
+          <p className="text-sm leading-relaxed whitespace-pre-wrap">{result}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AnnouncementWriter({ onSendToScreen }: { onSendToScreen?: (content: string, title: string) => void }) {
+  const [topic, setTopic]     = useState("");
+  const [details, setDetails] = useState("");
+  const [tone, setTone]       = useState("warm and inviting");
+  const [result, setResult]   = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+
+  const TONES = [
+    { value: "warm and inviting", label: "Warm" }, { value: "formal and professional", label: "Formal" },
+    { value: "energetic and exciting", label: "Energetic" }, { value: "solemn and reverent", label: "Solemn" },
+  ];
+
+  async function generate() {
+    if (!topic.trim()) return;
+    setLoading(true); setResult(""); setError(null);
+    try {
+      await streamPost("/announcement", { topic, details: details || undefined, tone }, chunk => setResult(p => p + chunk));
+    } catch (e) { setError(e instanceof Error ? e.message : "Error"); } finally { setLoading(false); }
+  }
+
+  const annTitle = topic ? `Announcement: ${topic}` : "Church Announcement";
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">Write engaging church announcements for Sunday services, bulletins, and presentation slides.</p>
+      <div className="grid grid-cols-4 gap-1.5">
+        {TONES.map(t => (
+          <button key={t.value} type="button" onClick={() => setTone(t.value)}
+            className={`py-1.5 rounded text-xs border transition-colors ${tone === t.value ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <Input value={topic} onChange={e => setTopic(e.target.value)}
+        onKeyDown={e => { if (e.key === "Enter") generate(); }}
+        placeholder="Topic (e.g. Youth Camp, Baptism Sunday, Food Drive)" disabled={loading} />
+      <Textarea value={details} onChange={e => setDetails(e.target.value)}
+        placeholder="Extra details — date, time, location, contact info… (optional)" rows={2} className="text-sm" disabled={loading} />
+      <Button onClick={() => generate()} disabled={!topic.trim() || loading} className="gap-2">
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Megaphone className="w-4 h-4" />}
+        Write Announcement
+      </Button>
+      {error && <p className="text-destructive text-sm">{error}</p>}
+      {result && (
+        <div className="space-y-2 p-4 rounded-xl border border-border bg-muted/20">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{annTitle}</p>
+            <div className="flex items-center gap-1.5">
+              {onSendToScreen && <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={() => onSendToScreen(result, annTitle)}><Monitor className="w-3 h-3" /> Send to screen</Button>}
+              <Button size="sm" variant="ghost" className="gap-1.5 h-7 text-xs" onClick={() => exportToPDF(annTitle, result)}><FileDown className="w-3 h-3" /> PDF</Button>
+              <button type="button" onClick={() => setResult("")} className="text-muted-foreground hover:text-foreground ml-1"><X className="w-3.5 h-3.5" /></button>
+            </div>
+          </div>
+          <p className="text-sm leading-relaxed whitespace-pre-wrap">{result}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AIPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -480,15 +731,27 @@ export default function AIPage() {
       </div>
 
       <Tabs defaultValue="prophet">
-        <TabsList className="w-full h-auto gap-0.5">
-          <TabsTrigger value="prophet" className="flex-1 gap-1.5">
+        <TabsList className="w-full h-auto flex-wrap gap-0.5">
+          <TabsTrigger value="prophet" className="flex-1 gap-1.5 min-w-fit">
             <Bot className="w-4 h-4" /> Ask a Prophet
           </TabsTrigger>
-          <TabsTrigger value="summary" className="flex-1 gap-1.5">
+          <TabsTrigger value="summary" className="flex-1 gap-1.5 min-w-fit">
             <AlignLeft className="w-4 h-4" /> AI Summary
           </TabsTrigger>
-          <TabsTrigger value="lens" className="flex-1 gap-1.5">
+          <TabsTrigger value="lens" className="flex-1 gap-1.5 min-w-fit">
             <Lightbulb className="w-4 h-4" /> Context Lens
+          </TabsTrigger>
+          <TabsTrigger value="sermon" className="flex-1 gap-1.5 min-w-fit">
+            <FileText className="w-4 h-4" /> Sermon Outline
+          </TabsTrigger>
+          <TabsTrigger value="prayer" className="flex-1 gap-1.5 min-w-fit">
+            <HandHeart className="w-4 h-4" /> Prayer
+          </TabsTrigger>
+          <TabsTrigger value="worship-set" className="flex-1 gap-1.5 min-w-fit">
+            <ListMusic className="w-4 h-4" /> Worship Set
+          </TabsTrigger>
+          <TabsTrigger value="announcement" className="flex-1 gap-1.5 min-w-fit">
+            <Megaphone className="w-4 h-4" /> Announcements
           </TabsTrigger>
         </TabsList>
 
@@ -538,6 +801,70 @@ export default function AIPage() {
             </CardHeader>
             <CardContent>
               <ContextLens onSendToScreen={sendToScreen} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="sermon" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-primary" /> Sermon Outline Generator
+              </CardTitle>
+              <CardDescription>
+                Generate structured, Scripture-rich sermon outlines for any topic — with main points, sub-points, application, and a call to action.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SermonOutline onSendToScreen={sendToScreen} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="prayer" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <HandHeart className="w-4 h-4 text-primary" /> Prayer Generator
+              </CardTitle>
+              <CardDescription>
+                Write heartfelt, Scripture-inspired prayers for any type of church service — opening, closing, intercessory, communion, and more.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PrayerGenerator onSendToScreen={sendToScreen} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="worship-set" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ListMusic className="w-4 h-4 text-primary" /> Worship Set Planner
+              </CardTitle>
+              <CardDescription>
+                Plan a complete worship set with song suggestions, keys, tempo, Scripture readings, and a flow arc from gathering to response.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <WorshipSetPlanner onSendToScreen={sendToScreen} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="announcement" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Megaphone className="w-4 h-4 text-primary" /> Announcement Writer
+              </CardTitle>
+              <CardDescription>
+                Write polished church announcements for Sunday bulletins and slides — with a catchy headline, key details, and a clear call to action.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AnnouncementWriter onSendToScreen={sendToScreen} />
             </CardContent>
           </Card>
         </TabsContent>

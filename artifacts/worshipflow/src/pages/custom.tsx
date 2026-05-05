@@ -33,7 +33,9 @@ export default function CustomTextPage() {
   const [animation, setAnimation]       = useLocalStorage<"none" | "fade_in" | "glow" | "float">("wf-custom-anim", "fade_in");
 
   // ── Background (all persisted) ──────────────────────────────────────────
-  const [bgType, setBgType]             = useLocalStorage<"color" | "gradient" | "wallpaper">("wf-custom-bg-type", "color");
+  const [bgType, setBgType]             = useLocalStorage<"color" | "gradient" | "wallpaper" | "image">("wf-custom-bg-type", "color");
+  const [uploadedImg, setUploadedImg]   = useState<string | null>(null);
+  const imgUploadRef                    = useRef<HTMLInputElement>(null);
   const [bgColor, setBgColor]           = useLocalStorage("wf-custom-bg-color", "#000000");
   const [bgGradient, setBgGradient]     = useLocalStorage("wf-custom-bg-gradient", DEFAULT_GRADIENT);
   const [bgWallpaper, setBgWallpaper]   = useLocalStorage("wf-custom-bg-wallpaper", "aurora");
@@ -59,6 +61,8 @@ export default function CustomTextPage() {
       ? { type: "color" as const, value: bgColor }
       : bgType === "gradient"
       ? { type: "gradient" as const, value: bgGradient }
+      : bgType === "image"
+      ? { type: "image" as const, value: uploadedImg ?? "" }
       : { type: "live_wallpaper" as const, value: bgWallpaper, overlay: bgOverlay[0] };
 
   const queryClient = useQueryClient();
@@ -102,6 +106,8 @@ export default function CustomTextPage() {
       ? { backgroundColor: bgColor }
       : bgType === "gradient"
       ? { background: bgGradient }
+      : bgType === "image" && uploadedImg
+      ? { backgroundImage: `url(${uploadedImg})`, backgroundSize: "cover", backgroundPosition: "center" }
       : {};
 
   const handleAiCorrect = async () => {
@@ -498,8 +504,8 @@ export default function CustomTextPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               {/* Type selector */}
-              <div className="grid grid-cols-3 gap-1.5">
-                {(["color", "gradient", "wallpaper"] as const).map((t) => (
+              <div className="grid grid-cols-4 gap-1.5">
+                {(["color", "gradient", "wallpaper", "image"] as const).map((t) => (
                   <button
                     key={t}
                     onClick={() => setBgType(t)}
@@ -509,7 +515,7 @@ export default function CustomTextPage() {
                         : "border-border text-muted-foreground hover:bg-muted/40"
                     }`}
                   >
-                    {t}
+                    {t === "image" ? "Photo" : t}
                   </button>
                 ))}
               </div>
@@ -560,6 +566,40 @@ export default function CustomTextPage() {
                       style={{ background: t.background.value }}
                     />
                   ))}
+                </div>
+              )}
+
+              {/* Image upload */}
+              {bgType === "image" && (
+                <div className="space-y-2">
+                  <input ref={imgUploadRef} type="file" accept="image/*" className="hidden"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = ev => setUploadedImg(ev.target?.result as string ?? null);
+                      reader.readAsDataURL(file);
+                    }} />
+                  {uploadedImg
+                    ? <div className="relative group">
+                        <img src={uploadedImg} alt="Background preview" className="w-full h-28 object-cover rounded border border-border" />
+                        <button type="button" onClick={() => setUploadedImg(null)}
+                          className="absolute top-1 right-1 bg-black/60 rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity text-white hover:bg-destructive">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    : <button type="button" onClick={() => imgUploadRef.current?.click()}
+                        className="flex flex-col items-center justify-center w-full h-28 rounded border-2 border-dashed border-border hover:border-primary text-muted-foreground hover:text-primary transition-colors gap-2">
+                        <ImagePlus className="w-6 h-6" />
+                        <span className="text-xs">Click to upload a photo</span>
+                      </button>
+                  }
+                  {uploadedImg && (
+                    <button type="button" onClick={() => imgUploadRef.current?.click()}
+                      className="w-full text-xs text-center text-muted-foreground hover:text-foreground transition-colors py-1">
+                      Change image
+                    </button>
+                  )}
                 </div>
               )}
 

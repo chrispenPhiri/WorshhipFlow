@@ -323,22 +323,33 @@ export function CharacterPerspective({ verses, reference, book, chapter, onSendV
               <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
                 {displayVerses.map((v, idx) => {
                   const parts = highlightTerms(v.text, selected.terms);
+                  const singleRef = scope !== "chapter"
+                    ? `${v.book} ${v.chapter}:${v.verse} — ${selected.name}`
+                    : `${reference.split(":")[0]}:${v.verse} — ${selected.name}`;
                   return (
                     <div key={idx}
-                      className="flex gap-2 text-sm p-2 rounded-md bg-primary/10 border border-primary/20">
+                      className="flex gap-2 text-sm p-2 rounded-md bg-primary/10 border border-primary/20 group">
                       <div className="shrink-0 mt-0.5 text-right min-w-[2rem]">
                         {scope !== "chapter" && (
                           <span className="text-[10px] font-bold text-primary block">{v.book} {v.chapter}</span>
                         )}
                         <span className="font-bold text-xs text-primary">{v.verse}</span>
                       </div>
-                      <span className="font-serif leading-relaxed">
+                      <span className="flex-1 font-serif leading-relaxed">
                         {parts.map((p, i) =>
                           p.match
                             ? <mark key={i} className="bg-amber-400/30 text-amber-200 rounded-sm px-0.5 not-italic">{p.part}</mark>
                             : <span key={i}>{p.part}</span>
                         )}
                       </span>
+                      <button
+                        type="button"
+                        title="Send this verse to screen"
+                        onClick={() => onSendVerses([{ verse: v.verse, text: v.text }], singleRef)}
+                        className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary p-1 rounded"
+                      >
+                        <Cast className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   );
                 })}

@@ -21,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Music, Plus, Search, Cast, ChevronLeft, ChevronRight, Trash2, Layers, X } from "lucide-react";
+import { Music, Plus, Search, Cast, ChevronLeft, ChevronRight, Trash2, Layers, X, Sparkles, Loader2, Wand2 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
 } from "@/components/ui/dialog";
@@ -126,6 +126,16 @@ export default function SongsPage() {
   const [sectionIdx, setSectionIdx] = useLocalStorage<number>("wf-songs-section-idx", 0);
   const [addOpen, setAddOpen] = useState(false);
 
+  // AI Song Generator state
+  const [aiSongOpen, setAiSongOpen] = useState(false);
+  const [aiSongTheme, setAiSongTheme] = useState("");
+  const [aiSongTitle_, setAiSongTitle_] = useState("");
+  const [aiSongStyle, setAiSongStyle] = useState("contemporary gospel");
+  const [aiSongNumVerses, setAiSongNumVerses] = useState(2);
+  const [aiSongGenerating, setAiSongGenerating] = useState(false);
+  const [aiSongResult, setAiSongResult] = useState("");
+  const [aiSongError, setAiSongError] = useState<string | null>(null);
+
   // Add song form state
   const [newTitle, setNewTitle] = useState("");
   const [newAuthor, setNewAuthor] = useState("");
@@ -167,6 +177,40 @@ export default function SongsPage() {
       onError: () => toast({ title: "Failed to add song", variant: "destructive" }),
     },
   });
+
+  async function generateAISong() {
+    if (!aiSongTheme.trim()) return;
+    setAiSongGenerating(true); setAiSongResult(""); setAiSongError(null);
+    try {
+      const base = (import.meta.env.BASE_URL as string).replace(/\/$/, "");
+      const res = await fetch(`${base}/api/ai/generate-song`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theme: aiSongTheme, title: aiSongTitle_ || undefined, style: aiSongStyle, numVerses: aiSongNumVerses }),
+      });
+      if (!res.ok || !res.body) throw new Error("AI error");
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let out = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const lines = dec.decode(value).split("\n");
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try { const d = JSON.parse(line.slice(6)); if (d.content) { out += d.content; setAiSongResult(out); } } catch { /* ignore */ }
+          }
+        }
+      }
+    } catch (e) { setAiSongError(e instanceof Error ? e.message : "Error"); } finally { setAiSongGenerating(false); }
+  }
+
+  function useAiLyrics() {
+    if (aiSongTitle_.trim()) setNewTitle(aiSongTitle_);
+    setNewLyrics(aiSongResult);
+    setAiSongOpen(false);
+    setAddOpen(true);
+  }
 
   const { mutate: deleteSong } = useDeleteSong({
     mutation: {
@@ -246,6 +290,76 @@ export default function SongsPage() {
         </div>
 
         <div className="flex items-center gap-2">
+        {/* AI Song Generator Dialog */}
+        <Dialog open={aiSongOpen} onOpenChange={setAiSongOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="gap-2">
+              <Sparkles className="w-4 h-4" /> AI Compose
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" /> AI Song Composer
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">Generate complete worship song lyrics — verses, chorus, bridge — with strong theology and singable flow.</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5 col-span-2">
+                  <label className="text-sm font-medium">Theme / Topic *</label>
+                  <Input value={aiSongTheme} onChange={e => setAiSongTheme(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") generateAISong(); }}
+                    placeholder="e.g. God's faithfulness, healing, salvation…" disabled={aiSongGenerating} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Song Title (optional)</label>
+                  <Input value={aiSongTitle_} onChange={e => setAiSongTitle_(e.target.value)}
+                    placeholder="Leave blank to let AI choose" disabled={aiSongGenerating} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Style</label>
+                  <select value={aiSongStyle} onChange={e => setAiSongStyle(e.target.value)}
+                    className="w-full h-9 rounded border border-input bg-background text-sm px-2 text-foreground" disabled={aiSongGenerating}>
+                    <option value="contemporary gospel">Contemporary Gospel</option>
+                    <option value="traditional hymn">Traditional Hymn</option>
+                    <option value="Shona gospel">Shona Gospel</option>
+                    <option value="Ndebele gospel">Ndebele Gospel</option>
+                    <option value="afrobeats worship">Afrobeats Worship</option>
+                    <option value="southern gospel">Southern Gospel</option>
+                    <option value="CCM / pop worship">CCM / Pop Worship</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5 col-span-2 flex items-center gap-3">
+                  <label className="text-sm font-medium shrink-0">Number of Verses</label>
+                  {[1, 2, 3].map(n => (
+                    <button key={n} type="button" onClick={() => setAiSongNumVerses(n)}
+                      className={`px-3 py-1 rounded text-sm border transition-colors ${aiSongNumVerses === n ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <Button onClick={generateAISong} disabled={!aiSongTheme.trim() || aiSongGenerating} className="gap-2 w-full">
+                {aiSongGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                {aiSongGenerating ? "Composing…" : "Compose Song"}
+              </Button>
+              {aiSongError && <p className="text-destructive text-sm">{aiSongError}</p>}
+              {aiSongResult && (
+                <div className="space-y-3">
+                  <div className="p-4 rounded-xl border border-border bg-muted/20 max-h-72 overflow-y-auto">
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap font-mono">{aiSongResult}</p>
+                  </div>
+                  {!aiSongGenerating && (
+                    <Button onClick={useAiLyrics} className="gap-2 w-full">
+                      <Music className="w-4 h-4" /> Use these Lyrics → Add to Library
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
         <SongImportDialog />
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>

@@ -83,8 +83,7 @@ export function DigitalLibrary({ book, chapter, fromVerse, toVerse, onSendToScre
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      const chapter_data: Record<string, ChapterVerse> = data.chapter ?? {};
-      const all = Object.values(chapter_data);
+      const all: ChapterVerse[] = Array.isArray(data.verses) ? data.verses : [];
       const filtered = all.filter(v => v.verse >= fromV && v.verse <= toV);
       setVerses(filtered.length > 0 ? filtered : all.slice(0, 10));
     } catch {

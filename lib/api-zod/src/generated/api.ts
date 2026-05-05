@@ -519,6 +519,7 @@ export const GetScreenStateResponse = zod.object({
           "side-left",
           "side-right",
           "quad",
+          "dual",
         ])
         .optional(),
       cameraShape: zod.enum(["rect", "circle", "rounded"]).optional(),
@@ -780,6 +781,7 @@ export const UpdateScreenStateBody = zod.object({
           "side-left",
           "side-right",
           "quad",
+          "dual",
         ])
         .optional(),
       cameraShape: zod.enum(["rect", "circle", "rounded"]).optional(),
@@ -1038,6 +1040,7 @@ export const UpdateScreenStateResponse = zod.object({
           "side-left",
           "side-right",
           "quad",
+          "dual",
         ])
         .optional(),
       cameraShape: zod.enum(["rect", "circle", "rounded"]).optional(),
