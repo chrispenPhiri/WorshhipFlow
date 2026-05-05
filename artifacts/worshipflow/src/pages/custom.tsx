@@ -292,6 +292,25 @@ export default function CustomTextPage() {
                   <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-border">
                     <img src={generatedImg} alt="AI generated background" className="w-full h-full object-cover" />
                   </div>
+                  <Button
+                    className="w-full gap-2"
+                    onClick={() => {
+                      updateScreen({
+                        data: {
+                          contentType: "custom_text",
+                          title: "Custom Text",
+                          content,
+                          isBlack: false,
+                          isClear: false,
+                          textStyle: { fontFamily, fontSize: fontSize[0], textColor, alignment, animation, bold, italic },
+                          background: { type: "image" as const, value: generatedImg! },
+                          layout: { verticalAlign: vAlign, horizontalAlign: hAlign, paddingX: padX, paddingY: padY },
+                        },
+                      });
+                    }}
+                  >
+                    <Cast className="w-4 h-4" /> Send to Presentation
+                  </Button>
                   <div className="flex gap-2">
                     <a
                       href={generatedImg}

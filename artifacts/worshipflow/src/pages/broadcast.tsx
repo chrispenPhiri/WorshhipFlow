@@ -902,17 +902,31 @@ export default function BroadcastPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contentKey]);
 
-  // Camera lifecycle
+  // Camera lifecycle — re-acquire whenever the type changes OR the selected device changes
   useEffect(() => {
-    if (screenState?.background?.type === "camera" && !cameraStream) {
-      navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-        .then(stream => setCameraStream(stream))
-        .catch(() => {});
-    } else if (screenState?.background?.type !== "camera" && cameraStream) {
-      cameraStream.getTracks().forEach(t => t.stop());
-      setCameraStream(null);
+    const bg = screenState?.background;
+    if (bg?.type !== "camera") {
+      if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); setCameraStream(null); }
+      return;
     }
-  }, [screenState?.background?.type]);
+    // Use the deviceId stored in the background so the correct camera is opened
+    const deviceId = (bg as { cameraDeviceId?: string }).cameraDeviceId;
+    const constraints: MediaStreamConstraints = {
+      video: deviceId ? { deviceId: { exact: deviceId } } : true,
+      audio: false,
+    };
+    // Stop any existing stream before acquiring the new one
+    if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); setCameraStream(null); }
+    navigator.mediaDevices.getUserMedia(constraints)
+      .then(stream => setCameraStream(stream))
+      .catch(() => {
+        // If exact deviceId fails (e.g. device disconnected), fall back to default
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+          .then(stream => setCameraStream(stream))
+          .catch(() => {});
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screenState?.background?.type, (screenState?.background as { cameraDeviceId?: string } | undefined)?.cameraDeviceId]);
 
   // Click anywhere to request fullscreen (user gesture).
   // Only auto-fullscreens when the controller explicitly requested it (fullscreenBlocked) so we don't

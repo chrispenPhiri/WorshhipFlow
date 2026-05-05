@@ -255,6 +255,7 @@ export interface Background {
   cameraMirror?: boolean;
   cameraBorderWidth?: number;
   cameraBorderColor?: string;
+  cameraDeviceId?: string;
   cameraDeviceIds?: string[];
 }
 

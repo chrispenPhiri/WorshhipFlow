@@ -399,9 +399,9 @@ export default function MediaPage() {
         data: {
           ...safeFullState(),
           background: {
-            ...(screenState.background as Record<string, unknown>),
+            ...screenState.background,
             cameraDeviceId: deviceId,
-          } as Parameters<typeof updateScreen>[0]["data"]["background"],
+          },
         },
       });
     }

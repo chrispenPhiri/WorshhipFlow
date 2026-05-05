@@ -529,6 +529,7 @@ export const GetScreenStateResponse = zod.object({
       cameraMirror: zod.boolean().optional(),
       cameraBorderWidth: zod.number().optional(),
       cameraBorderColor: zod.string().optional(),
+      cameraDeviceId: zod.string().optional(),
       cameraDeviceIds: zod.array(zod.string()).optional(),
     })
     .optional(),
@@ -789,6 +790,7 @@ export const UpdateScreenStateBody = zod.object({
       cameraMirror: zod.boolean().optional(),
       cameraBorderWidth: zod.number().optional(),
       cameraBorderColor: zod.string().optional(),
+      cameraDeviceId: zod.string().optional(),
       cameraDeviceIds: zod.array(zod.string()).optional(),
     })
     .optional(),
@@ -1046,6 +1048,7 @@ export const UpdateScreenStateResponse = zod.object({
       cameraMirror: zod.boolean().optional(),
       cameraBorderWidth: zod.number().optional(),
       cameraBorderColor: zod.string().optional(),
+      cameraDeviceId: zod.string().optional(),
       cameraDeviceIds: zod.array(zod.string()).optional(),
     })
     .optional(),

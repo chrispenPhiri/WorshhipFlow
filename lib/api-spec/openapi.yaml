@@ -687,6 +687,8 @@ components:
           type: number
         cameraBorderColor:
           type: string
+        cameraDeviceId:
+          type: string
         cameraDeviceIds:
           type: array
           items:
