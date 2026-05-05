@@ -392,6 +392,19 @@ export default function MediaPage() {
     setSelectedCameraId(deviceId);
     if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); setCameraStream(null); }
     await startCamera(deviceId);
+    // If the camera is currently live on the presentation screen, push the new deviceId
+    // so the broadcast window re-acquires the stream from the correct device.
+    if (screenState?.background?.type === "camera") {
+      updateScreen({
+        data: {
+          ...safeFullState(),
+          background: {
+            ...(screenState.background as Record<string, unknown>),
+            cameraDeviceId: deviceId,
+          } as Parameters<typeof updateScreen>[0]["data"]["background"],
+        },
+      });
+    }
   };
 
   const cutFeed = () => {
@@ -634,6 +647,7 @@ export default function MediaPage() {
           cameraMirror: camMirror,
           cameraBorderWidth: camBorderWidth,
           cameraBorderColor: camBorderColor,
+          cameraDeviceId: camLayout !== "quad" ? selectedCameraId : undefined,
           cameraDeviceIds: camLayout === "quad" ? quadSlots.filter(Boolean) : undefined,
         },
       }
