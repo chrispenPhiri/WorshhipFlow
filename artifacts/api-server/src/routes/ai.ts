@@ -155,7 +155,7 @@ router.post("/custom-image", async (req, res) => {
   try {
     const { generateImageBuffer } = await import("@workspace/integrations-openai-ai-server/image");
     const enhancedPrompt = `${prompt}. Style: cinematic, high quality, suitable for a church worship presentation background. No text, no letters, no words anywhere in the image.`;
-    const buffer = await generateImageBuffer(enhancedPrompt, "1792x1024");
+    const buffer = await generateImageBuffer(enhancedPrompt, "1536x1024");
     res.json({ b64_json: buffer.toString("base64") });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Image generation failed";

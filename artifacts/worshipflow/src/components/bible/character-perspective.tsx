@@ -123,8 +123,8 @@ export function CharacterPerspective({ verses, reference, book, chapter, onSendV
           batch.map(ch =>
             fetch(`https://api.getbible.net/v2/kjv/${bookNum}/${ch}.json`, { signal: ctrl.signal })
               .then(r => r.json())
-              .then((data: { chapter: Record<string, { verse: number; text: string }> }) => {
-                const vs = Object.values(data.chapter ?? {});
+              .then((data: { verses: { verse: number; text: string }[] }) => {
+                const vs = data.verses ?? [];
                 return vs
                   .filter(v => lower.some(t => v.text.toLowerCase().includes(t)))
                   .map(v => ({ book: targetBook, chapter: ch, verse: v.verse, text: v.text }));

@@ -113,8 +113,8 @@ export function BiblePhraseSearch({ book, chapter, currentVerses, onGoTo, onSend
           batch.map(ch =>
             fetch(`https://api.getbible.net/v2/kjv/${bookNum}/${ch}.json`, { signal: ctrl.signal })
               .then(r => r.json())
-              .then((data: { chapter: Record<string, { verse: number; text: string }> }) => {
-                const verses = Object.values(data.chapter ?? {});
+              .then((data: { verses: { verse: number; text: string }[] }) => {
+                const verses = data.verses ?? [];
                 return verses
                   .filter(v => v.text.toLowerCase().includes(lower))
                   .map(v => ({
