@@ -109,6 +109,15 @@ function sseHeaders(res: import("express").Response) {
   res.setHeader("X-Accel-Buffering", "no");
 }
 
+function sseError(res: import("express").Response, msg: string) {
+  if (res.headersSent) {
+    res.write(`data: ${JSON.stringify({ error: msg, done: true })}\n\n`);
+    res.end();
+  } else {
+    res.status(500).json({ error: msg });
+  }
+}
+
 async function streamCompletion(
   setup: AiSetup,
   res: import("express").Response,
@@ -116,21 +125,26 @@ async function streamCompletion(
   userMessage: string,
 ) {
   sseHeaders(res);
-  const stream = await setup.client.chat.completions.create({
-    model: setup.model,
-    max_completion_tokens: 8192,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userMessage },
-    ],
-    stream: true,
-  });
-  for await (const chunk of stream) {
-    const content = chunk.choices[0]?.delta?.content;
-    if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
+  try {
+    const stream = await setup.client.chat.completions.create({
+      model: setup.model,
+      max_completion_tokens: 8192,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMessage },
+      ],
+      stream: true,
+    });
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
+    }
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    res.end();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "AI request failed";
+    sseError(res, msg);
   }
-  res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-  res.end();
 }
 
 /* ── Ask a Prophet ─────────────────────────────────────────── */
@@ -162,18 +176,22 @@ Be warm, pastoral, and accessible — never condescending. Keep answers focused 
     ...(history ?? []),
     { role: "user", content: question },
   ];
-  const stream = await setup.client.chat.completions.create({
-    model: setup.model,
-    max_completion_tokens: 8192,
-    messages,
-    stream: true,
-  });
-  for await (const chunk of stream) {
-    const content = chunk.choices[0]?.delta?.content;
-    if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
+  try {
+    const stream = await setup.client.chat.completions.create({
+      model: setup.model,
+      max_completion_tokens: 8192,
+      messages,
+      stream: true,
+    });
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
+    }
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    res.end();
+  } catch (err) {
+    sseError(res, err instanceof Error ? err.message : "AI request failed");
   }
-  res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-  res.end();
 });
 
 /* ── AI Chapter Summary ─────────────────────────────────────── */
@@ -578,24 +596,28 @@ router.post("/chat", async (req, res) => {
   };
   if (!messages?.length) { res.status(400).json({ error: "messages is required" }); return; }
   sseHeaders(res);
-  const stream = await setup.client.chat.completions.create({
-    model: setup.model,
-    max_completion_tokens: 8192,
-    messages: [
-      {
-        role: "system",
-        content: `You are a helpful AI assistant embedded in Phiri WorshipFlow, a church worship app. You can help with anything — church topics (sermons, prayers, Bible study, devotionals, songs), creative writing, real-life advice, general knowledge, brainstorming, coding questions, or any other topic. Be warm, clear, and genuinely helpful. For sensitive topics be compassionate and thoughtful.`,
-      },
-      ...messages,
-    ],
-    stream: true,
-  });
-  for await (const chunk of stream) {
-    const content = chunk.choices[0]?.delta?.content;
-    if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
+  try {
+    const stream = await setup.client.chat.completions.create({
+      model: setup.model,
+      max_completion_tokens: 8192,
+      messages: [
+        {
+          role: "system",
+          content: `You are a helpful AI assistant embedded in Phiri WorshipFlow, a church worship app. You can help with anything — church topics (sermons, prayers, Bible study, devotionals, songs), creative writing, real-life advice, general knowledge, brainstorming, coding questions, or any other topic. Be warm, clear, and genuinely helpful. For sensitive topics be compassionate and thoughtful.`,
+        },
+        ...messages,
+      ],
+      stream: true,
+    });
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
+    }
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    res.end();
+  } catch (err) {
+    sseError(res, err instanceof Error ? err.message : "AI request failed");
   }
-  res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-  res.end();
 });
 
 export default router;

@@ -277,8 +277,14 @@ function AiSettingsCard() {
       });
       if (!res.ok) {
         const txt = await res.text();
-        let msg = txt;
-        try { msg = (JSON.parse(txt) as { message?: string }).message ?? txt; } catch { /* */ }
+        let msg: string;
+        if (res.status === 429) {
+          msg = "Rate limited — please wait a moment and try again";
+        } else {
+          try { msg = (JSON.parse(txt) as { message?: string }).message ?? txt; } catch { msg = txt; }
+          msg = msg.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+          if (!msg) msg = `Request failed (HTTP ${res.status})`;
+        }
         setTestStatus("error");
         setTestError(msg);
       } else {
