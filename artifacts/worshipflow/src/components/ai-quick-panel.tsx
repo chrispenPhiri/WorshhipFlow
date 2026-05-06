@@ -16,17 +16,25 @@ import { checkImageLimit, incrementDailyImageCount } from "@/lib/ai-usage";
 import { Link } from "wouter";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-const OPENAI_KEY_STORAGE = "wf-openai-key";
 const AI_SOURCE_STORAGE = "wf-ai-source";
+const KEY_STORAGE_MAP: Record<string, string> = {
+  openai:     "wf-openai-key",
+  gemini:     "wf-gemini-key",
+  openrouter: "wf-openrouter-key",
+};
 
 function getAiHeaders(): Record<string, string> {
-  const source = localStorage.getItem(AI_SOURCE_STORAGE) ?? "openai";
-  const key = localStorage.getItem(OPENAI_KEY_STORAGE)?.trim();
+  const source = (localStorage.getItem(AI_SOURCE_STORAGE) ?? "openai") as string;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (source === "replit") {
     headers["X-AI-Source"] = "replit";
-  } else if (key) {
-    headers["X-OpenAI-Key"] = key;
+    return headers;
+  }
+  const key = localStorage.getItem(KEY_STORAGE_MAP[source] ?? "wf-openai-key")?.trim();
+  if (key) {
+    headers["X-AI-Key"] = key;
+    if (source === "openai") headers["X-OpenAI-Key"] = key; // legacy compat
+    if (source !== "openai") headers["X-AI-Provider"] = source;
   }
   return headers;
 }

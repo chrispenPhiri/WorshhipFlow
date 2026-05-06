@@ -3,11 +3,24 @@ import OpenAI from "openai";
 
 const router = Router();
 
-/* ── OpenAI client resolution ───────────────────────────────────
-   Priority 1: X-OpenAI-Key request header (user's own key)
-   Priority 2: Replit-managed integration env vars
-   Returns null + sends 402 if neither is available.
-*/
+/* ── Types ──────────────────────────────────────────────────────── */
+type AiProvider = "openai" | "replit" | "gemini" | "openrouter";
+
+interface AiSetup {
+  client: OpenAI;
+  model: string;
+  provider: AiProvider;
+}
+
+/* ── Default models per provider ────────────────────────────────── */
+const DEFAULT_MODELS: Record<AiProvider, string> = {
+  openai:     "gpt-4o",
+  replit:     "gpt-4o",
+  gemini:     "gemini-2.0-flash",
+  openrouter: "openai/gpt-4o",
+};
+
+/* ── Replit-managed client (app-owner's integration credits) ────── */
 const managedClient = process.env.AI_INTEGRATIONS_OPENAI_API_KEY
   ? new OpenAI({
       apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -15,32 +28,64 @@ const managedClient = process.env.AI_INTEGRATIONS_OPENAI_API_KEY
     })
   : null;
 
-function getClientOrFail(
+/* ── Client + model resolver ────────────────────────────────────── */
+function getAiSetup(
   req: import("express").Request,
   res: import("express").Response,
-): OpenAI | null {
-  const userKey = (req.headers["x-openai-key"] as string | undefined)?.trim();
-  const aiSource = (req.headers["x-ai-source"] as string | undefined)?.trim();
+): AiSetup | null {
+  const aiSource   = (req.headers["x-ai-source"]   as string | undefined)?.trim();
+  const provider   = ((req.headers["x-ai-provider"] as string | undefined)?.trim() ?? "openai") as AiProvider;
+  // X-AI-Key is the generic key header; X-OpenAI-Key is legacy compat
+  const rawKey     = (req.headers["x-ai-key"] ?? req.headers["x-openai-key"]) as string | undefined;
+  const modelHdr   = (req.headers["x-ai-model"] as string | undefined)?.trim();
 
-  if (userKey) {
-    return new OpenAI({ apiKey: userKey });
+  const model = modelHdr ?? DEFAULT_MODELS[provider] ?? "gpt-4o";
+
+  /* Priority 1: Replit managed credits */
+  if (aiSource === "replit") {
+    if (!managedClient) {
+      res.status(402).json({
+        error: "replit_not_configured",
+        message: "Replit AI integration is not available on this server.",
+      });
+      return null;
+    }
+    return { client: managedClient, model, provider: "replit" };
   }
-  if (aiSource === "replit" && managedClient) {
-    return managedClient;
-  }
-  if (aiSource === "replit" && !managedClient) {
+
+  /* Priority 2: User's own key (provider-specific) */
+  const key = rawKey?.trim();
+  if (!key) {
     res.status(402).json({
-      error: "replit_not_configured",
-      message: "Replit AI integration is not available on this server.",
+      error: "no_api_key",
+      message: "No AI provider configured. Choose an AI provider in Settings → AI Features.",
     });
     return null;
   }
-  res.status(402).json({
-    error: "no_api_key",
-    message:
-      "No AI provider configured. Choose an AI provider in Settings → AI Features.",
-  });
-  return null;
+
+  let client: OpenAI;
+  switch (provider) {
+    case "gemini":
+      client = new OpenAI({
+        apiKey: key,
+        baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+      });
+      break;
+    case "openrouter":
+      client = new OpenAI({
+        apiKey: key,
+        baseURL: "https://openrouter.ai/api/v1",
+        defaultHeaders: {
+          "HTTP-Referer": "https://phiriworshipflow.replit.app",
+          "X-Title": "Phiri WorshipFlow",
+        },
+      });
+      break;
+    default: // openai
+      client = new OpenAI({ apiKey: key });
+  }
+
+  return { client, model, provider };
 }
 
 /* ── AI availability status ──────────────────────────────────────── */
@@ -48,6 +93,7 @@ router.get("/status", (_req, res) => {
   res.json({ replitAvailable: managedClient !== null });
 });
 
+/* ── SSE helpers ─────────────────────────────────────────────────── */
 function sseHeaders(res: import("express").Response) {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -56,14 +102,14 @@ function sseHeaders(res: import("express").Response) {
 }
 
 async function streamCompletion(
-  client: OpenAI,
+  setup: AiSetup,
   res: import("express").Response,
   systemPrompt: string,
   userMessage: string,
 ) {
   sseHeaders(res);
-  const stream = await client.chat.completions.create({
-    model: "gpt-4o",
+  const stream = await setup.client.chat.completions.create({
+    model: setup.model,
     max_completion_tokens: 8192,
     messages: [
       { role: "system", content: systemPrompt },
@@ -81,8 +127,8 @@ async function streamCompletion(
 
 /* ── Ask a Prophet ─────────────────────────────────────────── */
 router.post("/prophet", async (req, res) => {
-  const client = getClientOrFail(req, res);
-  if (!client) return;
+  const setup = getAiSetup(req, res);
+  if (!setup) return;
   const { question, history } = req.body as {
     question: string;
     history?: { role: "user" | "assistant"; content: string }[];
@@ -108,8 +154,8 @@ Be warm, pastoral, and accessible — never condescending. Keep answers focused 
     ...(history ?? []),
     { role: "user", content: question },
   ];
-  const stream = await client.chat.completions.create({
-    model: "gpt-4o",
+  const stream = await setup.client.chat.completions.create({
+    model: setup.model,
     max_completion_tokens: 8192,
     messages,
     stream: true,
@@ -124,8 +170,8 @@ Be warm, pastoral, and accessible — never condescending. Keep answers focused 
 
 /* ── AI Chapter Summary ─────────────────────────────────────── */
 router.post("/summary", async (req, res) => {
-  const client = getClientOrFail(req, res);
-  if (!client) return;
+  const setup = getAiSetup(req, res);
+  if (!setup) return;
   const { book, chapter, text } = req.body as {
     book: string;
     chapter: number | string;
@@ -139,8 +185,7 @@ router.post("/summary", async (req, res) => {
     ? `Summarise ${book} chapter ${chapter}. Here is the text:\n\n${text}`
     : `Summarise ${book} chapter ${chapter} of the Bible.`;
   await streamCompletion(
-    client,
-    res,
+    setup, res,
     `You are a biblical scholar creating concise chapter summaries for church worship leaders.
 Respond with exactly 3 bullet points (use • character), each 1-2 sentences long, covering:
 1. The main theme or event
@@ -153,8 +198,8 @@ Keep the language accessible but theologically accurate. Do not add headings or 
 
 /* ── Context Lens ───────────────────────────────────────────── */
 router.post("/context-lens", async (req, res) => {
-  const client = getClientOrFail(req, res);
-  if (!client) return;
+  const setup = getAiSetup(req, res);
+  if (!setup) return;
   const { passage, text } = req.body as { passage: string; text?: string };
   if (!passage) {
     res.status(400).json({ error: "passage is required" });
@@ -164,8 +209,7 @@ router.post("/context-lens", async (req, res) => {
     ? `Explain this passage in simple language: "${passage}"\n\nText: ${text}`
     : `Explain the Bible passage "${passage}" in simple language.`;
   await streamCompletion(
-    client,
-    res,
+    setup, res,
     `You are a gifted Bible teacher who specialises in making Scripture understandable to everyone — children, new believers, and people encountering the Bible for the first time.
 When explaining a passage:
 - Use everyday modern language (no jargon)
@@ -180,16 +224,15 @@ Never be condescending. Be warm, clear, and encouraging.`,
 
 /* ── Text Enhancement / Correction ─────────────────────────── */
 router.post("/enhance-text", async (req, res) => {
-  const client = getClientOrFail(req, res);
-  if (!client) return;
+  const setup = getAiSetup(req, res);
+  if (!setup) return;
   const { text } = req.body as { text: string };
   if (!text?.trim()) {
     res.status(400).json({ error: "text is required" });
     return;
   }
   await streamCompletion(
-    client,
-    res,
+    setup, res,
     `You are a professional proofreader and editor for a church worship presentation app.
 When given worship text for a church presentation slide, you:
 - Fix spelling, grammar and punctuation mistakes
@@ -204,8 +247,12 @@ When given worship text for a church presentation slide, you:
 
 /* ── Custom AI Image Generation ─────────────────────────────── */
 router.post("/custom-image", async (req, res) => {
-  const client = getClientOrFail(req, res);
-  if (!client) return;
+  const setup = getAiSetup(req, res);
+  if (!setup) return;
+  if (setup.provider === "gemini") {
+    res.status(400).json({ error: "Image generation is not supported with Google Gemini. Switch to OpenAI or OpenRouter in Settings." });
+    return;
+  }
   const { prompt } = req.body as { prompt: string };
   if (!prompt?.trim()) {
     res.status(400).json({ error: "prompt is required" });
@@ -213,7 +260,7 @@ router.post("/custom-image", async (req, res) => {
   }
   try {
     const enhancedPrompt = `${prompt}. Style: cinematic, high quality, suitable for a church worship presentation background. No text, no letters, no words anywhere in the image.`;
-    const response = await client.images.generate({
+    const response = await setup.client.images.generate({
       model: "dall-e-3",
       prompt: enhancedPrompt,
       n: 1,
@@ -230,8 +277,12 @@ router.post("/custom-image", async (req, res) => {
 
 /* ── Verse-to-Art ───────────────────────────────────────────── */
 router.post("/verse-art", async (req, res) => {
-  const client = getClientOrFail(req, res);
-  if (!client) return;
+  const setup = getAiSetup(req, res);
+  if (!setup) return;
+  if (setup.provider === "gemini") {
+    res.status(400).json({ error: "Image generation is not supported with Google Gemini. Switch to OpenAI or OpenRouter in Settings." });
+    return;
+  }
   const { verse, reference, book } = req.body as { verse: string; reference: string; book?: string };
   if (!verse?.trim()) {
     res.status(400).json({ error: "verse is required" });
@@ -240,7 +291,7 @@ router.post("/verse-art", async (req, res) => {
   try {
     const bookCtx = book ? ` Set in the world of the book of ${book}.` : "";
     const prompt = `A dramatic, reverential biblical illustration depicting ${reference}: "${verse.slice(0, 280)}".${bookCtx} Style: oil painting, classical biblical art in the tradition of Rembrandt and Gustave Doré. Rich warm tones, spiritual atmosphere, ancient Middle Eastern setting, soft divine light. No text, no letters, no words anywhere in the image.`;
-    const response = await client.images.generate({
+    const response = await setup.client.images.generate({
       model: "dall-e-3",
       prompt,
       n: 1,
@@ -257,13 +308,13 @@ router.post("/verse-art", async (req, res) => {
 
 /* ── Sermon Outline Generator ────────────────────────────────── */
 router.post("/sermon-outline", async (req, res) => {
-  const client = getClientOrFail(req, res);
-  if (!client) return;
+  const setup = getAiSetup(req, res);
+  if (!setup) return;
   const { topic, verse, style } = req.body as { topic: string; verse?: string; style?: string };
   if (!topic?.trim()) { res.status(400).json({ error: "topic is required" }); return; }
   const verseCtx = verse?.trim() ? ` anchored on the passage: "${verse}"` : "";
   const styleCtx = style?.trim() ? ` Preaching style: ${style}.` : "";
-  await streamCompletion(client, res,
+  await streamCompletion(setup, res,
     `You are an experienced pastor and theologian helping prepare church sermons. Generate a clear, structured, Scripture-rich sermon outline suitable for a Sunday service.${styleCtx}
 Format the outline with:
 - A compelling title
@@ -280,13 +331,13 @@ Keep it pastoral, warm, and grounded in Scripture.`,
 
 /* ── Prayer Generator ────────────────────────────────────────── */
 router.post("/prayer", async (req, res) => {
-  const client = getClientOrFail(req, res);
-  if (!client) return;
+  const setup = getAiSetup(req, res);
+  if (!setup) return;
   const { type, topic, occasion } = req.body as { type?: string; topic: string; occasion?: string };
   if (!topic?.trim()) { res.status(400).json({ error: "topic is required" }); return; }
   const occasionCtx = occasion?.trim() ? ` for ${occasion}` : "";
   const prayerType = type?.trim() || "worship";
-  await streamCompletion(client, res,
+  await streamCompletion(setup, res,
     `You are a worship leader and intercessor helping write heartfelt, Scripture-inspired prayers for church services. Write prayers that are reverent, sincere, and suitable for congregational use.
 Guidelines:
 - Open with praise and acknowledgement of God
@@ -300,13 +351,13 @@ Guidelines:
 
 /* ── Worship Set Planner ─────────────────────────────────────── */
 router.post("/worship-set", async (req, res) => {
-  const client = getClientOrFail(req, res);
-  if (!client) return;
+  const setup = getAiSetup(req, res);
+  if (!setup) return;
   const { theme, occasion, numSongs } = req.body as { theme: string; occasion?: string; numSongs?: number };
   if (!theme?.trim()) { res.status(400).json({ error: "theme is required" }); return; }
   const n = numSongs ?? 5;
   const occasionCtx = occasion?.trim() ? ` for ${occasion}` : "";
-  await streamCompletion(client, res,
+  await streamCompletion(setup, res,
     `You are an experienced worship director helping plan Sunday service worship sets. Suggest well-known contemporary and classic worship songs that flow together thematically.
 For each song provide:
 - Song title & artist/songwriter
@@ -323,13 +374,13 @@ Also suggest:
 
 /* ── Church Announcement Writer ──────────────────────────────── */
 router.post("/announcement", async (req, res) => {
-  const client = getClientOrFail(req, res);
-  if (!client) return;
+  const setup = getAiSetup(req, res);
+  if (!setup) return;
   const { topic, details, tone } = req.body as { topic: string; details?: string; tone?: string };
   if (!topic?.trim()) { res.status(400).json({ error: "topic is required" }); return; }
   const detailsCtx = details?.trim() ? `\n\nDetails provided: ${details}` : "";
   const toneCtx = tone?.trim() || "warm and inviting";
-  await streamCompletion(client, res,
+  await streamCompletion(setup, res,
     `You are a church communications assistant writing engaging church announcements for Sunday services, bulletins, and presentations.
 Style: ${toneCtx}. Write clearly and concisely, using friendly church-appropriate language.
 Format: Start with a catchy 1-line headline, then 2-3 sentences of detail, then a clear call-to-action.`,
@@ -339,8 +390,8 @@ Format: Start with a catchy 1-line headline, then 2-3 sentences of detail, then 
 
 /* ── Universal Refine Endpoint ────────────────────────────────── */
 router.post("/refine", async (req, res) => {
-  const client = getClientOrFail(req, res);
-  if (!client) return;
+  const setup = getAiSetup(req, res);
+  if (!setup) return;
   const { kind, original, refinement } = req.body as {
     kind: string;
     original: string;
@@ -352,8 +403,7 @@ router.post("/refine", async (req, res) => {
   }
   const kindCtx = kind?.trim() ? ` (genre: ${kind})` : "";
   await streamCompletion(
-    client,
-    res,
+    setup, res,
     `You are an expert editor for a church worship app. The user previously received an AI-generated piece of content${kindCtx} and now wants you to revise it according to their feedback.
 Output ONLY the revised version of the content — keep the same overall format, structure, and length unless the user explicitly asks otherwise. Do NOT add headings like "Revised version:", do not add preamble, do not summarize the changes. Just give the new revised text directly.`,
     `ORIGINAL CONTENT:\n${original}\n\nUSER FEEDBACK / REFINEMENT REQUEST:\n${refinement}\n\nNow output the revised version:`,
@@ -362,13 +412,13 @@ Output ONLY the revised version of the content — keep the same overall format,
 
 /* ── Daily Devotional ──────────────────────────────────────────── */
 router.post("/devotional", async (req, res) => {
-  const client = getClientOrFail(req, res);
-  if (!client) return;
+  const setup = getAiSetup(req, res);
+  if (!setup) return;
   const { verse, theme, audience } = req.body as { verse?: string; theme?: string; audience?: string };
   if (!verse?.trim() && !theme?.trim()) { res.status(400).json({ error: "verse or theme is required" }); return; }
   const audienceCtx = audience?.trim() ? ` Tailor the tone for: ${audience}.` : "";
   const seed = verse?.trim() ? `Centred on the verse: "${verse}"` : `On the theme: "${theme}"`;
-  await streamCompletion(client, res,
+  await streamCompletion(setup, res,
     `You are a warm, pastoral devotional writer. Write a short daily devotional (≈250 words) suitable for personal quiet time or a church newsletter.${audienceCtx}
 Format:
 **[Title]**
@@ -385,14 +435,14 @@ Format:
 
 /* ── Bible Quiz Generator ──────────────────────────────────────── */
 router.post("/quiz", async (req, res) => {
-  const client = getClientOrFail(req, res);
-  if (!client) return;
+  const setup = getAiSetup(req, res);
+  if (!setup) return;
   const { book, chapter, count, difficulty } = req.body as { book: string; chapter?: string | number; count?: number; difficulty?: string };
   if (!book?.trim()) { res.status(400).json({ error: "book is required" }); return; }
   const n = count ?? 5;
   const diff = difficulty?.trim() || "medium";
   const chapterCtx = chapter ? ` chapter ${chapter}` : "";
-  await streamCompletion(client, res,
+  await streamCompletion(setup, res,
     `You are a Bible Sunday-school teacher creating engaging quiz questions for a church congregation. Difficulty: ${diff}.
 Format each question EXACTLY like this:
 Q1. [Question text]
@@ -409,11 +459,11 @@ Separate each question with a blank line. Mix question types (who/what/why/where
 
 /* ── Cross-References Finder ───────────────────────────────────── */
 router.post("/cross-refs", async (req, res) => {
-  const client = getClientOrFail(req, res);
-  if (!client) return;
+  const setup = getAiSetup(req, res);
+  if (!setup) return;
   const { passage } = req.body as { passage: string };
   if (!passage?.trim()) { res.status(400).json({ error: "passage is required" }); return; }
-  await streamCompletion(client, res,
+  await streamCompletion(setup, res,
     `You are a Bible scholar who finds rich cross-references for any verse or passage. For the given reference, list 6-10 related verses from across the Bible (Old & New Testament) that connect thematically, prophetically, or by direct quotation.
 Format each entry like:
 **[Reference]** — "[Brief verse text or excerpt]"
@@ -426,12 +476,12 @@ Group them into thematic clusters with bold headings (e.g., **Prophetic Echoes**
 
 /* ── Translate to Local Language ───────────────────────────────── */
 router.post("/translate", async (req, res) => {
-  const client = getClientOrFail(req, res);
-  if (!client) return;
+  const setup = getAiSetup(req, res);
+  if (!setup) return;
   const { text, language, register } = req.body as { text: string; language: string; register?: string };
   if (!text?.trim() || !language?.trim()) { res.status(400).json({ error: "text and language are required" }); return; }
   const reg = register?.trim() || "respectful and reverent";
-  await streamCompletion(client, res,
+  await streamCompletion(setup, res,
     `You are a skilled translator with deep knowledge of African and global languages used in church worship contexts. Translate the given text into the target language with a ${reg} register suitable for church use. Preserve the spiritual meaning and tone faithfully.
 
 Output format:
@@ -447,13 +497,13 @@ If the text contains Bible verse references (e.g., "John 3:16"), keep those refe
 
 /* ── Children's Sermon ─────────────────────────────────────────── */
 router.post("/childrens-sermon", async (req, res) => {
-  const client = getClientOrFail(req, res);
-  if (!client) return;
+  const setup = getAiSetup(req, res);
+  if (!setup) return;
   const { topic, verse, ageGroup } = req.body as { topic: string; verse?: string; ageGroup?: string };
   if (!topic?.trim()) { res.status(400).json({ error: "topic is required" }); return; }
   const age = ageGroup?.trim() || "ages 5-10";
   const verseCtx = verse?.trim() ? ` anchored on the verse: "${verse}"` : "";
-  await streamCompletion(client, res,
+  await streamCompletion(setup, res,
     `You are a beloved children's ministry leader. Write a fun, engaging children's sermon for ${age} that teaches a Biblical truth through story, simple language, and a hands-on idea.
 
 Format:
@@ -471,14 +521,14 @@ Keep all language age-appropriate, joyful, and Christ-centered.`,
 
 /* ── AI Song Generator ────────────────────────────────────────── */
 router.post("/generate-song", async (req, res) => {
-  const client = getClientOrFail(req, res);
-  if (!client) return;
+  const setup = getAiSetup(req, res);
+  if (!setup) return;
   const { title, theme, style, numVerses } = req.body as { title?: string; theme: string; style?: string; numVerses?: number };
   if (!theme?.trim()) { res.status(400).json({ error: "theme is required" }); return; }
   const n = numVerses ?? 2;
   const titleCtx = title?.trim() ? `Song title: "${title}". ` : "";
   const styleCtx = style?.trim() ? ` Musical style: ${style}.` : " Musical style: contemporary gospel worship.";
-  await streamCompletion(client, res,
+  await streamCompletion(setup, res,
     `You are a gifted gospel worship songwriter. Write complete, singable worship songs with strong theology and emotional depth.
 ${styleCtx}
 Format the song EXACTLY like this (with brackets for labels):
@@ -513,15 +563,15 @@ Guidelines:
 
 /* ── General Chat (handles anything) ─────────────────────────── */
 router.post("/chat", async (req, res) => {
-  const client = getClientOrFail(req, res);
-  if (!client) return;
+  const setup = getAiSetup(req, res);
+  if (!setup) return;
   const { messages } = req.body as {
     messages: { role: "user" | "assistant"; content: string }[];
   };
   if (!messages?.length) { res.status(400).json({ error: "messages is required" }); return; }
   sseHeaders(res);
-  const stream = await client.chat.completions.create({
-    model: "gpt-4o",
+  const stream = await setup.client.chat.completions.create({
+    model: setup.model,
     max_completion_tokens: 8192,
     messages: [
       {

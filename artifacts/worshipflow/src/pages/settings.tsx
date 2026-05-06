@@ -27,8 +27,11 @@ import {
 import { InstallAppCard } from "@/components/install-app-card";
 import { getDailyImageCount } from "@/lib/ai-usage";
 
-const OPENAI_KEY_STORAGE = "wf-openai-key";
-const AI_SOURCE_STORAGE = "wf-ai-source";
+const OPENAI_KEY_STORAGE     = "wf-openai-key";
+const GEMINI_KEY_STORAGE     = "wf-gemini-key";
+const OPENROUTER_KEY_STORAGE = "wf-openrouter-key";
+const AI_SOURCE_STORAGE      = "wf-ai-source";
+type AiSource = "openai" | "replit" | "gemini" | "openrouter";
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
@@ -184,9 +187,10 @@ function AiSettingsCard() {
   });
 
   /* ── AI provider ── */
-  const [aiSource, setAiSourceState] = useState<"openai" | "replit">(
-    () => (localStorage.getItem(AI_SOURCE_STORAGE) === "replit" ? "replit" : "openai"),
-  );
+  const [aiSource, setAiSourceState] = useState<AiSource>(() => {
+    const v = localStorage.getItem(AI_SOURCE_STORAGE);
+    return (["openai","replit","gemini","openrouter"].includes(v ?? "") ? v : "openai") as AiSource;
+  });
   const [replitAvailable, setReplitAvailable] = useState(false);
 
   useEffect(() => {
@@ -197,44 +201,64 @@ function AiSettingsCard() {
       .catch(() => { /* offline / not deployed */ });
   }, []);
 
-  function selectAiSource(src: "openai" | "replit") {
+  function selectAiSource(src: AiSource) {
     setAiSourceState(src);
     localStorage.setItem(AI_SOURCE_STORAGE, src);
+    setTestStatus("idle");
   }
 
-  /* ── OpenAI API Key (localStorage) ── */
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem(OPENAI_KEY_STORAGE) ?? "");
-  const [keyInput, setKeyInput] = useState(() => localStorage.getItem(OPENAI_KEY_STORAGE) ?? "");
-  const [showKey, setShowKey] = useState(false);
-  const [testStatus, setTestStatus] = useState<"idle" | "testing" | "ok" | "error">("idle");
-  const [testError, setTestError] = useState("");
-  const keyConfigured = aiSource === "replit" ? replitAvailable : apiKey.startsWith("sk-");
+  /* ── Per-provider keys ── */
+  const [apiKey,         setApiKey]         = useState(() => localStorage.getItem(OPENAI_KEY_STORAGE)     ?? "");
+  const [keyInput,       setKeyInput]       = useState(() => localStorage.getItem(OPENAI_KEY_STORAGE)     ?? "");
+  const [geminiKey,      setGeminiKey]      = useState(() => localStorage.getItem(GEMINI_KEY_STORAGE)     ?? "");
+  const [geminiInput,    setGeminiInput]    = useState(() => localStorage.getItem(GEMINI_KEY_STORAGE)     ?? "");
+  const [orKey,          setOrKey]          = useState(() => localStorage.getItem(OPENROUTER_KEY_STORAGE) ?? "");
+  const [orInput,        setOrInput]        = useState(() => localStorage.getItem(OPENROUTER_KEY_STORAGE) ?? "");
+  const [showKey,        setShowKey]        = useState(false);
+  const [testStatus,     setTestStatus]     = useState<"idle" | "testing" | "ok" | "error">("idle");
+  const [testError,      setTestError]      = useState("");
+
+  const keyConfigured = (() => {
+    if (aiSource === "replit")     return replitAvailable;
+    if (aiSource === "gemini")     return geminiKey.length > 8;
+    if (aiSource === "openrouter") return orKey.length > 8;
+    return apiKey.startsWith("sk-");
+  })();
+
+  /* Active input/storage helpers for the current BYOK provider */
+  const activeInput  = aiSource === "gemini" ? geminiInput : aiSource === "openrouter" ? orInput : keyInput;
+  const setActiveInput = aiSource === "gemini" ? setGeminiInput : aiSource === "openrouter" ? setOrInput : setKeyInput;
+  const activeStorageKey = aiSource === "gemini" ? GEMINI_KEY_STORAGE : aiSource === "openrouter" ? OPENROUTER_KEY_STORAGE : OPENAI_KEY_STORAGE;
+  const setActiveKey = aiSource === "gemini" ? setGeminiKey : aiSource === "openrouter" ? setOrKey : setApiKey;
 
   function saveKey() {
-    const trimmed = keyInput.trim();
-    localStorage.setItem(OPENAI_KEY_STORAGE, trimmed);
-    setApiKey(trimmed);
+    const trimmed = activeInput.trim();
+    localStorage.setItem(activeStorageKey, trimmed);
+    setActiveKey(trimmed);
     toast({ title: trimmed ? "API key saved" : "API key cleared" });
     setTestStatus("idle");
   }
 
   function clearKey() {
-    localStorage.removeItem(OPENAI_KEY_STORAGE);
-    setApiKey("");
-    setKeyInput("");
+    localStorage.removeItem(activeStorageKey);
+    setActiveKey("");
+    setActiveInput("");
     setTestStatus("idle");
     toast({ title: "API key cleared" });
   }
 
   async function testKey() {
-    const trimmed = keyInput.trim();
+    const trimmed = activeInput.trim();
     if (!trimmed) return;
     setTestStatus("testing");
     setTestError("");
+    const headers: Record<string,string> = { "Content-Type": "application/json", "X-AI-Key": trimmed };
+    if (aiSource === "openai") headers["X-OpenAI-Key"] = trimmed;
+    else headers["X-AI-Provider"] = aiSource;
     try {
       const res = await fetch(`${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/ai/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-OpenAI-Key": trimmed },
+        headers,
         body: JSON.stringify({ messages: [{ role: "user", content: "Say OK" }] }),
       });
       if (!res.ok) {
@@ -246,8 +270,8 @@ function AiSettingsCard() {
       } else {
         await res.body?.cancel();
         setTestStatus("ok");
-        localStorage.setItem(OPENAI_KEY_STORAGE, trimmed);
-        setApiKey(trimmed);
+        localStorage.setItem(activeStorageKey, trimmed);
+        setActiveKey(trimmed);
       }
     } catch (e) {
       setTestStatus("error");
@@ -283,7 +307,7 @@ function AiSettingsCard() {
           AI Features
         </CardTitle>
         <CardDescription>
-          Choose how AI features are powered. Use your Replit account credits or your own OpenAI key.
+          Choose how AI is powered — Replit credits, your own OpenAI key, Google Gemini, or OpenRouter (Claude, Llama &amp; more).
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -292,143 +316,126 @@ function AiSettingsCard() {
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AI Provider</p>
           <div className="grid grid-cols-2 gap-2">
+
             {/* Replit Credits */}
-            <button
-              type="button"
-              onClick={() => selectAiSource("replit")}
-              className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${
-                aiSource === "replit"
-                  ? "border-primary bg-primary/10 ring-1 ring-primary"
-                  : "border-border bg-muted/20 hover:bg-muted/40"
-              }`}
-            >
+            <button type="button" onClick={() => selectAiSource("replit")}
+              className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${aiSource === "replit" ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border bg-muted/20 hover:bg-muted/40"}`}>
               <div className="flex items-center gap-2 w-full">
                 <span className="text-sm font-semibold flex-1">Replit Credits</span>
-                {aiSource === "replit" && replitAvailable && (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                )}
-                {aiSource === "replit" && !replitAvailable && (
-                  <XCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                {replitAvailable ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-snug">App-owner's Replit credits. No key needed.</p>
+              {!replitAvailable && <p className="text-[10px] text-amber-500">Not configured on this server</p>}
+            </button>
+
+            {/* OpenAI */}
+            <button type="button" onClick={() => selectAiSource("openai")}
+              className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${aiSource === "openai" ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border bg-muted/20 hover:bg-muted/40"}`}>
+              <div className="flex items-center gap-2 w-full">
+                <span className="text-sm font-semibold flex-1">OpenAI</span>
+                {apiKey.startsWith("sk-") ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-snug">GPT-4o. Your own OpenAI key.</p>
+            </button>
+
+            {/* Google Gemini */}
+            <button type="button" onClick={() => selectAiSource("gemini")}
+              className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${aiSource === "gemini" ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border bg-muted/20 hover:bg-muted/40"}`}>
+              <div className="flex items-center gap-2 w-full">
+                <span className="text-sm font-semibold flex-1">Google Gemini</span>
+                {geminiKey.length > 8 ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-snug">Gemini 2.0 Flash. Free tier available.</p>
+            </button>
+
+            {/* OpenRouter */}
+            <button type="button" onClick={() => selectAiSource("openrouter")}
+              className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${aiSource === "openrouter" ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border bg-muted/20 hover:bg-muted/40"}`}>
+              <div className="flex items-center gap-2 w-full">
+                <span className="text-sm font-semibold flex-1">OpenRouter</span>
+                {orKey.length > 8 ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-snug">Claude, Llama, Gemini &amp; 200+ models.</p>
+            </button>
+
+          </div>
+        </div>
+
+        {/* ── BYOK key input (shown for any non-Replit provider) ── */}
+        {aiSource !== "replit" && (() => {
+          const cfg = {
+            openai:     { label: "OpenAI API Key",     placeholder: "sk-...",     link: "https://platform.openai.com/api-keys",      linkLabel: "platform.openai.com" },
+            gemini:     { label: "Google AI Studio Key", placeholder: "AIza...",  link: "https://aistudio.google.com/apikey",         linkLabel: "aistudio.google.com" },
+            openrouter: { label: "OpenRouter API Key", placeholder: "sk-or-...", link: "https://openrouter.ai/keys",                linkLabel: "openrouter.ai/keys" },
+          }[aiSource];
+          return (
+            <div className="rounded-lg border border-border bg-muted/20 px-4 py-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <KeyRound className="w-4 h-4 text-muted-foreground" />
+                  <p className="text-sm font-medium">{cfg.label}</p>
+                </div>
+                {keyConfigured ? (
+                  <span className="flex items-center gap-1 text-[11px] font-semibold text-green-600 dark:text-green-400">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Configured
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <XCircle className="w-3.5 h-3.5" /> Not set
+                  </span>
                 )}
               </div>
-              <p className="text-[11px] text-muted-foreground leading-snug">
-                Use your Replit account. Billed to your Replit credits.
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Charges go directly to your provider account.{" "}
+                <a href={cfg.link} target="_blank" rel="noopener noreferrer"
+                  className="text-primary underline-offset-2 hover:underline inline-flex items-center gap-0.5">
+                  Get a key <ExternalLink className="w-3 h-3" />
+                </a>
               </p>
-              {!replitAvailable && (
-                <p className="text-[10px] text-amber-500 leading-snug">
-                  Not available on this deployment
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    type={showKey ? "text" : "password"}
+                    placeholder={cfg.placeholder}
+                    value={activeInput}
+                    onChange={e => { setActiveInput(e.target.value); setTestStatus("idle"); }}
+                    className="pr-9 text-sm font-mono"
+                    data-testid="input-ai-key"
+                  />
+                  <button type="button" onClick={() => setShowKey(s => !s)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label={showKey ? "Hide key" : "Show key"}>
+                    {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <Button size="sm" variant="outline" onClick={testKey}
+                  disabled={!activeInput.trim() || testStatus === "testing"}
+                  data-testid="button-test-key">
+                  {testStatus === "testing" ? "Testing…" : "Test"}
+                </Button>
+                <Button size="sm" onClick={saveKey} disabled={!activeInput.trim()} data-testid="button-save-key">
+                  Save
+                </Button>
+              </div>
+              {testStatus === "ok" && (
+                <p className="text-[11px] text-green-600 dark:text-green-400 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Connection successful — key works!
                 </p>
               )}
-            </button>
-
-            {/* Own OpenAI Key */}
-            <button
-              type="button"
-              onClick={() => selectAiSource("openai")}
-              className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${
-                aiSource === "openai"
-                  ? "border-primary bg-primary/10 ring-1 ring-primary"
-                  : "border-border bg-muted/20 hover:bg-muted/40"
-              }`}
-            >
-              <div className="flex items-center gap-2 w-full">
-                <span className="text-sm font-semibold flex-1">My OpenAI Key</span>
-                {aiSource === "openai" && apiKey.startsWith("sk-") && (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                )}
-                {aiSource === "openai" && !apiKey.startsWith("sk-") && (
-                  <XCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                )}
-              </div>
-              <p className="text-[11px] text-muted-foreground leading-snug">
-                Bring your own key. Charged to your OpenAI account.
-              </p>
-            </button>
-          </div>
-        </div>
-
-        {/* ── OpenAI API Key (only shown when openai source selected) ── */}
-        {aiSource === "openai" && (
-        <div className="rounded-lg border border-border bg-muted/20 px-4 py-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <KeyRound className="w-4 h-4 text-muted-foreground" />
-              <p className="text-sm font-medium">OpenAI API Key</p>
+              {testStatus === "error" && (
+                <p className="text-[11px] text-destructive flex items-center gap-1">
+                  <XCircle className="w-3.5 h-3.5" /> {testError}
+                </p>
+              )}
+              {keyConfigured && (
+                <button type="button" onClick={clearKey}
+                  className="text-[11px] text-muted-foreground hover:text-destructive transition-colors underline-offset-2 hover:underline">
+                  Remove key
+                </button>
+              )}
             </div>
-            {apiKey.startsWith("sk-") ? (
-              <span className="flex items-center gap-1 text-[11px] font-semibold text-green-600 dark:text-green-400">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Configured
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                <XCircle className="w-3.5 h-3.5" /> Not set
-              </span>
-            )}
-          </div>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
-            Charges go directly to your OpenAI account — no markup here.{" "}
-            <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer"
-              className="text-primary underline-offset-2 hover:underline inline-flex items-center gap-0.5">
-              Get a key <ExternalLink className="w-3 h-3" />
-            </a>
-          </p>
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Input
-                type={showKey ? "text" : "password"}
-                placeholder="sk-..."
-                value={keyInput}
-                onChange={e => { setKeyInput(e.target.value); setTestStatus("idle"); }}
-                className="pr-9 text-sm font-mono"
-                data-testid="input-openai-key"
-              />
-              <button
-                type="button"
-                onClick={() => setShowKey(s => !s)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                aria-label={showKey ? "Hide key" : "Show key"}
-              >
-                {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            <Button
-              size="sm" variant="outline"
-              onClick={testKey}
-              disabled={!keyInput.trim() || testStatus === "testing"}
-              data-testid="button-test-key"
-            >
-              {testStatus === "testing" ? "Testing…" : "Test"}
-            </Button>
-            <Button
-              size="sm"
-              onClick={saveKey}
-              disabled={!keyInput.trim()}
-              data-testid="button-save-key"
-            >
-              Save
-            </Button>
-          </div>
-          {testStatus === "ok" && (
-            <p className="text-[11px] text-green-600 dark:text-green-400 flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Connection successful — key works!
-            </p>
-          )}
-          {testStatus === "error" && (
-            <p className="text-[11px] text-destructive flex items-center gap-1">
-              <XCircle className="w-3.5 h-3.5" /> {testError}
-            </p>
-          )}
-          {apiKey.startsWith("sk-") && (
-            <button
-              type="button"
-              onClick={clearKey}
-              className="text-[11px] text-muted-foreground hover:text-destructive transition-colors underline-offset-2 hover:underline"
-            >
-              Remove key
-            </button>
-          )}
-        </div>
-        )}
+          );
+        })()}
 
         {/* Master toggle */}
         <div className={`flex items-center justify-between gap-3 py-2 px-3 rounded-lg border border-border bg-muted/30 transition-opacity ${!keyConfigured ? "opacity-50 pointer-events-none" : ""}`}>
