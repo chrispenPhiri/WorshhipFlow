@@ -278,12 +278,17 @@ function AiSettingsCard() {
       if (!res.ok) {
         const txt = await res.text();
         let msg: string;
-        if (res.status === 429) {
-          msg = "Rate limited — please wait a moment and try again";
-        } else {
-          try { msg = (JSON.parse(txt) as { message?: string }).message ?? txt; } catch { msg = txt; }
-          msg = msg.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-          if (!msg) msg = `Request failed (HTTP ${res.status})`;
+        try {
+          const parsed = JSON.parse(txt) as { message?: string; error?: string };
+          msg = parsed.message ?? parsed.error ?? txt;
+        } catch { msg = txt; }
+        msg = msg.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+        if (res.status === 429 || /\b429\b|rate.?limit|too many requests/i.test(msg)) {
+          msg = "Rate limited by provider — please wait a moment and try again. (Free tiers have strict limits; Groq is usually most generous.)";
+        } else if (res.status === 401 || /401|unauthor|invalid.*key|incorrect.*api/i.test(msg)) {
+          msg = "Invalid API key — double-check the key you pasted.";
+        } else if (!msg) {
+          msg = `Request failed (HTTP ${res.status})`;
         }
         setTestStatus("error");
         setTestError(msg);
