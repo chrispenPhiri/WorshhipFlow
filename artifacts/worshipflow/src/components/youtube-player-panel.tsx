@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useDraggableButton } from "@/hooks/use-draggable-button";
 import {
   Youtube, X, Play, Pause, Music, Search, ExternalLink,
   ChevronUp, Volume2, VolumeX, GripHorizontal, EyeOff, Eye,
@@ -73,6 +74,12 @@ function uid() {
 
 /* ── Component ───────────────────────────────────────────────── */
 export function YoutubePlayerPanel() {
+  /* Draggable floating button */
+  const ytBtn = useDraggableButton(
+    "wf-yt-btn-pos",
+    useCallback(() => ({ x: window.innerWidth - 64, y: window.innerHeight - 128 }), []),
+  );
+
   /* Sheet / tabs */
   const [open, setOpen]         = useState(false);
   const [tab, setTab]           = useState("library");
@@ -396,14 +403,16 @@ export function YoutubePlayerPanel() {
         </div>
       )}
 
-      {/* ── Floating YouTube button ───────────────────────────────── */}
+      {/* ── Floating YouTube button (draggable) ─────────────────── */}
       <button
         type="button"
-        onClick={() => setOpen(true)}
-        className="fixed bottom-[4.75rem] right-5 z-40 flex items-center justify-center w-11 h-11 rounded-full bg-red-600 text-white shadow-lg hover:bg-red-700 transition-all duration-150"
+        style={ytBtn.style}
+        onPointerDown={ytBtn.onPointerDown}
+        onClick={() => ytBtn.wasClick() && setOpen(true)}
+        className="flex items-center justify-center w-11 h-11 rounded-full bg-red-600 text-white shadow-lg hover:bg-red-700 active:scale-95 transition-transform duration-100 select-none"
         aria-label="Open YouTube player"
         data-testid="button-youtube-panel"
-        title="YouTube Player"
+        title="YouTube Player — drag to move"
       >
         <Youtube className="w-5 h-5" />
         {queue.length > 0 && (

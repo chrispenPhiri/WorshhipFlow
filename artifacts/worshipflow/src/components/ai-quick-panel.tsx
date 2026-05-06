@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback } from "react";
+import { useDraggableButton } from "@/hooks/use-draggable-button";
 import {
   Sparkles, Send, Loader2, X, Monitor, Music2, ImageIcon,
   MessageSquare, RefreshCw, Download, Copy, Check, Settings2,
@@ -90,6 +91,12 @@ const QUICK_PROMPTS: { label: string; message: string }[] = [
 const SONG_STYLES = ["Contemporary Gospel", "Traditional Hymn", "African Gospel", "Praise & Worship", "Soft Acoustic", "R&B Gospel"];
 
 export function AiQuickPanel() {
+  /* Draggable floating button */
+  const aiBtn = useDraggableButton(
+    "wf-ai-btn-pos",
+    useCallback(() => ({ x: window.innerWidth - 148, y: window.innerHeight - 60 }), []),
+  );
+
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState("chat");
 
@@ -245,10 +252,13 @@ export function AiQuickPanel() {
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-40 flex items-center gap-2 h-11 px-4 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all duration-150 text-sm font-semibold"
+        style={aiBtn.style}
+        onPointerDown={aiBtn.onPointerDown}
+        onClick={() => aiBtn.wasClick() && setOpen(true)}
+        className="flex items-center gap-2 h-11 px-4 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-95 transition-transform duration-100 text-sm font-semibold select-none"
         aria-label="Open AI assistant"
         data-testid="button-ai-quick-panel"
+        title="Ask AI — drag to move"
       >
         <Sparkles className="w-4 h-4" />
         <span>Ask AI</span>
