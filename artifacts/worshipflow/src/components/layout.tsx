@@ -16,6 +16,7 @@ import { useBibleOnlyMode, isPathAllowedInBibleOnly } from "@/lib/bible-only-mod
 import { useGetScreenState, getGetScreenStateQueryKey } from "@workspace/api-client-react";
 import { ProfileDialog } from "./profile-dialog";
 import { AiQuickPanel } from "./ai-quick-panel";
+import { YoutubePlayerPanel } from "./youtube-player-panel";
 
 /**
  * Three viewport modes drive the layout shape:
@@ -451,6 +452,9 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {/* ── Profile dialog ────────────────────────────────────────────── */}
       <ProfileDialog open={profileOpen} onOpenChange={setProfileOpen} />
+
+      {/* ── YouTube player panel (floating) ──────────────────────────── */}
+      <YoutubePlayerPanel />
 
       {/* ── AI quick panel (floating) ─────────────────────────────────── */}
       <AiQuickPanel />

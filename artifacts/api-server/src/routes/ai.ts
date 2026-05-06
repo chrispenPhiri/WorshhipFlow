@@ -420,4 +420,31 @@ Guidelines:
   );
 });
 
+/* ── General Chat (handles anything) ─────────────────────────── */
+router.post("/chat", async (req, res) => {
+  const { messages } = req.body as {
+    messages: { role: "user" | "assistant"; content: string }[];
+  };
+  if (!messages?.length) { res.status(400).json({ error: "messages is required" }); return; }
+  sseHeaders(res);
+  const stream = await openai.chat.completions.create({
+    model: "gpt-5.4",
+    max_completion_tokens: 8192,
+    messages: [
+      {
+        role: "system",
+        content: `You are a helpful AI assistant embedded in Phiri WorshipFlow, a church worship app. You can help with anything — church topics (sermons, prayers, Bible study, devotionals, songs), creative writing, real-life advice, general knowledge, brainstorming, coding questions, or any other topic. Be warm, clear, and genuinely helpful. For sensitive topics be compassionate and thoughtful.`,
+      },
+      ...messages,
+    ],
+    stream: true,
+  });
+  for await (const chunk of stream) {
+    const content = chunk.choices[0]?.delta?.content;
+    if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
+  }
+  res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+  res.end();
+});
+
 export default router;

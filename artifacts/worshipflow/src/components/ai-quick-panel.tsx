@@ -1,11 +1,19 @@
 import { useRef, useState } from "react";
-import { Sparkles, Send, Loader2, X, Monitor } from "lucide-react";
+import {
+  Sparkles, Send, Loader2, X, Monitor, Music2, ImageIcon,
+  MessageSquare, RefreshCw, Download, Copy, Check,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGameBroadcast } from "@/lib/game-broadcast";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+interface ChatMessage { role: "user" | "assistant"; content: string; }
 
 async function streamPost(
   path: string,
@@ -35,95 +43,168 @@ async function streamPost(
   }
 }
 
-interface QuickPrompt {
-  label: string;
-  /** API path under /api/ai */
-  path: string;
-  body: object;
+async function postJson<T>(path: string, body: object): Promise<T> {
+  const res = await fetch(`${BASE}/api/ai${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json() as Promise<T>;
 }
 
-const QUICK_PROMPTS: QuickPrompt[] = [
-  {
-    label: "Opening prayer",
-    path: "/prayer",
-    body: { type: "opening", topic: "worship service", occasion: "Sunday service" },
-  },
-  {
-    label: "Closing prayer",
-    path: "/prayer",
-    body: { type: "closing", topic: "blessing", occasion: "end of service" },
-  },
-  {
-    label: "Sermon outline",
-    path: "/sermon-outline",
-    body: { topic: "grace and faith", style: "expository" },
-  },
-  {
-    label: "Devotional",
-    path: "/devotional",
-    body: { passage: "Psalm 23", length: "short" },
-  },
-  {
-    label: "Announcements",
-    path: "/announcement",
-    body: { topic: "Sunday service", tone: "warm" },
-  },
-  {
-    label: "Ask the prophet",
-    path: "/prophet",
-    body: { messages: [{ role: "user", content: "What is an encouraging Bible verse for today?" }] },
-  },
+const QUICK_PROMPTS: { label: string; message: string }[] = [
+  { label: "Opening prayer", message: "Write an opening prayer for our Sunday worship service." },
+  { label: "Closing prayer", message: "Write a warm closing prayer and blessing for our congregation." },
+  { label: "Devotional", message: "Give me a short daily devotional based on Psalm 23." },
+  { label: "Encouragement", message: "Share an encouraging Bible verse and a brief reflection for today." },
+  { label: "Sermon intro", message: "Write a compelling sermon introduction on the topic of grace and faith." },
+  { label: "Announcement", message: "Write a warm church announcement inviting the congregation to our upcoming Sunday service." },
 ];
+
+const SONG_STYLES = ["Contemporary Gospel", "Traditional Hymn", "African Gospel", "Praise & Worship", "Soft Acoustic", "R&B Gospel"];
 
 export function AiQuickPanel() {
   const [open, setOpen] = useState(false);
-  const [prompt, setPrompt] = useState("");
-  const [result, setResult] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const resultRef = useRef<HTMLDivElement>(null);
+  const [tab, setTab] = useState("chat");
+
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+
+  const [songTheme, setSongTheme] = useState("");
+  const [songStyle, setSongStyle] = useState("Contemporary Gospel");
+  const [songVerses, setSongVerses] = useState("2");
+  const [songResult, setSongResult] = useState("");
+  const [songLoading, setSongLoading] = useState(false);
+  const [songError, setSongError] = useState<string | null>(null);
+  const songResultRef = useRef<HTMLDivElement>(null);
+
+  const [imgPrompt, setImgPrompt] = useState("");
+  const [imgResult, setImgResult] = useState<string | null>(null);
+  const [imgLoading, setImgLoading] = useState(false);
+  const [imgError, setImgError] = useState<string | null>(null);
+
+  const [copied, setCopied] = useState(false);
 
   const { presentOnScreen } = useGameBroadcast();
 
-  async function runPath(path: string, body: object) {
-    setError(null);
-    setResult("");
-    setLoading(true);
+  function scrollChat() {
+    requestAnimationFrame(() => chatBottomRef.current?.scrollIntoView({ behavior: "smooth" }));
+  }
+
+  async function sendChat(userText: string) {
+    if (!userText.trim() || chatLoading) return;
+    const userMsg: ChatMessage = { role: "user", content: userText };
+    const nextMessages = [...messages, userMsg];
+    setMessages(nextMessages);
+    setChatInput("");
+    setChatLoading(true);
+    setChatError(null);
+
+    const assistantMsg: ChatMessage = { role: "assistant", content: "" };
+    setMessages(m => [...m, assistantMsg]);
+    scrollChat();
+
     try {
-      await streamPost(path, body, (chunk) => {
-        setResult(prev => {
-          requestAnimationFrame(() => {
-            resultRef.current?.scrollTo({ top: resultRef.current.scrollHeight, behavior: "smooth" });
-          });
-          return prev + chunk;
+      await streamPost("/chat", { messages: nextMessages }, (chunk) => {
+        setMessages(m => {
+          const updated = [...m];
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            content: updated[updated.length - 1].content + chunk,
+          };
+          return updated;
         });
+        scrollChat();
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong.");
+      setChatError(e instanceof Error ? e.message : "Something went wrong.");
+      setMessages(m => m.slice(0, -1));
     } finally {
-      setLoading(false);
+      setChatLoading(false);
     }
   }
 
-  async function run(question: string) {
-    if (!question.trim() || loading) return;
-    runPath("/prophet", { messages: [{ role: "user", content: question }] });
+  async function generateSong() {
+    if (!songTheme.trim() || songLoading) return;
+    setSongLoading(true);
+    setSongError(null);
+    setSongResult("");
+    try {
+      await streamPost(
+        "/generate-song",
+        { theme: songTheme, style: songStyle, numVerses: parseInt(songVerses) },
+        (chunk) => {
+          setSongResult(p => {
+            requestAnimationFrame(() =>
+              songResultRef.current?.scrollTo({ top: songResultRef.current.scrollHeight, behavior: "smooth" })
+            );
+            return p + chunk;
+          });
+        },
+      );
+    } catch (e) {
+      setSongError(e instanceof Error ? e.message : "Failed to generate song.");
+    } finally {
+      setSongLoading(false);
+    }
   }
 
-  function handleSubmit() {
-    if (!prompt.trim()) return;
-    run(prompt);
-    setPrompt("");
+  async function generateImage() {
+    if (!imgPrompt.trim() || imgLoading) return;
+    setImgLoading(true);
+    setImgError(null);
+    setImgResult(null);
+    try {
+      const data = await postJson<{ b64_json: string }>("/custom-image", { prompt: imgPrompt });
+      setImgResult(`data:image/png;base64,${data.b64_json}`);
+    } catch (e) {
+      setImgError(e instanceof Error ? e.message : "Image generation failed.");
+    } finally {
+      setImgLoading(false);
+    }
   }
 
-  function sendToScreen() {
-    if (!result) return;
-    presentOnScreen("AI Assistant", "AI", result);
+  function copyText(text: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   }
+
+  function downloadImage() {
+    if (!imgResult) return;
+    const a = document.createElement("a");
+    a.href = imgResult;
+    a.download = "ai-image.png";
+    a.click();
+  }
+
+  function sendSongToScreen() {
+    if (songResult) presentOnScreen("AI Song", "AI", songResult);
+  }
+
+  function sendChatToScreen() {
+    const last = messages.filter(m => m.role === "assistant" && m.content).pop();
+    if (last) presentOnScreen("AI Assistant", "AI", last.content);
+  }
+
+  function sendImageAsBackground() {
+    if (!imgResult) return;
+    fetch(`${BASE}/api/screen`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ background: { type: "image", value: imgResult, overlay: 0 }, contentType: "none", isClear: false }),
+    }).catch(() => {});
+  }
+
+  const lastAssistantMsg = messages.filter(m => m.role === "assistant" && m.content).pop();
 
   return (
     <>
-      {/* Floating button */}
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -135,7 +216,6 @@ export function AiQuickPanel() {
         <span>Ask AI</span>
       </button>
 
-      {/* Slide-over sheet */}
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
           side="right"
@@ -149,98 +229,226 @@ export function AiQuickPanel() {
             </SheetTitle>
           </SheetHeader>
 
-          {/* Quick prompts */}
-          <div className="p-4 border-b border-border shrink-0">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2.5">Quick prompts</p>
-            <div className="flex flex-wrap gap-1.5">
-              {QUICK_PROMPTS.map(({ label, path, body }) => (
-                <button
-                  key={label}
-                  type="button"
-                  disabled={loading}
-                  onClick={() => runPath(path, body)}
-                  className="px-2.5 py-1 rounded-full text-xs border border-border bg-muted/30 hover:bg-muted/70 hover:border-primary/40 transition-colors disabled:opacity-50"
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
+          <Tabs value={tab} onValueChange={setTab} className="flex flex-col flex-1 min-h-0">
+            <TabsList className="mx-4 mt-3 shrink-0 grid grid-cols-3">
+              <TabsTrigger value="chat" className="gap-1.5 text-xs">
+                <MessageSquare className="w-3.5 h-3.5" />Chat
+              </TabsTrigger>
+              <TabsTrigger value="song" className="gap-1.5 text-xs">
+                <Music2 className="w-3.5 h-3.5" />Song
+              </TabsTrigger>
+              <TabsTrigger value="image" className="gap-1.5 text-xs">
+                <ImageIcon className="w-3.5 h-3.5" />Image
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Result area */}
-          <div ref={resultRef} className="flex-1 overflow-y-auto p-4">
-            {loading && !result && (
-              <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Generating…
+            {/* ── CHAT TAB ─────────────────────────────────── */}
+            <TabsContent value="chat" className="flex flex-col flex-1 min-h-0 mt-0 data-[state=inactive]:hidden">
+              <div className="px-4 pt-3 pb-2 border-b border-border shrink-0">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Quick prompts</p>
+                <div className="flex flex-wrap gap-1">
+                  {QUICK_PROMPTS.map(({ label, message }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      disabled={chatLoading}
+                      onClick={() => sendChat(message)}
+                      className="px-2.5 py-1 rounded-full text-xs border border-border bg-muted/30 hover:bg-muted/70 hover:border-primary/40 transition-colors disabled:opacity-50"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            )}
-            {error && (
-              <div className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2 mb-3">{error}</div>
-            )}
-            {result && (
-              <div className="space-y-3">
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{result}</p>
-                {!loading && (
-                  <div className="flex items-center gap-2 pt-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5 h-7 text-xs"
-                      onClick={sendToScreen}
-                    >
-                      <Monitor className="w-3 h-3" />
-                      Send to screen
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="gap-1.5 h-7 text-xs text-muted-foreground"
-                      onClick={() => setResult("")}
-                    >
-                      <X className="w-3 h-3" />
-                      Clear
-                    </Button>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+                {messages.length === 0 && !chatLoading && (
+                  <p className="text-sm text-muted-foreground">
+                    Ask me anything — Bible questions, real-life advice, sermon help, creative writing, or any topic at all.
+                  </p>
+                )}
+                {chatError && (
+                  <div className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{chatError}</div>
+                )}
+                {messages.map((msg, i) => (
+                  <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                    <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap ${
+                      msg.role === "user"
+                        ? "bg-primary text-primary-foreground rounded-br-sm"
+                        : "bg-muted/60 text-foreground rounded-bl-sm"
+                    }`}>
+                      {msg.content || (chatLoading && i === messages.length - 1
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : null)}
+                    </div>
+                  </div>
+                ))}
+                <div ref={chatBottomRef} />
+              </div>
+
+              {lastAssistantMsg && !chatLoading && (
+                <div className="px-4 pb-2 shrink-0 flex items-center gap-2 flex-wrap border-t border-border pt-2">
+                  <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={sendChatToScreen}>
+                    <Monitor className="w-3 h-3" />Send to screen
+                  </Button>
+                  <Button size="sm" variant="ghost" className="gap-1.5 h-7 text-xs" onClick={() => copyText(lastAssistantMsg.content)}>
+                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    {copied ? "Copied!" : "Copy"}
+                  </Button>
+                  <Button size="sm" variant="ghost" className="gap-1.5 h-7 text-xs text-muted-foreground" onClick={() => setMessages([])}>
+                    <RefreshCw className="w-3 h-3" />Clear
+                  </Button>
+                </div>
+              )}
+
+              <div className="p-4 border-t border-border shrink-0">
+                <div className="flex gap-2">
+                  <Textarea
+                    placeholder="Ask anything…"
+                    value={chatInput}
+                    onChange={e => setChatInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(chatInput); } }}
+                    rows={2}
+                    className="resize-none text-sm"
+                    disabled={chatLoading}
+                  />
+                  <Button
+                    size="icon"
+                    onClick={() => sendChat(chatInput)}
+                    disabled={!chatInput.trim() || chatLoading}
+                    className="shrink-0 self-end"
+                    aria-label="Send"
+                  >
+                    {chatLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1.5">Enter to send · Shift+Enter for new line</p>
+              </div>
+            </TabsContent>
+
+            {/* ── SONG TAB ─────────────────────────────────── */}
+            <TabsContent value="song" className="flex flex-col flex-1 min-h-0 mt-0 data-[state=inactive]:hidden">
+              <div className="p-4 border-b border-border shrink-0 space-y-3">
+                <div>
+                  <label className="text-xs font-medium mb-1 block">Song theme or message</label>
+                  <Input
+                    placeholder="e.g. God's faithfulness, healing, praise, surrender…"
+                    value={songTheme}
+                    onChange={e => setSongTheme(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") generateSong(); }}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="text-xs font-medium mb-1 block">Style</label>
+                    <Select value={songStyle} onValueChange={setSongStyle}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {SONG_STYLES.map(s => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="w-24">
+                    <label className="text-xs font-medium mb-1 block">Verses</label>
+                    <Select value={songVerses} onValueChange={setSongVerses}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {["1","2","3","4"].map(n => <SelectItem key={n} value={n} className="text-xs">{n}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Button className="w-full gap-2" onClick={generateSong} disabled={!songTheme.trim() || songLoading}>
+                  {songLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Music2 className="w-4 h-4" />}
+                  {songLoading ? "Writing song…" : "Generate Song Lyrics"}
+                </Button>
+                {songError && <p className="text-sm text-destructive bg-destructive/10 rounded px-3 py-2">{songError}</p>}
+              </div>
+
+              <div ref={songResultRef} className="flex-1 overflow-y-auto p-4 min-h-0">
+                {!songResult && !songLoading && (
+                  <p className="text-sm text-muted-foreground">
+                    Enter a theme to generate original worship song lyrics with verses, chorus, and bridge.
+                  </p>
+                )}
+                {songLoading && !songResult && (
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                    <Loader2 className="w-4 h-4 animate-spin" />Writing lyrics…
                   </div>
                 )}
+                {songResult && (
+                  <pre className="text-sm leading-relaxed whitespace-pre-wrap font-sans">{songResult}</pre>
+                )}
               </div>
-            )}
-            {!result && !loading && !error && (
-              <p className="text-sm text-muted-foreground">
-                Use a quick prompt above or type your question below. Results can be sent directly to the screen.
-              </p>
-            )}
-          </div>
 
-          {/* Input area */}
-          <div className="p-4 border-t border-border shrink-0">
-            <div className="flex gap-2">
-              <Textarea
-                placeholder="Ask anything about the Bible, sermon, prayer…"
-                value={prompt}
-                onChange={e => setPrompt(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSubmit();
-                  }
-                }}
-                rows={2}
-                className="resize-none text-sm"
-                disabled={loading}
-              />
-              <Button
-                size="icon"
-                onClick={handleSubmit}
-                disabled={!prompt.trim() || loading}
-                className="shrink-0 self-end"
-                aria-label="Send"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              </Button>
-            </div>
-            <p className="text-[10px] text-muted-foreground mt-1.5">Enter to send · Shift+Enter for new line</p>
-          </div>
+              {songResult && !songLoading && (
+                <div className="px-4 pb-4 shrink-0 flex items-center gap-2 flex-wrap border-t border-border pt-3">
+                  <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={sendSongToScreen}>
+                    <Monitor className="w-3 h-3" />Send to screen
+                  </Button>
+                  <Button size="sm" variant="ghost" className="gap-1.5 h-7 text-xs" onClick={() => copyText(songResult)}>
+                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    {copied ? "Copied!" : "Copy"}
+                  </Button>
+                  <Button size="sm" variant="ghost" className="gap-1.5 h-7 text-xs text-muted-foreground" onClick={() => setSongResult("")}>
+                    <RefreshCw className="w-3 h-3" />New song
+                  </Button>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* ── IMAGE TAB ─────────────────────────────────── */}
+            <TabsContent value="image" className="flex flex-col flex-1 min-h-0 mt-0 data-[state=inactive]:hidden">
+              <div className="p-4 border-b border-border shrink-0 space-y-3">
+                <div>
+                  <label className="text-xs font-medium mb-1 block">Describe the image</label>
+                  <Textarea
+                    placeholder="e.g. A majestic sunrise over mountains with rays of light breaking through the clouds, biblical, cinematic…"
+                    value={imgPrompt}
+                    onChange={e => setImgPrompt(e.target.value)}
+                    rows={3}
+                    className="resize-none text-sm"
+                  />
+                </div>
+                <Button className="w-full gap-2" onClick={generateImage} disabled={!imgPrompt.trim() || imgLoading}>
+                  {imgLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                  {imgLoading ? "Generating…" : "Generate Image"}
+                </Button>
+                {imgError && <p className="text-sm text-destructive bg-destructive/10 rounded px-3 py-2">{imgError}</p>}
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 min-h-0">
+                {!imgResult && !imgLoading && (
+                  <p className="text-sm text-muted-foreground">
+                    Describe any image — worship backgrounds, biblical scenes, nature, abstract art, or anything you can imagine.
+                  </p>
+                )}
+                {imgLoading && (
+                  <div className="flex flex-col items-center justify-center gap-3 py-12 text-muted-foreground">
+                    <Loader2 className="w-8 h-8 animate-spin" />
+                    <p className="text-sm">Creating your image…</p>
+                  </div>
+                )}
+                {imgResult && (
+                  <img src={imgResult} alt="AI generated" className="w-full rounded-lg shadow-md" />
+                )}
+              </div>
+
+              {imgResult && !imgLoading && (
+                <div className="px-4 pb-4 shrink-0 flex items-center gap-2 flex-wrap border-t border-border pt-3">
+                  <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={sendImageAsBackground}>
+                    <Monitor className="w-3 h-3" />Set as background
+                  </Button>
+                  <Button size="sm" variant="ghost" className="gap-1.5 h-7 text-xs" onClick={downloadImage}>
+                    <Download className="w-3 h-3" />Download
+                  </Button>
+                  <Button size="sm" variant="ghost" className="gap-1.5 h-7 text-xs text-muted-foreground" onClick={() => setImgResult(null)}>
+                    <X className="w-3 h-3" />Clear
+                  </Button>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </SheetContent>
       </Sheet>
     </>

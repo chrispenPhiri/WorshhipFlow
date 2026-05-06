@@ -32,8 +32,8 @@ export function ProfileDialog({ open, onOpenChange }: Props) {
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      setError("Image must be under 2 MB.");
+    if (file.size > 15 * 1024 * 1024) {
+      setError("Image must be under 15 MB.");
       return;
     }
     const reader = new FileReader();
@@ -104,7 +104,7 @@ export function ProfileDialog({ open, onOpenChange }: Props) {
               className="hidden"
               onChange={handleAvatarChange}
             />
-            <p className="text-xs text-muted-foreground">Click to change photo · max 2 MB</p>
+            <p className="text-xs text-muted-foreground">Click to change photo · max 15 MB</p>
           </div>
 
           {/* Display name */}
