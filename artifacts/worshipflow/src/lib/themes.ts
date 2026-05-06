@@ -164,6 +164,14 @@ export const THEME_PRESETS: ThemePreset[] = [
     textStyle: { fontFamily: "Lora", fontSize: 60, textColor: "#cffafe", bold: false, italic: false, alignment: "center", animation: "float" },
   },
   {
+    id: "bokeh-theme",
+    name: "Bokeh",
+    description: "Soft glowing orbs with elegant Playfair Display text",
+    previewGradient: "from-indigo-950 to-purple-950",
+    background: { type: "live_wallpaper", value: "bokeh" },
+    textStyle: { fontFamily: "Playfair Display", fontSize: 64, textColor: "#ffffff", bold: false, italic: false, alignment: "center", animation: "fade_in" },
+  },
+  {
     id: "dark-minimal",
     name: "Dark Minimal",
     description: "Charcoal with Inter and clean fade-in",

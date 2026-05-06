@@ -47,7 +47,7 @@ export const APP_FONTS: { id: string; name: string; stack: string }[] = [
   { id: "garamond",   name: "EB Garamond",      stack: "'EB Garamond', Georgia, serif" },
 ];
 
-export const DEFAULT_FONT_ID = "inter";
+export const DEFAULT_FONT_ID = "playfair";
 
 export interface ControlAppearance {
   colorId: string;

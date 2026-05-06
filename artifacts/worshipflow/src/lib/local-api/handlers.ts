@@ -63,7 +63,7 @@ const DEFAULT_SCREEN_STATE: Record<string, unknown> = {
   title: null,
   content: null,
   textStyle: {
-    fontFamily: "Inter",
+    fontFamily: "Playfair Display",
     fontSize: 64,
     textColor: "#ffffff",
     accentColor: "#f59e0b",
@@ -72,7 +72,7 @@ const DEFAULT_SCREEN_STATE: Record<string, unknown> = {
     alignment: "center",
     animation: "none",
   },
-  background: { type: "color", value: "#000000", overlay: 0 },
+  background: { type: "live_wallpaper", value: "bokeh", overlay: 0 },
   layout: { textScale: 1, verticalAlign: "center", horizontalAlign: "center", paddingX: 8, paddingY: 8, textWidthPct: 100 },
   tickerEnabled: false,
   tickerText: null,
@@ -393,8 +393,28 @@ export async function updateSettings(init: RequestInit | undefined): Promise<Res
 }
 
 // ── Screen state (singleton) ─────────────────────────────────────────────
+const SCREEN_DEFAULTS_VERSION = 2; // bump when DEFAULT_SCREEN_STATE changes meaningfully
+
+async function migrateScreenState(state: Record<string, unknown>): Promise<Record<string, unknown>> {
+  if (((state._defaultsVersion as number | undefined) ?? 0) >= SCREEN_DEFAULTS_VERSION) return state;
+  const patched: Record<string, unknown> = { ...state, _defaultsVersion: SCREEN_DEFAULTS_VERSION };
+  // Migrate v1→v2: switch from old black-color default background to Bokeh live wallpaper
+  const bg = state.background as Record<string, unknown> | undefined;
+  if (!bg || (bg.type === "color" && bg.value === "#000000")) {
+    patched.background = { type: "live_wallpaper", value: "bokeh", overlay: 0 };
+  }
+  // Migrate v1→v2: switch from old Inter default font to Playfair Display
+  const ts = state.textStyle as Record<string, unknown> | undefined;
+  if (!ts || ts.fontFamily === "Inter") {
+    patched.textStyle = { ...(ts ?? {}), fontFamily: "Playfair Display" };
+  }
+  await writeSingleton("screen", patched);
+  return patched;
+}
+
 export async function getScreenState(): Promise<Response> {
-  return json(await readSingleton("screen", DEFAULT_SCREEN_STATE));
+  const state = await readSingleton("screen", DEFAULT_SCREEN_STATE);
+  return json(await migrateScreenState(state));
 }
 export async function updateScreenState(init: RequestInit | undefined): Promise<Response> {
   const current = await readSingleton("screen", DEFAULT_SCREEN_STATE);
