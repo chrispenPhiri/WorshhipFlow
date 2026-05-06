@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Settings as SettingsIcon, Palette, Type, RotateCcw, Check, LayoutGrid, BookOpen, Smile, Sparkles, ExternalLink, ImageIcon, Music2, MessageSquare, KeyRound, Eye, EyeOff, CheckCircle2, XCircle, ChevronDown } from "lucide-react";
+import { Settings as SettingsIcon, Palette, Type, RotateCcw, Check, LayoutGrid, BookOpen, Smile, Sparkles, ExternalLink, ImageIcon, Music2, MessageSquare, KeyRound, Eye, EyeOff, CheckCircle2, XCircle, ChevronDown, Smartphone } from "lucide-react";
 import {
   useSidebarScrollbar, useSidebarWidth,
   SCROLLBAR_STYLES, SIDEBAR_WIDTHS,
@@ -180,81 +180,91 @@ export default function SettingsPage() {
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>General Settings</CardTitle>
-          <CardDescription>Configure global app behavior and defaults.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Church Name</label>
-            <Input 
-              value={formData.churchName || ""} 
-              onChange={(e) => setFormData({...formData, churchName: e.target.value})} 
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+      <SettingsGroup
+        id="general"
+        icon={SettingsIcon}
+        title="General Settings"
+        description="Church name, default Bible version, font, and ticker bar"
+      >
+        <Card>
+          <CardContent className="space-y-6 pt-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Default Bible Version</label>
-              <Select 
-                value={formData.defaultBibleVersion || "KJV"} 
-                onValueChange={(v) => setFormData({...formData, defaultBibleVersion: v})}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {BIBLE_TRANSLATIONS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Default Font</label>
-              <Select 
-                value={formData.defaultFont || "Inter"} 
-                onValueChange={(v) => setFormData({...formData, defaultFont: v})}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {FONTS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-4 border-t border-border pt-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <label className="text-sm font-medium">Ticker Bar</label>
-                <p className="text-xs text-muted-foreground">Show scrolling text at the bottom of the screen</p>
-              </div>
-              <Switch 
-                checked={formData.tickerEnabled || false} 
-                onCheckedChange={(c) => setFormData({...formData, tickerEnabled: c})} 
+              <label className="text-sm font-medium">Church Name</label>
+              <Input
+                value={formData.churchName || ""}
+                onChange={(e) => setFormData({...formData, churchName: e.target.value})}
               />
             </div>
-            
-            {formData.tickerEnabled && (
+
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Ticker Text</label>
-                <Input 
-                  value={formData.tickerText || ""} 
-                  onChange={(e) => setFormData({...formData, tickerText: e.target.value})} 
-                  placeholder="Welcome to our service!"
+                <label className="text-sm font-medium">Default Bible Version</label>
+                <Select
+                  value={formData.defaultBibleVersion || "KJV"}
+                  onValueChange={(v) => setFormData({...formData, defaultBibleVersion: v})}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {BIBLE_TRANSLATIONS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Default Font</label>
+                <Select
+                  value={formData.defaultFont || "Inter"}
+                  onValueChange={(v) => setFormData({...formData, defaultFont: v})}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {FONTS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-4 border-t border-border pt-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <label className="text-sm font-medium">Ticker Bar</label>
+                  <p className="text-xs text-muted-foreground">Show scrolling text at the bottom of the screen</p>
+                </div>
+                <Switch
+                  checked={formData.tickerEnabled || false}
+                  onCheckedChange={(c) => setFormData({...formData, tickerEnabled: c})}
                 />
               </div>
-            )}
-          </div>
 
-          <div className="flex justify-end pt-4">
-            <Button onClick={handleSave} disabled={isPending}>
-              {isPending ? "Saving..." : "Save Settings"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+              {formData.tickerEnabled && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Ticker Text</label>
+                  <Input
+                    value={formData.tickerText || ""}
+                    onChange={(e) => setFormData({...formData, tickerText: e.target.value})}
+                    placeholder="Welcome to our service!"
+                  />
+                </div>
+              )}
+            </div>
 
-      <InstallAppCard />
+            <div className="flex justify-end pt-4">
+              <Button onClick={handleSave} disabled={isPending}>
+                {isPending ? "Saving..." : "Save Settings"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </SettingsGroup>
+
+      <SettingsGroup
+        id="install"
+        icon={Smartphone}
+        title="Install & Local Storage"
+        description="Install the app, protect storage, and back up your data"
+      >
+        <InstallAppCard />
+      </SettingsGroup>
 
       <SettingsGroup
         id="ai"
