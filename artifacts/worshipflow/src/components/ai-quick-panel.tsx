@@ -15,6 +15,22 @@ import { checkImageLimit, incrementDailyImageCount } from "@/lib/ai-usage";
 import { Link } from "wouter";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+const OPENAI_KEY_STORAGE = "wf-openai-key";
+
+function getAiHeaders(): Record<string, string> {
+  const key = localStorage.getItem(OPENAI_KEY_STORAGE)?.trim();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (key) headers["X-OpenAI-Key"] = key;
+  return headers;
+}
+
+function parseAiError(raw: string): string {
+  try {
+    const parsed = JSON.parse(raw) as { message?: string };
+    if (parsed.message) return parsed.message;
+  } catch { /* not JSON */ }
+  return raw;
+}
 
 interface ChatMessage { role: "user" | "assistant"; content: string; }
 
@@ -25,10 +41,10 @@ async function streamPost(
 ): Promise<void> {
   const res = await fetch(`${BASE}/api/ai${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAiHeaders(),
     body: JSON.stringify(body),
   });
-  if (!res.ok || !res.body) throw new Error(await res.text());
+  if (!res.ok || !res.body) throw new Error(parseAiError(await res.text()));
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buf = "";
@@ -49,10 +65,10 @@ async function streamPost(
 async function postJson<T>(path: string, body: object): Promise<T> {
   const res = await fetch(`${BASE}/api/ai${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAiHeaders(),
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) throw new Error(parseAiError(await res.text()));
   return res.json() as Promise<T>;
 }
 

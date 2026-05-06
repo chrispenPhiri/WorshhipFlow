@@ -1,7 +1,7 @@
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Youtube, X, Play, Pause, Music, Search, ExternalLink,
-  ChevronUp, Volume2, VolumeX,
+  ChevronUp, Volume2, VolumeX, GripHorizontal, EyeOff, Eye, Monitor,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,8 +55,54 @@ export function YoutubePlayerPanel() {
   const [volume, setVolume]           = useState(80);
   const [muted, setMuted]             = useState(false);
 
+  /* ── Drag state ─────────────────────────────────────── */
+  // null = use default bottom-left position
+  const [playerPos, setPlayerPos] = useState<{ x: number; y: number } | null>(null);
+  const playerPosRef = useRef<{ x: number; y: number } | null>(null);
+  const dragState = useRef({ active: false, ox: 0, oy: 0 });
+
+  /* ── Hide state ─────────────────────────────────────── */
+  const [isHidden, setIsHidden] = useState(false);
+
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  /* ── Drag handlers (set up once, read from refs) ──── */
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      if (!dragState.current.active) return;
+      const W = isHidden ? 200 : 280;
+      const H = isHidden ? 48  : 230;
+      const x = Math.max(0, Math.min(window.innerWidth  - W, e.clientX - dragState.current.ox));
+      const y = Math.max(0, Math.min(window.innerHeight - H, e.clientY - dragState.current.oy));
+      const next = { x, y };
+      playerPosRef.current = next;
+      setPlayerPos(next);
+    };
+    const onUp = () => { dragState.current.active = false; };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [isHidden]);
+
+  const startDrag = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    const pos = playerPosRef.current ?? defaultPos();
+    dragState.current = { active: true, ox: e.clientX - pos.x, oy: e.clientY - pos.y };
+  }, []);
+
+  function defaultPos() {
+    return { x: 20, y: Math.max(0, window.innerHeight - 240) };
+  }
+
+  function getPlayerStyle(): React.CSSProperties {
+    const pos = playerPos ?? defaultPos();
+    return { position: "fixed", left: pos.x, top: pos.y, zIndex: 40 };
+  }
+
+  /* ── YouTube commands ──────────────────────────────── */
   function ytCmd(func: string, args: unknown[] = []) {
     try {
       iframeRef.current?.contentWindow?.postMessage(
@@ -71,6 +117,7 @@ export function YoutubePlayerPanel() {
     setActiveTitle(title);
     setIsPaused(false);
     setUrlError(null);
+    setIsHidden(false);
   }
 
   function togglePause() {
@@ -83,6 +130,7 @@ export function YoutubePlayerPanel() {
     setActiveId(null);
     setActiveTitle("");
     setIsPaused(false);
+    setIsHidden(false);
   }
 
   function changeVolume(v: number) {
@@ -106,94 +154,206 @@ export function YoutubePlayerPanel() {
     setOpen(false);
   }
 
+  function sendToPresentation() {
+    if (!activeId) return;
+    window.open(
+      `https://www.youtube.com/watch?v=${activeId}`,
+      "yt-presentation",
+      `width=${window.screen.width},height=${window.screen.height},menubar=no,toolbar=no,location=no,status=no`,
+    );
+  }
+
+  /* ── Render ────────────────────────────────────────── */
   return (
     <>
       {/*
-        ── Persistent mini-player (bottom-left) ────────────────────────────
-        The iframe lives here permanently once a video is selected.
-        It stays visible (never hidden) so the browser keeps audio alive.
-        Shown only when activeId is set.
+        ── Persistent mini-player ───────────────────────────────────────────
+        Always rendered when activeId is set.
+
+        Hidden mode: container shrinks to 200×48 with overflow:hidden.
+        The iframe is absolutely positioned inside at full 272×153 — clipped
+        but still rendered, so the browser keeps audio alive.
       */}
       {activeId && (
-        <div
-          className="fixed bottom-5 left-5 z-40 rounded-2xl border border-border bg-background/95 backdrop-blur-md shadow-2xl overflow-hidden"
-          style={{ width: 272 }}
-          data-testid="youtube-mini-player"
-        >
-          {/* Visible iframe — browser won't kill audio on a visible element */}
-          <div className="relative" style={{ aspectRatio: "16/9" }}>
-            <iframe
-              ref={iframeRef}
-              key={activeId}
-              src={`https://www.youtube.com/embed/${activeId}?autoplay=1&enablejsapi=1&rel=0&origin=${encodeURIComponent(window.location.origin)}`}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              title="YouTube player"
-              className="w-full h-full"
-              onLoad={() => {
-                setTimeout(() => {
-                  ytCmd("setVolume", [volume]);
-                  if (muted) ytCmd("mute");
-                }, 1500);
-              }}
-            />
-          </div>
-
-          {/* Control bar */}
-          <div className="flex items-center gap-2 px-3 py-2">
-            {/* Title */}
-            <p className="flex-1 text-[11px] font-semibold truncate min-w-0">{activeTitle}</p>
-
-            {/* Volume */}
-            <button
-              type="button"
-              onClick={toggleMute}
-              className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
-              aria-label={muted ? "Unmute" : "Mute"}
+        <div style={getPlayerStyle()}>
+          {isHidden ? (
+            /* ── Hidden pill ──────────────────────────────────────────── */
+            <div
+              className="relative rounded-full border border-border bg-background/95 backdrop-blur-md shadow-2xl overflow-hidden"
+              style={{ width: 220, height: 48 }}
+              data-testid="youtube-mini-player"
             >
-              {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-            </button>
-            <div className="w-14 shrink-0">
-              <Slider
-                min={0} max={100} step={5}
-                value={[muted ? 0 : volume]}
-                onValueChange={([v]) => changeVolume(v)}
-                className="h-1"
+              {/* iframe stays rendered inside (clipped) — keeps audio alive */}
+              <iframe
+                ref={iframeRef}
+                key={activeId}
+                src={`https://www.youtube.com/embed/${activeId}?autoplay=1&enablejsapi=1&rel=0&origin=${encodeURIComponent(window.location.origin)}`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                title="YouTube player"
+                style={{
+                  position: "absolute",
+                  width: 272,
+                  height: 153,
+                  top: 0,
+                  left: 0,
+                  pointerEvents: "none",
+                }}
+                onLoad={() => {
+                  setTimeout(() => {
+                    ytCmd("setVolume", [volume]);
+                    if (muted) ytCmd("mute");
+                  }, 1500);
+                }}
               />
+
+              {/* Pill overlay — controls on top of clipped iframe */}
+              <div
+                className="absolute inset-0 flex items-center gap-1 px-2 cursor-move select-none"
+                onPointerDown={startDrag}
+              >
+                <Music className="w-3.5 h-3.5 text-primary shrink-0 animate-pulse" />
+                <p className="flex-1 text-[11px] font-semibold truncate min-w-0 ml-1">{activeTitle}</p>
+                <button
+                  type="button"
+                  onPointerDown={e => e.stopPropagation()}
+                  onClick={togglePause}
+                  className="text-muted-foreground hover:text-foreground transition-colors shrink-0 p-1"
+                  aria-label={isPaused ? "Play" : "Pause"}
+                >
+                  {isPaused
+                    ? <Play className="w-3.5 h-3.5 ml-0.5" />
+                    : <Pause className="w-3.5 h-3.5" />}
+                </button>
+                <button
+                  type="button"
+                  onPointerDown={e => e.stopPropagation()}
+                  onClick={() => setIsHidden(false)}
+                  className="text-muted-foreground hover:text-foreground transition-colors shrink-0 p-1"
+                  aria-label="Show player"
+                  title="Show player"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
-
-            {/* Play/Pause */}
-            <Button
-              size="icon" variant="ghost"
-              className="h-7 w-7 rounded-full shrink-0"
-              onClick={togglePause}
-              aria-label={isPaused ? "Play" : "Pause"}
+          ) : (
+            /* ── Full mini-player ─────────────────────────────────────── */
+            <div
+              className="rounded-2xl border border-border bg-background/95 backdrop-blur-md shadow-2xl overflow-hidden"
+              style={{ width: 272 }}
+              data-testid="youtube-mini-player"
             >
-              {isPaused
-                ? <Play className="w-3.5 h-3.5 ml-0.5" />
-                : <Pause className="w-3.5 h-3.5" />}
-            </Button>
+              {/* Drag handle / title bar */}
+              <div
+                className="flex items-center gap-1.5 px-3 py-1.5 border-b border-border/50 cursor-move select-none bg-muted/30"
+                onPointerDown={startDrag}
+                title="Drag to move"
+              >
+                <GripHorizontal className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <p className="flex-1 text-[11px] text-muted-foreground truncate min-w-0">
+                  {activeTitle || "YouTube Player"}
+                </p>
 
-            {/* Browse */}
-            <Button
-              size="icon" variant="ghost"
-              className="h-7 w-7 shrink-0"
-              onClick={() => setOpen(true)}
-              aria-label="Browse music"
-              title="Browse music"
-            >
-              <ChevronUp className="w-3.5 h-3.5" />
-            </Button>
+                {/* Send to presentation */}
+                <button
+                  type="button"
+                  onPointerDown={e => e.stopPropagation()}
+                  onClick={sendToPresentation}
+                  className="text-muted-foreground hover:text-foreground transition-colors shrink-0 p-0.5"
+                  title="Send to presentation screen (opens in new window)"
+                  aria-label="Send to presentation screen"
+                >
+                  <Monitor className="w-3.5 h-3.5" />
+                </button>
 
-            {/* Stop */}
-            <Button
-              size="icon" variant="ghost"
-              className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
-              onClick={stop}
-              aria-label="Stop"
-            >
-              <X className="w-3.5 h-3.5" />
-            </Button>
-          </div>
+                {/* Hide player */}
+                <button
+                  type="button"
+                  onPointerDown={e => e.stopPropagation()}
+                  onClick={() => setIsHidden(true)}
+                  className="text-muted-foreground hover:text-foreground transition-colors shrink-0 p-0.5"
+                  title="Hide player (audio keeps playing)"
+                  aria-label="Hide player"
+                >
+                  <EyeOff className="w-3.5 h-3.5" />
+                </button>
+
+                {/* Stop */}
+                <button
+                  type="button"
+                  onPointerDown={e => e.stopPropagation()}
+                  onClick={stop}
+                  className="text-muted-foreground hover:text-destructive transition-colors shrink-0 p-0.5"
+                  title="Stop and close"
+                  aria-label="Stop"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Video */}
+              <div className="relative" style={{ aspectRatio: "16/9" }}>
+                <iframe
+                  ref={iframeRef}
+                  key={activeId}
+                  src={`https://www.youtube.com/embed/${activeId}?autoplay=1&enablejsapi=1&rel=0&origin=${encodeURIComponent(window.location.origin)}`}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  title="YouTube player"
+                  className="w-full h-full"
+                  onLoad={() => {
+                    setTimeout(() => {
+                      ytCmd("setVolume", [volume]);
+                      if (muted) ytCmd("mute");
+                    }, 1500);
+                  }}
+                />
+              </div>
+
+              {/* Control bar */}
+              <div className="flex items-center gap-2 px-3 py-2">
+                {/* Volume */}
+                <button
+                  type="button"
+                  onClick={toggleMute}
+                  className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                  aria-label={muted ? "Unmute" : "Mute"}
+                >
+                  {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                </button>
+                <div className="flex-1">
+                  <Slider
+                    min={0} max={100} step={5}
+                    value={[muted ? 0 : volume]}
+                    onValueChange={([v]) => changeVolume(v)}
+                    className="h-1"
+                  />
+                </div>
+
+                {/* Play/Pause */}
+                <Button
+                  size="icon" variant="ghost"
+                  className="h-7 w-7 rounded-full shrink-0"
+                  onClick={togglePause}
+                  aria-label={isPaused ? "Play" : "Pause"}
+                >
+                  {isPaused
+                    ? <Play className="w-3.5 h-3.5 ml-0.5" />
+                    : <Pause className="w-3.5 h-3.5" />}
+                </Button>
+
+                {/* Browse */}
+                <Button
+                  size="icon" variant="ghost"
+                  className="h-7 w-7 shrink-0"
+                  onClick={() => setOpen(true)}
+                  aria-label="Browse music"
+                  title="Browse music"
+                >
+                  <ChevronUp className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -223,18 +383,32 @@ export function YoutubePlayerPanel() {
             </SheetTitle>
           </SheetHeader>
 
-          {/* Now-playing strip (shows status only — actual video is in mini-player) */}
+          {/* Now-playing strip */}
           {activeId && (
             <div className="flex items-center gap-3 px-4 py-3 bg-primary/5 border-b border-border shrink-0">
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold truncate">{activeTitle}</p>
                 <p className="text-[11px] text-primary font-medium">
-                  {isPaused ? "⏸ Paused — playing in mini-player" : "▶ Playing in mini-player (bottom-left)"}
+                  {isHidden
+                    ? "🎵 Audio-only mode"
+                    : isPaused
+                    ? "⏸ Paused — playing in mini-player"
+                    : "▶ Playing in mini-player"}
                 </p>
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full" onClick={togglePause}>
                   {isPaused ? <Play className="w-4 h-4 ml-0.5" /> : <Pause className="w-4 h-4" />}
+                </Button>
+                <Button
+                  size="icon" variant="ghost" className="h-7 w-7"
+                  onClick={() => setIsHidden(h => !h)}
+                  title={isHidden ? "Show player" : "Hide player (audio keeps playing)"}
+                >
+                  {isHidden ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                </Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={sendToPresentation} title="Send to presentation screen">
+                  <Monitor className="w-3.5 h-3.5" />
                 </Button>
                 <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={stop}>
                   <X className="w-3.5 h-3.5" />
@@ -256,7 +430,7 @@ export function YoutubePlayerPanel() {
             {/* Library */}
             <TabsContent value="library" className="flex-1 overflow-y-auto p-4 space-y-2 mt-0 min-h-0">
               <p className="text-xs text-muted-foreground mb-3">
-                Tap a track to start playback. The mini-player appears bottom-left and keeps playing while you use other features.
+                Tap a track to start. Drag the mini-player to move it. Use the eye icon to hide it (audio keeps playing) and the monitor icon to send to your presentation screen.
               </p>
               {WORSHIP_PRESETS.map(preset => (
                 <button
@@ -304,7 +478,7 @@ export function YoutubePlayerPanel() {
             {/* URL */}
             <TabsContent value="url" className="flex-1 p-4 space-y-4 mt-0">
               <p className="text-sm text-muted-foreground">
-                Paste any YouTube link or video ID. The mini-player appears and keeps playing as you use other features.
+                Paste any YouTube link or video ID to play it in the mini-player.
               </p>
               <div className="space-y-2">
                 <label className="text-xs font-medium">YouTube URL or Video ID</label>

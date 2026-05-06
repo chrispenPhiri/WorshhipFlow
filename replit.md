@@ -41,7 +41,7 @@ _Populate as you build_
 *   **Content Management:** Bible passages (via `bible-api.com`), songs, custom text, multimedia.
 *   **Presentation Tools:** Live preview, multi-display broadcasting, customizable themes, live animated wallpapers, ticker bars.
 *   **Service Management:** Drag-and-drop schedule builder, sermon notes, prayer wall, hymn number projection, service countdown.
-*   **AI-Powered Features:** AI-generated teaching drafts, sermon outlines, devotionals, quizzes, cross-references, translations. Floating AI Quick Panel (`components/ai-quick-panel.tsx`) accessible from every tab — quick prompts (prayer, sermon, devotional, announcement) and free-text chat, with send-to-screen.
+*   **AI-Powered Features:** AI-generated teaching drafts, sermon outlines, devotionals, quizzes, cross-references, translations. Floating AI Quick Panel (`components/ai-quick-panel.tsx`) accessible from every tab — quick prompts (prayer, sermon, devotional, announcement) and free-text chat, with send-to-screen. Requires user's own OpenAI API key (stored in localStorage `wf-openai-key`, sent as `X-OpenAI-Key` header).
 *   **Interactive Elements:** Offline Bible games (all graphical broadcast via `game-stage-view.tsx`), live captions (Web Speech API), stream destination management.
 *   **User Accounts:** Local, secure account management with profile editing (display name, avatar, password) via `ProfileDialog` (`components/profile-dialog.tsx`).
 *   **Data Persistence:** PWA storage protection, single-file/folder backup and restore.
@@ -60,7 +60,8 @@ I want iterative development. I prefer detailed explanations for complex feature
 
 ## Pointers
 
-*   **Replit AI Integrations:** OpenAI proxy for AI features.
+*   **Bring-Your-Own-Key AI:** Server (`artifacts/api-server/src/routes/ai.ts`) reads `X-OpenAI-Key` header first, falls back to Replit integration env vars if set, returns 402 if neither. Key stored client-side in `localStorage` (`wf-openai-key`).
+*   **YouTube Mini-Player:** Drag anywhere via pointer events; hide/show (iframe stays rendered in overflow:hidden container to keep audio alive); monitor button opens YouTube in popup window for presentation screen.
 *   **bible-api.com:** External API for Bible content.
 *   **W3C Window Management API:** For multi-display handling.
 *   **Web Speech API:** Browser API for live captions.
