@@ -6,6 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SliderWithButtons } from "@/components/slider-with-buttons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CollapsibleTabsBar } from "@/components/ui/collapsible-tabs";
+import { useCollapsibleTabs } from "@/lib/use-collapsible-tabs";
+
+const THEMES_TAB_LABELS: Record<string, string> = {
+  themes: "Themes", wallpapers: "Live Wallpapers", typography: "Fonts & Colours",
+};
 import { Badge } from "@/components/ui/badge";
 import { Cast, Palette, Sparkles, Type, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -122,6 +128,7 @@ function WallpaperCard({ wallpaper, isActive, onApply }: {
 export default function ThemesPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const themesTab = useCollapsibleTabs("themes", "themes");
 
   const { data: screenState } = useGetScreenState({
     query: { queryKey: getGetScreenStateQueryKey(), refetchInterval: 3000 },
@@ -246,12 +253,18 @@ export default function ThemesPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="themes">
-        <TabsList className="w-full">
-          <TabsTrigger value="themes" className="flex-1 gap-1.5"><Palette className="w-4 h-4" /> Themes</TabsTrigger>
-          <TabsTrigger value="wallpapers" className="flex-1 gap-1.5"><Sparkles className="w-4 h-4" /> Live Wallpapers</TabsTrigger>
-          <TabsTrigger value="typography" className="flex-1 gap-1.5"><Type className="w-4 h-4" /> Fonts & Colours</TabsTrigger>
-        </TabsList>
+      <Tabs value={themesTab.active} onValueChange={themesTab.setActive}>
+        <CollapsibleTabsBar
+          collapsed={themesTab.collapsed}
+          onToggle={() => themesTab.setCollapsed((c) => !c)}
+          activeLabel={THEMES_TAB_LABELS[themesTab.active]}
+        >
+          <TabsList className="w-full">
+            <TabsTrigger value="themes" className="flex-1 gap-1.5"><Palette className="w-4 h-4" /> Themes</TabsTrigger>
+            <TabsTrigger value="wallpapers" className="flex-1 gap-1.5"><Sparkles className="w-4 h-4" /> Live Wallpapers</TabsTrigger>
+            <TabsTrigger value="typography" className="flex-1 gap-1.5"><Type className="w-4 h-4" /> Fonts & Colours</TabsTrigger>
+          </TabsList>
+        </CollapsibleTabsBar>
 
         {/* ── THEMES ── */}
         <TabsContent value="themes" className="mt-6">

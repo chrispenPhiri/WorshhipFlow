@@ -112,3 +112,66 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+/* ── Sidebar scrollbar styles (customisable in Settings) ──────────── */
+
+/* Modern: slim themed bar with rounded thumb that matches the sidebar */
+.wf-scroll-modern {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--primary) / 0.45) transparent;
+}
+.wf-scroll-modern::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.wf-scroll-modern::-webkit-scrollbar-track {
+  background: transparent;
+}
+.wf-scroll-modern::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, hsl(var(--primary) / 0.55), hsl(var(--primary) / 0.35));
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.15s ease;
+}
+.wf-scroll-modern::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, hsl(var(--primary) / 0.85), hsl(var(--primary) / 0.55));
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
+/* Thin: minimal 4px bar */
+.wf-scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+}
+.wf-scroll-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.wf-scroll-thin::-webkit-scrollbar-track { background: transparent; }
+.wf-scroll-thin::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.35);
+  border-radius: 999px;
+}
+
+/* Auto-hide: hidden until parent is hovered */
+.wf-scroll-autohide {
+  scrollbar-width: none;
+}
+.wf-scroll-autohide::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+.wf-scroll-autohide:hover {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--primary) / 0.5) transparent;
+}
+.wf-scroll-autohide:hover::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.wf-scroll-autohide:hover::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.55);
+  border-radius: 999px;
+}

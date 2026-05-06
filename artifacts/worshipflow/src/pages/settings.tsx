@@ -10,6 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Settings as SettingsIcon, Palette, Type, RotateCcw, Check, LayoutGrid, BookOpen, Smile, Sparkles, ExternalLink, ImageIcon, Music2, MessageSquare, KeyRound, Eye, EyeOff, CheckCircle2, XCircle } from "lucide-react";
+import {
+  useSidebarScrollbar, useSidebarWidth,
+  SCROLLBAR_STYLES, SIDEBAR_WIDTHS,
+  type ScrollbarStyle, type SidebarWidth,
+} from "@/lib/sidebar-customization";
 import { useBibleOnlyMode } from "@/lib/bible-only-mode";
 import { BIBLE_TRANSLATIONS, FONTS } from "@/lib/constants";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -214,7 +219,172 @@ export default function SettingsPage() {
       <BibleOnlyModeCard />
 
       <MainMenuCustomizationCard />
+
+      <SidebarCustomizationCard />
+
+      <ImageSourceCard />
     </div>
+  );
+}
+
+/**
+ * Image generation source picker — choose between free Pollinations.ai
+ * (no API key needed) or DALL-E (requires an OpenAI / OpenRouter key from
+ * the AI Settings card above). Persisted to localStorage.
+ */
+const POLLINATIONS_MODEL_OPTIONS: { id: string; label: string }[] = [
+  { id: "flux",          label: "Flux (recommended)" },
+  { id: "flux-realism",  label: "Flux Realism" },
+  { id: "flux-anime",    label: "Flux Anime" },
+  { id: "flux-3d",       label: "Flux 3D" },
+  { id: "any-dark",      label: "Any-Dark (moody)" },
+  { id: "turbo",         label: "Turbo (fastest)" },
+];
+
+function ImageSourceCard() {
+  const [imgSource, setImgSource] = useState<string>(() => localStorage.getItem("wf-image-source") ?? "pollinations");
+  const [imgModel,  setImgModel]  = useState<string>(() => localStorage.getItem("wf-image-model")  ?? "flux");
+  const { toast } = useToast();
+
+  const save = (nextSource?: string, nextModel?: string) => {
+    const s = nextSource ?? imgSource;
+    const m = nextModel  ?? imgModel;
+    localStorage.setItem("wf-image-source", s);
+    localStorage.setItem("wf-image-model",  m);
+    setImgSource(s); setImgModel(m);
+    toast({ title: "Image source saved", description: s === "pollinations" ? `Free image generation via Pollinations (${m}).` : "Using DALL-E 3 via your OpenAI / OpenRouter key." });
+  };
+
+  return (
+    <Card data-testid="card-image-source">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <ImageIcon className="w-5 h-5 text-primary" /> Image Generation Source
+        </CardTitle>
+        <CardDescription>
+          Choose where AI-generated images (custom backgrounds &amp; verse art) come from.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => save("pollinations")}
+            className={`text-left rounded-lg border-2 p-3 transition-all ${imgSource === "pollinations" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
+            data-testid="button-img-pollinations"
+          >
+            <div className="flex items-center gap-2 font-medium text-sm">
+              <Sparkles className="w-4 h-4 text-primary" /> Pollinations.ai
+              <span className="ml-auto text-[10px] uppercase tracking-wider text-emerald-400 font-bold">Free</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
+              No API key required. Multiple Flux models. Generated server-side.
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={() => save("openai")}
+            className={`text-left rounded-lg border-2 p-3 transition-all ${imgSource === "openai" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
+            data-testid="button-img-openai"
+          >
+            <div className="flex items-center gap-2 font-medium text-sm">
+              <KeyRound className="w-4 h-4 text-primary" /> DALL-E 3
+              <span className="ml-auto text-[10px] uppercase tracking-wider text-amber-400 font-bold">Paid</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
+              Higher fidelity. Uses your OpenAI / OpenRouter key. ≈ $0.04–$0.08 per image.
+            </p>
+          </button>
+        </div>
+
+        {imgSource === "pollinations" && (
+          <div className="space-y-2 pt-2">
+            <label className="text-sm font-medium">Pollinations model</label>
+            <Select value={imgModel} onValueChange={(v) => save(undefined, v)}>
+              <SelectTrigger className="w-full" data-testid="select-pollinations-model">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {POLLINATIONS_MODEL_OPTIONS.map(m => (
+                  <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">
+              Pollinations is a free community-run service. Quality &amp; uptime can vary.
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Sidebar look-and-feel: scrollbar style + width. Operator-local; persisted
+ * to localStorage. Used by the Layout component on every render.
+ */
+function SidebarCustomizationCard() {
+  const [scrollbarStyle, setScrollbarStyle] = useSidebarScrollbar();
+  const [widthPref, setWidthPref] = useSidebarWidth();
+  const { toast } = useToast();
+
+  const saveScroll = (id: ScrollbarStyle) => {
+    setScrollbarStyle(id);
+    toast({ title: "Scrollbar updated", description: SCROLLBAR_STYLES.find(o => o.id === id)?.label });
+  };
+  const saveWidth = (id: SidebarWidth) => {
+    setWidthPref(id);
+    toast({ title: "Sidebar width updated", description: SIDEBAR_WIDTHS.find(o => o.id === id)?.label });
+  };
+
+  return (
+    <Card data-testid="card-sidebar-customization">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <LayoutGrid className="w-5 h-5 text-primary" /> Sidebar Appearance
+        </CardTitle>
+        <CardDescription>
+          Customise the main menu scrollbar and sidebar width. Saved on this device.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Scrollbar style</label>
+          <div className="grid grid-cols-2 gap-2">
+            {SCROLLBAR_STYLES.map(o => (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => saveScroll(o.id)}
+                className={`text-left rounded-md border-2 px-3 py-2 transition-all ${scrollbarStyle === o.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
+                data-testid={`button-scrollbar-${o.id}`}
+              >
+                <div className="text-sm font-medium">{o.label}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">{o.description}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Sidebar width</label>
+          <div className="grid grid-cols-3 gap-2">
+            {SIDEBAR_WIDTHS.map(o => (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => saveWidth(o.id)}
+                className={`rounded-md border-2 px-3 py-2 text-sm font-medium transition-all ${widthPref === o.id ? "border-primary bg-primary/5 text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}
+                data-testid={`button-width-${o.id}`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

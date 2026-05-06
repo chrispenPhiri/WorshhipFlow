@@ -8,6 +8,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useGlobalScrollKeys } from "@/hooks/use-global-scroll-keys";
 import {
+  useSidebarScrollbar, useSidebarWidth, getScrollbarClass, getWidthPx,
+} from "@/lib/sidebar-customization";
+import {
   DEFAULT_NAV_ITEMS, effectiveIconId, effectiveEmoji, getIconComponent,
   useMenuCustomization, useEmojiMode,
 } from "@/lib/menu-customization";
@@ -142,6 +145,8 @@ function UserMenu({ collapsed, onOpenProfile }: { collapsed: boolean; onOpenProf
 export function Layout({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
   const [collapsed, setCollapsed] = useLocalStorage<boolean>("wf-sidebar-collapsed", false);
+  const [scrollbarStyle] = useSidebarScrollbar();
+  const [widthPref] = useSidebarWidth();
   const { overrides } = useMenuCustomization();
   const { enabled: bibleOnly } = useBibleOnlyMode();
   const mode = useViewportMode();
@@ -200,7 +205,7 @@ export function Layout({ children }: { children: ReactNode }) {
   /** Render the nav links.  When `showLabels` is false (collapsed desktop
    *  sidebar) we wrap each link in a Tooltip so the label stays discoverable. */
   const renderNav = (showLabels: boolean, onNavigate?: () => void) => (
-    <nav className={`flex-1 ${showLabels ? "px-3" : "px-2"} space-y-0.5 overflow-y-auto pb-4`}>
+    <nav className={`flex-1 ${showLabels ? "px-3" : "px-2"} space-y-0.5 overflow-y-auto pb-4 ${getScrollbarClass(scrollbarStyle)}`}>
       {navItems.map((item) => {
         const isActive = location === item.href;
 
@@ -303,9 +308,8 @@ export function Layout({ children }: { children: ReactNode }) {
       {/* ── Desktop sidebar ───────────────────────────────────────────── */}
       {isDesktop && (
         <aside
-          className={`border-r border-border bg-sidebar flex-shrink-0 flex flex-col transition-[width] duration-200 ease-out ${
-            sidebarCollapsed ? "w-16" : "w-64"
-          }`}
+          className="border-r border-border bg-sidebar flex-shrink-0 flex flex-col transition-[width] duration-200 ease-out"
+          style={{ width: getWidthPx(widthPref, sidebarCollapsed) }}
           data-collapsed={sidebarCollapsed}
           data-testid="main-sidebar"
         >

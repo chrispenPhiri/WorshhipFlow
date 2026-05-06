@@ -1,6 +1,8 @@
 import * as React from "react";
 import { useState, useRef, useEffect } from "react";
 import { useSessionStorage } from "@/hooks/use-session-storage";
+import { useLocalStorage } from "@/hooks/use-local-storage";
+import { CollapsibleTabsBar } from "@/components/ui/collapsible-tabs";
 import {
   Sparkles, Send, Loader2, BookOpen, AlignLeft, Lightbulb, RotateCcw,
   ChevronDown, ChevronUp, X, User, Bot, Monitor, FileDown,
@@ -1102,6 +1104,7 @@ export default function AIPage() {
   // Persist the active AI tab across route changes so coming back from
   // Bible / Songs / Media restores whichever AI tool the operator was using.
   const [aiActiveTab, setAiActiveTab] = useSessionStorage<string>("wf-ai-active-tab", "prophet");
+  const [aiTabsCollapsed, setAiTabsCollapsed] = useLocalStorage<boolean>("wf-tabs:ai:collapsed", false);
   const { data: screenState } = useGetScreenState({ query: { queryKey: getGetScreenStateQueryKey() } });
   const { mutate: updateScreen } = useUpdateScreenState({
     mutation: { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetScreenStateQueryKey() }) }
@@ -1155,23 +1158,30 @@ export default function AIPage() {
       </div>
 
       <Tabs value={aiActiveTab} onValueChange={setAiActiveTab}>
-        {/* Scrollable / wrappable tab list */}
-        <ScrollArea className="w-full">
-          <TabsList className="w-full h-auto flex-wrap gap-0.5 p-1 justify-start">
-            {TABS.map(({ value, label, Icon, badge }) => (
-              <TabsTrigger key={value} value={value}
-                className="gap-1.5 min-w-fit relative px-3 py-1.5 text-xs">
-                <Icon className="w-3.5 h-3.5" />
-                <span>{label}</span>
-                {badge && (
-                  <Badge variant="secondary" className="ml-0.5 px-1 py-0 text-[8.5px] leading-none h-3.5">
-                    {badge}
-                  </Badge>
-                )}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </ScrollArea>
+        {/* Scrollable / wrappable tab list (collapsible to save space) */}
+        <CollapsibleTabsBar
+          collapsed={aiTabsCollapsed}
+          onToggle={() => setAiTabsCollapsed((c) => !c)}
+          activeLabel={TABS.find((t) => t.value === aiActiveTab)?.label}
+          className="mb-1"
+        >
+          <ScrollArea className="w-full">
+            <TabsList className="w-full h-auto flex-wrap gap-0.5 p-1 justify-start">
+              {TABS.map(({ value, label, Icon, badge }) => (
+                <TabsTrigger key={value} value={value}
+                  className="gap-1.5 min-w-fit relative px-3 py-1.5 text-xs">
+                  <Icon className="w-3.5 h-3.5" />
+                  <span>{label}</span>
+                  {badge && (
+                    <Badge variant="secondary" className="ml-0.5 px-1 py-0 text-[8.5px] leading-none h-3.5">
+                      {badge}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </ScrollArea>
+        </CollapsibleTabsBar>
 
         {TABS.map(({ value, label, Icon, description, Component, badge }) => (
           <TabsContent key={value} value={value} className="mt-4">

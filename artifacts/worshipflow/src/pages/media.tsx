@@ -22,6 +22,12 @@ import { LiveStudioPanel } from "@/components/live-studio";
 import { LiveCaptionsCard } from "@/components/live-captions-card";
 import { StreamDestinationsCard } from "@/components/stream-destinations-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CollapsibleTabsBar } from "@/components/ui/collapsible-tabs";
+
+const MEDIA_TAB_LABELS: Record<string, string> = {
+  upload: "Upload", "camera-broadcast": "Camera & Broadcast",
+  url: "URL", icons: "Icons", overlays: "Overlays",
+};
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBroadcast, type ScreenInfo } from "@/hooks/use-broadcast";
 import { useToast } from "@/hooks/use-toast";
@@ -159,6 +165,7 @@ export default function MediaPage() {
   const recIncludeMic = recording.includeMic;
 
   // Active tab — persisted across navigation via sessionStorage
+  const [mediaTabsCollapsed, setMediaTabsCollapsed] = useLocalStorage<boolean>("wf-tabs:media:collapsed", false);
   const [activeTab, setActiveTab] = useState<string>(() => {
     try {
       const saved = sessionStorage.getItem("wf-media-tab") || "upload";
@@ -817,13 +824,19 @@ export default function MediaPage() {
       </Card>
 
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); try { sessionStorage.setItem("wf-media-tab", v); } catch {} }}>
-        <TabsList className="w-full flex-wrap h-auto gap-0.5">
-          <TabsTrigger value="upload"           className="flex-1 gap-1.5 min-w-0"><Upload    className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Upload</span></TabsTrigger>
-          <TabsTrigger value="camera-broadcast" className="flex-1 gap-1.5 min-w-0"><Tv        className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Camera & Broadcast</span></TabsTrigger>
-          <TabsTrigger value="url"              className="flex-1 gap-1.5 min-w-0"><Video     className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">URL</span></TabsTrigger>
-          <TabsTrigger value="icons"            className="flex-1 gap-1.5 min-w-0"><Sparkles  className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Icons</span></TabsTrigger>
-          <TabsTrigger value="overlays"         className="flex-1 gap-1.5 min-w-0"><Layers3   className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Overlays</span></TabsTrigger>
-        </TabsList>
+        <CollapsibleTabsBar
+          collapsed={mediaTabsCollapsed}
+          onToggle={() => setMediaTabsCollapsed((c) => !c)}
+          activeLabel={MEDIA_TAB_LABELS[activeTab]}
+        >
+          <TabsList className="w-full flex-wrap h-auto gap-0.5">
+            <TabsTrigger value="upload"           className="flex-1 gap-1.5 min-w-0"><Upload    className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Upload</span></TabsTrigger>
+            <TabsTrigger value="camera-broadcast" className="flex-1 gap-1.5 min-w-0"><Tv        className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Camera & Broadcast</span></TabsTrigger>
+            <TabsTrigger value="url"              className="flex-1 gap-1.5 min-w-0"><Video     className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">URL</span></TabsTrigger>
+            <TabsTrigger value="icons"            className="flex-1 gap-1.5 min-w-0"><Sparkles  className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Icons</span></TabsTrigger>
+            <TabsTrigger value="overlays"         className="flex-1 gap-1.5 min-w-0"><Layers3   className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Overlays</span></TabsTrigger>
+          </TabsList>
+        </CollapsibleTabsBar>
 
         {/* ── UPLOAD ── */}
         <TabsContent value="upload" className="mt-4 space-y-4">

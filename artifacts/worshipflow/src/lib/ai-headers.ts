@@ -39,5 +39,13 @@ export function getAiHeaders(): Record<string, string> {
   }
   const model = localStorage.getItem(MODEL_STORAGE_MAP[source] ?? "") ?? DEFAULT_MODEL_MAP[source];
   if (model) headers["X-AI-Model"] = model;
+
+  // Image generation source — defaults to Pollinations (free, no API key required).
+  // Users can switch to "openai" in Settings to use DALL-E with their own key.
+  const imgSource = localStorage.getItem("wf-image-source") ?? "pollinations";
+  headers["X-Image-Source"] = imgSource;
+  const imgModel = localStorage.getItem("wf-image-model") ?? "flux";
+  headers["X-Image-Model"] = imgModel;
+
   return headers;
 }

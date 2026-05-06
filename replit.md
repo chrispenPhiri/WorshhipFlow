@@ -22,6 +22,8 @@ _Populate as you build_
 *   **Application Data Backup:** File System Access API for single-file/folder backup/restore.
 *   **Bible-only mode:** `lib/bible-only-mode.ts`
 *   **Emoji Mode:** `wf-emoji-mode` in `localStorage`
+*   **Collapsible page tabs:** `lib/use-collapsible-tabs.ts`, `components/ui/collapsible-tabs.tsx` (used on AI/Themes/Media/Songs pages, persisted via `wf-tabs:<page>:collapsed`)
+*   **Sidebar customization:** `lib/sidebar-customization.ts` (scrollbar style + width, persisted via `wf-sidebar-scrollbar` / `wf-sidebar-width`)
 *   **Live Captions:** `components/live-captions-card.tsx`
 *   **Stream Destinations:** `components/stream-destinations-card.tsx`
 *   **Global Operator Scroll:** `hooks/use-global-scroll-keys.ts`, `components/layout.tsx`
@@ -60,7 +62,8 @@ I want iterative development. I prefer detailed explanations for complex feature
 
 ## Pointers
 
-*   **Multi-Provider AI:** Server (`artifacts/api-server/src/routes/ai.ts`) resolves provider via `X-AI-Provider` + `X-AI-Key` headers (openai/gemini/openrouter/deepseek/groq). All providers use OpenAI SDK with different base URLs. Keys stored per-provider in `localStorage` (`wf-openai-key`, `wf-gemini-key`, `wf-openrouter-key`, `wf-deepseek-key`, `wf-groq-key`); active source stored as `wf-ai-source`. Image generation (DALL-E 3) requires OpenAI or OpenRouter — Gemini returns 400. Replit Credits option intentionally removed (would bill app-owner for all users).
+*   **Multi-Provider AI:** Server (`artifacts/api-server/src/routes/ai.ts`) resolves provider via `X-AI-Provider` + `X-AI-Key` headers (openai/gemini/openrouter/deepseek/groq). All providers use OpenAI SDK with different base URLs. Keys stored per-provider in `localStorage` (`wf-openai-key`, `wf-gemini-key`, `wf-openrouter-key`, `wf-deepseek-key`, `wf-groq-key`); active source stored as `wf-ai-source`. Replit Credits option intentionally removed (would bill app-owner for all users).
+*   **Image Generation Source:** Defaults to free **Pollinations.ai** (no API key, server-side via `generateViaPollinations()` in `routes/ai.ts`); selectable via `X-Image-Source` (`pollinations` | `openai`) and `X-Image-Model` headers, persisted as `wf-image-source` / `wf-image-model` in localStorage and exposed in Settings → "Image Generation Source" card. DALL-E 3 fallback still requires OpenAI/OpenRouter key.
 *   **YouTube Mini-Player:** Drag anywhere via pointer events; hide/show (iframe stays rendered in overflow:hidden container to keep audio alive); monitor button opens YouTube in popup window for presentation screen.
 *   **bible-api.com:** External API for Bible content.
 *   **W3C Window Management API:** For multi-display handling.

@@ -271,21 +271,58 @@ When given worship text for a church presentation slide, you:
   );
 });
 
+/* ── Free image gen via Pollinations.ai (no key needed) ─────── */
+const POLLINATIONS_MODELS = new Set([
+  "flux", "flux-realism", "flux-anime", "flux-3d", "any-dark", "turbo",
+]);
+
+async function generateViaPollinations(
+  prompt: string,
+  model: string,
+  width: number,
+  height: number,
+): Promise<string> {
+  const safeModel = POLLINATIONS_MODELS.has(model) ? model : "flux";
+  const seed = Math.floor(Math.random() * 1_000_000_000);
+  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}` +
+              `?model=${safeModel}&width=${width}&height=${height}&nologo=true&seed=${seed}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`Pollinations returned ${r.status}`);
+  const buf = Buffer.from(await r.arrayBuffer());
+  return buf.toString("base64");
+}
+
 /* ── Custom AI Image Generation ─────────────────────────────── */
 router.post("/custom-image", async (req, res) => {
-  const setup = getAiSetup(req, res);
-  if (!setup) return;
-  if (setup.provider === "gemini") {
-    res.status(400).json({ error: "Image generation is not supported with Google Gemini. Switch to OpenAI or OpenRouter in Settings." });
-    return;
-  }
   const { prompt } = req.body as { prompt: string };
   if (!prompt?.trim()) {
     res.status(400).json({ error: "prompt is required" });
     return;
   }
+  const enhancedPrompt = `${prompt}. Style: cinematic, high quality, suitable for a church worship presentation background. No text, no letters, no words anywhere in the image.`;
+
+  const imageSource = (req.headers["x-image-source"] as string | undefined) ?? "pollinations";
+  const imageModel  = (req.headers["x-image-model"]  as string | undefined) ?? "flux";
+
+  if (imageSource === "pollinations") {
+    try {
+      const b64 = await generateViaPollinations(enhancedPrompt, imageModel, 1792, 1024);
+      res.json({ b64_json: b64 });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Image generation failed";
+      res.status(500).json({ error: msg });
+    }
+    return;
+  }
+
+  // DALL-E 3 fallback (requires OpenAI / OpenRouter key)
+  const setup = getAiSetup(req, res);
+  if (!setup) return;
+  if (setup.provider === "gemini") {
+    res.status(400).json({ error: "Image generation is not supported with Google Gemini. Switch image source to Pollinations (free) or use OpenAI/OpenRouter for DALL-E." });
+    return;
+  }
   try {
-    const enhancedPrompt = `${prompt}. Style: cinematic, high quality, suitable for a church worship presentation background. No text, no letters, no words anywhere in the image.`;
     const response = await setup.client.images.generate({
       model: "dall-e-3",
       prompt: enhancedPrompt,
@@ -303,20 +340,35 @@ router.post("/custom-image", async (req, res) => {
 
 /* ── Verse-to-Art ───────────────────────────────────────────── */
 router.post("/verse-art", async (req, res) => {
-  const setup = getAiSetup(req, res);
-  if (!setup) return;
-  if (setup.provider === "gemini") {
-    res.status(400).json({ error: "Image generation is not supported with Google Gemini. Switch to OpenAI or OpenRouter in Settings." });
-    return;
-  }
   const { verse, reference, book } = req.body as { verse: string; reference: string; book?: string };
   if (!verse?.trim()) {
     res.status(400).json({ error: "verse is required" });
     return;
   }
+  const bookCtx = book ? ` Set in the world of the book of ${book}.` : "";
+  const prompt  = `A dramatic, reverential biblical illustration depicting ${reference}: "${verse.slice(0, 280)}".${bookCtx} Style: oil painting, classical biblical art in the tradition of Rembrandt and Gustave Doré. Rich warm tones, spiritual atmosphere, ancient Middle Eastern setting, soft divine light. No text, no letters, no words anywhere in the image.`;
+
+  const imageSource = (req.headers["x-image-source"] as string | undefined) ?? "pollinations";
+  const imageModel  = (req.headers["x-image-model"]  as string | undefined) ?? "flux";
+
+  if (imageSource === "pollinations") {
+    try {
+      const b64 = await generateViaPollinations(prompt, imageModel, 1024, 1024);
+      res.json({ b64_json: b64 });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Image generation failed";
+      res.status(500).json({ error: msg });
+    }
+    return;
+  }
+
+  const setup = getAiSetup(req, res);
+  if (!setup) return;
+  if (setup.provider === "gemini") {
+    res.status(400).json({ error: "Image generation is not supported with Google Gemini. Switch image source to Pollinations (free) or use OpenAI/OpenRouter for DALL-E." });
+    return;
+  }
   try {
-    const bookCtx = book ? ` Set in the world of the book of ${book}.` : "";
-    const prompt = `A dramatic, reverential biblical illustration depicting ${reference}: "${verse.slice(0, 280)}".${bookCtx} Style: oil painting, classical biblical art in the tradition of Rembrandt and Gustave Doré. Rich warm tones, spiritual atmosphere, ancient Middle Eastern setting, soft divine light. No text, no letters, no words anywhere in the image.`;
     const response = await setup.client.images.generate({
       model: "dall-e-3",
       prompt,

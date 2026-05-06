@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CollapsibleTabsBar } from "@/components/ui/collapsible-tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Music, Plus, Search, Cast, ChevronLeft, ChevronRight, Trash2, Layers, X, Sparkles, Loader2, Wand2 } from "lucide-react";
@@ -122,6 +123,7 @@ function getSectionNumber(label: string): string {
 
 export default function SongsPage() {
   const [category, setCategory] = useLocalStorage<string>("wf-songs-category", "all");
+  const [songsTabsCollapsed, setSongsTabsCollapsed] = useLocalStorage<boolean>("wf-tabs:songs:collapsed", false);
   const [search, setSearch] = useLocalStorage("wf-songs-search", "");
   const [activeSongId, setActiveSongId] = useLocalStorage<number | null>("wf-songs-active-id", null);
   const [sectionIdx, setSectionIdx] = useLocalStorage<number>("wf-songs-section-idx", 0);
@@ -484,13 +486,20 @@ export default function SongsPage() {
 
       {/* Category tabs */}
       <Tabs value={category} onValueChange={v => { setCategory(v); setActiveSongId(null); }}>
-        <TabsList className="mb-4 flex flex-wrap h-auto gap-1">
-          {["all", ...CATEGORIES].map(c => (
-            <TabsTrigger key={c} value={c} className="capitalize">
-              {c}{stats?.byCategory && stats.byCategory[c] !== undefined ? ` (${stats.byCategory[c]})` : ""}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <CollapsibleTabsBar
+          collapsed={songsTabsCollapsed}
+          onToggle={() => setSongsTabsCollapsed((c) => !c)}
+          activeLabel={category === "all" ? "All categories" : category}
+          className="mb-4"
+        >
+          <TabsList className="flex flex-wrap h-auto gap-1">
+            {["all", ...CATEGORIES].map(c => (
+              <TabsTrigger key={c} value={c} className="capitalize">
+                {c}{stats?.byCategory && stats.byCategory[c] !== undefined ? ` (${stats.byCategory[c]})` : ""}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </CollapsibleTabsBar>
       </Tabs>
 
       <div className="grid gap-4 lg:grid-cols-3">
