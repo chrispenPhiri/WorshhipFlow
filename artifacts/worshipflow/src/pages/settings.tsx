@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Settings as SettingsIcon, Palette, Type, RotateCcw, Check, LayoutGrid, BookOpen, Smile } from "lucide-react";
+import { Settings as SettingsIcon, Palette, Type, RotateCcw, Check, LayoutGrid, BookOpen, Smile, Sparkles, ExternalLink, ImageIcon, Music2, MessageSquare } from "lucide-react";
 import { useBibleOnlyMode } from "@/lib/bible-only-mode";
 import { BIBLE_TRANSLATIONS, FONTS } from "@/lib/constants";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,6 +24,7 @@ import {
   getIconComponent, useMenuCustomization, useEmojiMode, effectiveEmoji,
 } from "@/lib/menu-customization";
 import { InstallAppCard } from "@/components/install-app-card";
+import { getDailyImageCount } from "@/lib/ai-usage";
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
@@ -142,12 +143,185 @@ export default function SettingsPage() {
 
       <InstallAppCard />
 
+      <AiSettingsCard />
+
       <ControlAppearanceCard />
 
       <BibleOnlyModeCard />
 
       <MainMenuCustomizationCard />
     </div>
+  );
+}
+
+/**
+ * AI feature toggles and daily image limit.
+ * Persisted to IndexedDB settings (same as General Settings).
+ */
+function AiSettingsCard() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { data: settings } = useGetSettings({ query: { queryKey: getGetSettingsQueryKey() } });
+  const { mutate: updateSettings, isPending } = useUpdateSettings({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetSettingsQueryKey() });
+        toast({ title: "AI settings saved" });
+      },
+    },
+  });
+
+  const [form, setForm] = useState({
+    aiEnabled: true,
+    aiChatEnabled: true,
+    aiSongEnabled: true,
+    aiImageEnabled: true,
+    aiDailyImageLimit: 20,
+  });
+
+  useEffect(() => {
+    if (settings) {
+      setForm({
+        aiEnabled: settings.aiEnabled !== false,
+        aiChatEnabled: settings.aiChatEnabled !== false,
+        aiSongEnabled: settings.aiSongEnabled !== false,
+        aiImageEnabled: settings.aiImageEnabled !== false,
+        aiDailyImageLimit: typeof settings.aiDailyImageLimit === "number" ? settings.aiDailyImageLimit : 20,
+      });
+    }
+  }, [settings]);
+
+  const todayImages = getDailyImageCount();
+  const limitLabel = form.aiDailyImageLimit === 0 ? "unlimited" : `${todayImages} / ${form.aiDailyImageLimit} today`;
+
+  function save() {
+    if (!settings) return;
+    updateSettings({ data: { ...settings, ...form } });
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-primary" />
+          AI Features
+        </CardTitle>
+        <CardDescription>
+          Control which AI tools are available and set usage limits to manage costs.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+
+        {/* Master toggle */}
+        <div className="flex items-center justify-between gap-3 py-2 px-3 rounded-lg border border-border bg-muted/30">
+          <div>
+            <p className="text-sm font-medium">Enable AI Features</p>
+            <p className="text-[11px] text-muted-foreground">Master switch — turns off all AI tools at once</p>
+          </div>
+          <Switch
+            checked={form.aiEnabled}
+            onCheckedChange={v => setForm(f => ({ ...f, aiEnabled: v }))}
+            data-testid="switch-ai-enabled"
+          />
+        </div>
+
+        {/* Per-feature toggles */}
+        <div className={`space-y-3 transition-opacity ${form.aiEnabled ? "" : "opacity-40 pointer-events-none"}`}>
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Individual features</p>
+
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Chat &amp; Quick Prompts</p>
+                <p className="text-[11px] text-muted-foreground">Prayers, sermons, devotionals, free-text chat</p>
+              </div>
+            </div>
+            <Switch
+              checked={form.aiChatEnabled}
+              onCheckedChange={v => setForm(f => ({ ...f, aiChatEnabled: v }))}
+              data-testid="switch-ai-chat"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Music2 className="w-4 h-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Song Lyrics Generator</p>
+                <p className="text-[11px] text-muted-foreground">Generate original worship song lyrics</p>
+              </div>
+            </div>
+            <Switch
+              checked={form.aiSongEnabled}
+              onCheckedChange={v => setForm(f => ({ ...f, aiSongEnabled: v }))}
+              data-testid="switch-ai-song"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Image Generation</p>
+                <p className="text-[11px] text-muted-foreground">AI-created worship backgrounds &amp; scenes</p>
+              </div>
+            </div>
+            <Switch
+              checked={form.aiImageEnabled}
+              onCheckedChange={v => setForm(f => ({ ...f, aiImageEnabled: v }))}
+              data-testid="switch-ai-image"
+            />
+          </div>
+
+          {/* Daily image limit */}
+          {form.aiImageEnabled && (
+            <div className="pl-6 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Daily image limit</label>
+                <span className="text-xs text-muted-foreground tabular-nums">{limitLabel}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Input
+                  type="number"
+                  min={0}
+                  max={500}
+                  value={form.aiDailyImageLimit}
+                  onChange={e => setForm(f => ({ ...f, aiDailyImageLimit: Math.max(0, parseInt(e.target.value) || 0) }))}
+                  className="w-28 h-8 text-sm"
+                  data-testid="input-ai-image-limit"
+                />
+                <p className="text-[11px] text-muted-foreground">Set to 0 for unlimited. Each image ≈ $0.04–$0.08.</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Billing info */}
+        <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 space-y-1">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Usage &amp; billing</p>
+          <p className="text-[12px] text-muted-foreground leading-relaxed">
+            When published, AI usage is billed to your Replit account. View charges at{" "}
+            <a
+              href="https://replit.com/account"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary underline-offset-2 hover:underline inline-flex items-center gap-0.5"
+            >
+              replit.com/account
+              <ExternalLink className="w-3 h-3" />
+            </a>
+            {" "}→ Billing. Text responses cost fractions of a cent each; images cost $0.04–$0.08 each.
+          </p>
+        </div>
+
+        <div className="flex justify-end pt-1">
+          <Button onClick={save} disabled={isPending} size="sm">
+            {isPending ? "Saving…" : "Save AI Settings"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

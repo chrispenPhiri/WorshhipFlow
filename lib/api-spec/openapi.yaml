@@ -620,6 +620,21 @@ components:
           type: string
         logoUrl:
           type: string
+        aiEnabled:
+          type: boolean
+          description: Master switch for all AI features
+        aiChatEnabled:
+          type: boolean
+          description: Enable AI chat and quick prompts
+        aiSongEnabled:
+          type: boolean
+          description: Enable AI song lyrics generation
+        aiImageEnabled:
+          type: boolean
+          description: Enable AI image generation
+        aiDailyImageLimit:
+          type: integer
+          description: Max AI images per day per device (0 = unlimited)
       required:
         - defaultBibleVersion
         - theme

@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import {
   Sparkles, Send, Loader2, X, Monitor, Music2, ImageIcon,
-  MessageSquare, RefreshCw, Download, Copy, Check,
+  MessageSquare, RefreshCw, Download, Copy, Check, Settings2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGameBroadcast } from "@/lib/game-broadcast";
+import { useGetSettings, getGetSettingsQueryKey } from "@workspace/api-client-react";
+import { checkImageLimit, incrementDailyImageCount } from "@/lib/ai-usage";
+import { Link } from "wouter";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -90,6 +93,13 @@ export function AiQuickPanel() {
   const [copied, setCopied] = useState(false);
 
   const { presentOnScreen } = useGameBroadcast();
+  const { data: settings } = useGetSettings({ query: { queryKey: getGetSettingsQueryKey() } });
+
+  const aiEnabled = settings?.aiEnabled !== false;
+  const chatEnabled = aiEnabled && settings?.aiChatEnabled !== false;
+  const songEnabled = aiEnabled && settings?.aiSongEnabled !== false;
+  const imageEnabled = aiEnabled && settings?.aiImageEnabled !== false;
+  const dailyImageLimit = typeof settings?.aiDailyImageLimit === "number" ? settings.aiDailyImageLimit : 20;
 
   function scrollChat() {
     requestAnimationFrame(() => chatBottomRef.current?.scrollIntoView({ behavior: "smooth" }));
@@ -155,12 +165,18 @@ export function AiQuickPanel() {
 
   async function generateImage() {
     if (!imgPrompt.trim() || imgLoading) return;
+    const { allowed, current } = checkImageLimit(dailyImageLimit);
+    if (!allowed) {
+      setImgError(`Daily limit reached (${current} / ${dailyImageLimit} images). Reset tomorrow or raise the limit in Settings → AI Features.`);
+      return;
+    }
     setImgLoading(true);
     setImgError(null);
     setImgResult(null);
     try {
       const data = await postJson<{ b64_json: string }>("/custom-image", { prompt: imgPrompt });
       setImgResult(`data:image/png;base64,${data.b64_json}`);
+      incrementDailyImageCount();
     } catch (e) {
       setImgError(e instanceof Error ? e.message : "Image generation failed.");
     } finally {
@@ -223,21 +239,37 @@ export function AiQuickPanel() {
           data-testid="sheet-ai-quick-panel"
         >
           <SheetHeader className="p-4 border-b border-border shrink-0">
-            <SheetTitle className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-primary" />
-              AI Assistant
-            </SheetTitle>
+            <div className="flex items-center justify-between">
+              <SheetTitle className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                AI Assistant
+              </SheetTitle>
+              <Link href="/settings" onClick={() => setOpen(false)}>
+                <button type="button" className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded" title="AI Settings">
+                  <Settings2 className="w-4 h-4" />
+                </button>
+              </Link>
+            </div>
           </SheetHeader>
+
+          {!aiEnabled && (
+            <div className="mx-4 mt-4 rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+              AI features are currently disabled.{" "}
+              <Link href="/settings" onClick={() => setOpen(false)} className="text-primary underline-offset-2 hover:underline">
+                Enable in Settings
+              </Link>
+            </div>
+          )}
 
           <Tabs value={tab} onValueChange={setTab} className="flex flex-col flex-1 min-h-0">
             <TabsList className="mx-4 mt-3 shrink-0 grid grid-cols-3">
-              <TabsTrigger value="chat" className="gap-1.5 text-xs">
+              <TabsTrigger value="chat" className="gap-1.5 text-xs" disabled={!chatEnabled}>
                 <MessageSquare className="w-3.5 h-3.5" />Chat
               </TabsTrigger>
-              <TabsTrigger value="song" className="gap-1.5 text-xs">
+              <TabsTrigger value="song" className="gap-1.5 text-xs" disabled={!songEnabled}>
                 <Music2 className="w-3.5 h-3.5" />Song
               </TabsTrigger>
-              <TabsTrigger value="image" className="gap-1.5 text-xs">
+              <TabsTrigger value="image" className="gap-1.5 text-xs" disabled={!imageEnabled}>
                 <ImageIcon className="w-3.5 h-3.5" />Image
               </TabsTrigger>
             </TabsList>

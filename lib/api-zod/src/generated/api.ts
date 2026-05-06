@@ -433,6 +433,26 @@ export const GetSettingsResponse = zod.object({
   tickerSpeed: zod.number().optional(),
   churchName: zod.string().optional(),
   logoUrl: zod.string().optional(),
+  aiEnabled: zod
+    .boolean()
+    .optional()
+    .describe("Master switch for all AI features"),
+  aiChatEnabled: zod
+    .boolean()
+    .optional()
+    .describe("Enable AI chat and quick prompts"),
+  aiSongEnabled: zod
+    .boolean()
+    .optional()
+    .describe("Enable AI song lyrics generation"),
+  aiImageEnabled: zod
+    .boolean()
+    .optional()
+    .describe("Enable AI image generation"),
+  aiDailyImageLimit: zod
+    .number()
+    .optional()
+    .describe("Max AI images per day per device (0 = unlimited)"),
 });
 
 /**
@@ -450,6 +470,26 @@ export const UpdateSettingsBody = zod.object({
   tickerSpeed: zod.number().optional(),
   churchName: zod.string().optional(),
   logoUrl: zod.string().optional(),
+  aiEnabled: zod
+    .boolean()
+    .optional()
+    .describe("Master switch for all AI features"),
+  aiChatEnabled: zod
+    .boolean()
+    .optional()
+    .describe("Enable AI chat and quick prompts"),
+  aiSongEnabled: zod
+    .boolean()
+    .optional()
+    .describe("Enable AI song lyrics generation"),
+  aiImageEnabled: zod
+    .boolean()
+    .optional()
+    .describe("Enable AI image generation"),
+  aiDailyImageLimit: zod
+    .number()
+    .optional()
+    .describe("Max AI images per day per device (0 = unlimited)"),
 });
 
 export const UpdateSettingsResponse = zod.object({
@@ -464,6 +504,26 @@ export const UpdateSettingsResponse = zod.object({
   tickerSpeed: zod.number().optional(),
   churchName: zod.string().optional(),
   logoUrl: zod.string().optional(),
+  aiEnabled: zod
+    .boolean()
+    .optional()
+    .describe("Master switch for all AI features"),
+  aiChatEnabled: zod
+    .boolean()
+    .optional()
+    .describe("Enable AI chat and quick prompts"),
+  aiSongEnabled: zod
+    .boolean()
+    .optional()
+    .describe("Enable AI song lyrics generation"),
+  aiImageEnabled: zod
+    .boolean()
+    .optional()
+    .describe("Enable AI image generation"),
+  aiDailyImageLimit: zod
+    .number()
+    .optional()
+    .describe("Max AI images per day per device (0 = unlimited)"),
 });
 
 /**

@@ -187,6 +187,12 @@ const DEFAULT_SETTINGS: Record<string, unknown> = {
   tickerSpeed: 25,
   churchName: "WorshipFlow Church",
   logoUrl: null,
+  // AI feature toggles & limits
+  aiEnabled: true,
+  aiChatEnabled: true,
+  aiSongEnabled: true,
+  aiImageEnabled: true,
+  aiDailyImageLimit: 20,
   updatedAt: new Date().toISOString(),
 };
 

@@ -165,6 +165,16 @@ export interface Settings {
   tickerSpeed?: number;
   churchName?: string;
   logoUrl?: string;
+  /** Master switch for all AI features */
+  aiEnabled?: boolean;
+  /** Enable AI chat and quick prompts */
+  aiChatEnabled?: boolean;
+  /** Enable AI song lyrics generation */
+  aiSongEnabled?: boolean;
+  /** Enable AI image generation */
+  aiImageEnabled?: boolean;
+  /** Max AI images per day per device (0 = unlimited) */
+  aiDailyImageLimit?: number;
 }
 
 export type TextStyleAlignment =
