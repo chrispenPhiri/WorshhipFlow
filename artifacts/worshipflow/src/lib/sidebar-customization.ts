@@ -33,7 +33,7 @@ export function getScrollbarClass(style: ScrollbarStyle): string {
   }
 }
 
-export function getWidthPx(widthId: SidebarWidth, collapsed: boolean): number {
+export function getWidthPx(widthId: SidebarWidth, collapsed: boolean): string {
   const w = SIDEBAR_WIDTHS.find(s => s.id === widthId) ?? SIDEBAR_WIDTHS[1];
-  return collapsed ? w.collapsed : w.expanded;
+  return `${collapsed ? w.collapsed : w.expanded}px`;
 }

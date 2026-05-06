@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Settings as SettingsIcon, Palette, Type, RotateCcw, Check, LayoutGrid, BookOpen, Smile, Sparkles, ExternalLink, ImageIcon, Music2, MessageSquare, KeyRound, Eye, EyeOff, CheckCircle2, XCircle } from "lucide-react";
+import { Settings as SettingsIcon, Palette, Type, RotateCcw, Check, LayoutGrid, BookOpen, Smile, Sparkles, ExternalLink, ImageIcon, Music2, MessageSquare, KeyRound, Eye, EyeOff, CheckCircle2, XCircle, ChevronDown } from "lucide-react";
 import {
   useSidebarScrollbar, useSidebarWidth,
   SCROLLBAR_STYLES, SIDEBAR_WIDTHS,
@@ -31,6 +31,7 @@ import {
 } from "@/lib/menu-customization";
 import { InstallAppCard } from "@/components/install-app-card";
 import { getDailyImageCount } from "@/lib/ai-usage";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 
 const OPENAI_KEY_STORAGE     = "wf-openai-key";
 const GEMINI_KEY_STORAGE     = "wf-gemini-key";
@@ -94,6 +95,49 @@ const MODEL_STORAGE: Record<AiSource, string> = {
   deepseek:   "wf-deepseek-model",
   groq:       "wf-groq-model",
 };
+
+/**
+ * Collapsible group of settings cards — shared across the whole settings page.
+ * State is persisted to localStorage so groups stay open/closed across reloads.
+ */
+function SettingsGroup({
+  id, icon: Icon, title, description, children, defaultOpen = true,
+}: {
+  id: string;
+  icon: React.ElementType;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useLocalStorage<boolean>(`wf-settings-group:${id}`, defaultOpen);
+  return (
+    <div className="rounded-xl border border-border bg-card/30 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center gap-3 px-5 py-4 hover:bg-muted/30 transition-colors text-left"
+        aria-expanded={open}
+      >
+        <span className="p-1.5 rounded-md bg-primary/15 text-primary shrink-0">
+          <Icon className="w-4 h-4" />
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm leading-none">{title}</p>
+          {description && <p className="text-[11px] text-muted-foreground mt-1 leading-snug">{description}</p>}
+        </div>
+        <span className="text-muted-foreground shrink-0 transition-transform duration-200" style={{ transform: open ? "rotate(0deg)" : "rotate(-90deg)" }}>
+          <ChevronDown className="w-4 h-4" />
+        </span>
+      </button>
+      {open && (
+        <div className="px-4 pb-4 space-y-4 border-t border-border/60 pt-4">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
@@ -212,17 +256,35 @@ export default function SettingsPage() {
 
       <InstallAppCard />
 
-      <AiSettingsCard />
+      <SettingsGroup
+        id="ai"
+        icon={Sparkles}
+        title="AI & Image Generation"
+        description="AI provider, model selection, and image generation source"
+      >
+        <AiSettingsCard />
+        <ImageSourceCard />
+      </SettingsGroup>
 
-      <ControlAppearanceCard />
+      <SettingsGroup
+        id="appearance"
+        icon={Palette}
+        title="Appearance"
+        description="Control panel colours, fonts, and sidebar look"
+      >
+        <ControlAppearanceCard />
+        <SidebarCustomizationCard />
+      </SettingsGroup>
 
-      <BibleOnlyModeCard />
-
-      <MainMenuCustomizationCard />
-
-      <SidebarCustomizationCard />
-
-      <ImageSourceCard />
+      <SettingsGroup
+        id="menu"
+        icon={LayoutGrid}
+        title="Menu & Navigation"
+        description="Sidebar icons, Bible-only mode, and emoji style"
+      >
+        <BibleOnlyModeCard />
+        <MainMenuCustomizationCard />
+      </SettingsGroup>
     </div>
   );
 }
