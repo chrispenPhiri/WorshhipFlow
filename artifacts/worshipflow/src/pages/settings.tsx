@@ -35,6 +35,53 @@ const GROQ_KEY_STORAGE       = "wf-groq-key";
 const AI_SOURCE_STORAGE      = "wf-ai-source";
 type AiSource = "openai" | "gemini" | "openrouter" | "deepseek" | "groq";
 
+const PROVIDER_MODELS: Record<AiSource, { id: string; label: string; free?: boolean }[]> = {
+  openai: [
+    { id: "gpt-4o",      label: "GPT-4o" },
+    { id: "gpt-4o-mini", label: "GPT-4o mini" },
+    { id: "gpt-4-turbo", label: "GPT-4 Turbo" },
+    { id: "o3-mini",     label: "o3-mini" },
+  ],
+  gemini: [
+    { id: "gemini-2.0-flash",      label: "Gemini 2.0 Flash" },
+    { id: "gemini-2.0-flash-lite", label: "Gemini 2.0 Flash Lite" },
+    { id: "gemini-1.5-pro",        label: "Gemini 1.5 Pro" },
+    { id: "gemini-1.5-flash",      label: "Gemini 1.5 Flash" },
+  ],
+  openrouter: [
+    { id: "openai/gpt-4o",                                label: "GPT-4o" },
+    { id: "openai/gpt-4o-mini",                           label: "GPT-4o mini" },
+    { id: "anthropic/claude-3-5-haiku",                   label: "Claude 3.5 Haiku" },
+    { id: "meta-llama/llama-3.3-70b-instruct:free",       label: "Llama 3.3 70B", free: true },
+    { id: "google/gemini-2.0-flash-exp:free",             label: "Gemini 2.0 Flash", free: true },
+    { id: "mistralai/mistral-7b-instruct:free",           label: "Mistral 7B", free: true },
+  ],
+  deepseek: [
+    { id: "deepseek-chat",     label: "DeepSeek V3" },
+    { id: "deepseek-reasoner", label: "DeepSeek R1" },
+  ],
+  groq: [
+    { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B" },
+    { id: "llama-3.1-8b-instant",    label: "Llama 3.1 8B (fast)" },
+    { id: "mixtral-8x7b-32768",      label: "Mixtral 8x7B" },
+    { id: "gemma2-9b-it",            label: "Gemma 2 9B" },
+  ],
+};
+const DEFAULT_MODEL: Record<AiSource, string> = {
+  openai:     "gpt-4o",
+  gemini:     "gemini-2.0-flash",
+  openrouter: "openai/gpt-4o",
+  deepseek:   "deepseek-chat",
+  groq:       "llama-3.3-70b-versatile",
+};
+const MODEL_STORAGE: Record<AiSource, string> = {
+  openai:     "wf-openai-model",
+  gemini:     "wf-gemini-model",
+  openrouter: "wf-openrouter-model",
+  deepseek:   "wf-deepseek-model",
+  groq:       "wf-groq-model",
+};
+
 export default function SettingsPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -211,6 +258,19 @@ function AiSettingsCard() {
   const [dsInput,     setDsInput]     = useState(() => localStorage.getItem(DEEPSEEK_KEY_STORAGE)   ?? "");
   const [groqKey,     setGroqKey]     = useState(() => localStorage.getItem(GROQ_KEY_STORAGE)       ?? "");
   const [groqInput,   setGroqInput]   = useState(() => localStorage.getItem(GROQ_KEY_STORAGE)       ?? "");
+  const [selectedModels, setSelectedModels] = useState<Record<AiSource, string>>(() => ({
+    openai:     localStorage.getItem(MODEL_STORAGE.openai)     ?? DEFAULT_MODEL.openai,
+    gemini:     localStorage.getItem(MODEL_STORAGE.gemini)     ?? DEFAULT_MODEL.gemini,
+    openrouter: localStorage.getItem(MODEL_STORAGE.openrouter) ?? DEFAULT_MODEL.openrouter,
+    deepseek:   localStorage.getItem(MODEL_STORAGE.deepseek)   ?? DEFAULT_MODEL.deepseek,
+    groq:       localStorage.getItem(MODEL_STORAGE.groq)       ?? DEFAULT_MODEL.groq,
+  }));
+  const activeModel = selectedModels[aiSource];
+  function setActiveModel(m: string) {
+    setSelectedModels(prev => ({ ...prev, [aiSource]: m }));
+    localStorage.setItem(MODEL_STORAGE[aiSource], m);
+  }
+
   const [showKey,     setShowKey]     = useState(false);
   const [testStatus,  setTestStatus]  = useState<"idle" | "testing" | "ok" | "error">("idle");
   const [testError,   setTestError]   = useState("");
@@ -272,7 +332,7 @@ function AiSettingsCard() {
     try {
       const res = await fetch(`${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/ai/chat`, {
         method: "POST",
-        headers,
+        headers: { ...headers, "X-AI-Model": activeModel },
         body: JSON.stringify({ messages: [{ role: "user", content: "Say OK" }], max_tokens: 10 }),
       });
       if (!res.ok) {
@@ -430,6 +490,30 @@ function AiSettingsCard() {
                   Get a key <ExternalLink className="w-3 h-3" />
                 </a>
               </p>
+              {/* Model picker */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground">Model</p>
+                <Select value={activeModel} onValueChange={setActiveModel}>
+                  <SelectTrigger className="text-sm h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROVIDER_MODELS[aiSource].map(m => (
+                      <SelectItem key={m.id} value={m.id}>
+                        <span className="flex items-center gap-2">
+                          {m.label}
+                          {m.free && (
+                            <span className="text-[10px] font-bold text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/40 px-1.5 py-0.5 rounded-full leading-none">
+                              FREE
+                            </span>
+                          )}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Input
