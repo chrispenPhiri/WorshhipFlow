@@ -28,6 +28,7 @@ import { InstallAppCard } from "@/components/install-app-card";
 import { getDailyImageCount } from "@/lib/ai-usage";
 
 const OPENAI_KEY_STORAGE = "wf-openai-key";
+const AI_SOURCE_STORAGE = "wf-ai-source";
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
@@ -182,13 +183,32 @@ function AiSettingsCard() {
     aiDailyImageLimit: 20,
   });
 
+  /* ── AI provider ── */
+  const [aiSource, setAiSourceState] = useState<"openai" | "replit">(
+    () => (localStorage.getItem(AI_SOURCE_STORAGE) === "replit" ? "replit" : "openai"),
+  );
+  const [replitAvailable, setReplitAvailable] = useState(false);
+
+  useEffect(() => {
+    const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+    fetch(`${BASE}/api/ai/status`)
+      .then(r => r.json())
+      .then((d: { replitAvailable?: boolean }) => setReplitAvailable(d.replitAvailable ?? false))
+      .catch(() => { /* offline / not deployed */ });
+  }, []);
+
+  function selectAiSource(src: "openai" | "replit") {
+    setAiSourceState(src);
+    localStorage.setItem(AI_SOURCE_STORAGE, src);
+  }
+
   /* ── OpenAI API Key (localStorage) ── */
   const [apiKey, setApiKey] = useState(() => localStorage.getItem(OPENAI_KEY_STORAGE) ?? "");
   const [keyInput, setKeyInput] = useState(() => localStorage.getItem(OPENAI_KEY_STORAGE) ?? "");
   const [showKey, setShowKey] = useState(false);
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "ok" | "error">("idle");
   const [testError, setTestError] = useState("");
-  const keyConfigured = apiKey.startsWith("sk-");
+  const keyConfigured = aiSource === "replit" ? replitAvailable : apiKey.startsWith("sk-");
 
   function saveKey() {
     const trimmed = keyInput.trim();
@@ -263,30 +283,90 @@ function AiSettingsCard() {
           AI Features
         </CardTitle>
         <CardDescription>
-          Add your own OpenAI API key to unlock AI features. Charges go directly to your OpenAI account.
+          Choose how AI features are powered. Use your Replit account credits or your own OpenAI key.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
 
-        {/* ── OpenAI API Key ─────────────────────────────────────── */}
+        {/* ── AI Provider selector ────────────────────────────────── */}
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AI Provider</p>
+          <div className="grid grid-cols-2 gap-2">
+            {/* Replit Credits */}
+            <button
+              type="button"
+              onClick={() => selectAiSource("replit")}
+              className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${
+                aiSource === "replit"
+                  ? "border-primary bg-primary/10 ring-1 ring-primary"
+                  : "border-border bg-muted/20 hover:bg-muted/40"
+              }`}
+            >
+              <div className="flex items-center gap-2 w-full">
+                <span className="text-sm font-semibold flex-1">Replit Credits</span>
+                {aiSource === "replit" && replitAvailable && (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                )}
+                {aiSource === "replit" && !replitAvailable && (
+                  <XCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                Use your Replit account. Billed to your Replit credits.
+              </p>
+              {!replitAvailable && (
+                <p className="text-[10px] text-amber-500 leading-snug">
+                  Not available on this deployment
+                </p>
+              )}
+            </button>
+
+            {/* Own OpenAI Key */}
+            <button
+              type="button"
+              onClick={() => selectAiSource("openai")}
+              className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${
+                aiSource === "openai"
+                  ? "border-primary bg-primary/10 ring-1 ring-primary"
+                  : "border-border bg-muted/20 hover:bg-muted/40"
+              }`}
+            >
+              <div className="flex items-center gap-2 w-full">
+                <span className="text-sm font-semibold flex-1">My OpenAI Key</span>
+                {aiSource === "openai" && apiKey.startsWith("sk-") && (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                )}
+                {aiSource === "openai" && !apiKey.startsWith("sk-") && (
+                  <XCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                Bring your own key. Charged to your OpenAI account.
+              </p>
+            </button>
+          </div>
+        </div>
+
+        {/* ── OpenAI API Key (only shown when openai source selected) ── */}
+        {aiSource === "openai" && (
         <div className="rounded-lg border border-border bg-muted/20 px-4 py-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <KeyRound className="w-4 h-4 text-muted-foreground" />
               <p className="text-sm font-medium">OpenAI API Key</p>
             </div>
-            {keyConfigured ? (
+            {apiKey.startsWith("sk-") ? (
               <span className="flex items-center gap-1 text-[11px] font-semibold text-green-600 dark:text-green-400">
                 <CheckCircle2 className="w-3.5 h-3.5" /> Configured
               </span>
             ) : (
               <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                <XCircle className="w-3.5 h-3.5" /> Not set — AI disabled
+                <XCircle className="w-3.5 h-3.5" /> Not set
               </span>
             )}
           </div>
           <p className="text-[11px] text-muted-foreground leading-relaxed">
-            AI features require your own OpenAI key. Charges go directly to your OpenAI account — no extra costs here.{" "}
+            Charges go directly to your OpenAI account — no markup here.{" "}
             <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer"
               className="text-primary underline-offset-2 hover:underline inline-flex items-center gap-0.5">
               Get a key <ExternalLink className="w-3 h-3" />
@@ -338,7 +418,7 @@ function AiSettingsCard() {
               <XCircle className="w-3.5 h-3.5" /> {testError}
             </p>
           )}
-          {keyConfigured && (
+          {apiKey.startsWith("sk-") && (
             <button
               type="button"
               onClick={clearKey}
@@ -348,6 +428,7 @@ function AiSettingsCard() {
             </button>
           )}
         </div>
+        )}
 
         {/* Master toggle */}
         <div className={`flex items-center justify-between gap-3 py-2 px-3 rounded-lg border border-border bg-muted/30 transition-opacity ${!keyConfigured ? "opacity-50 pointer-events-none" : ""}`}>

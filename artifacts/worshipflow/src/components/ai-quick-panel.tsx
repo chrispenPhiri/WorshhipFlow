@@ -16,11 +16,17 @@ import { Link } from "wouter";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const OPENAI_KEY_STORAGE = "wf-openai-key";
+const AI_SOURCE_STORAGE = "wf-ai-source";
 
 function getAiHeaders(): Record<string, string> {
+  const source = localStorage.getItem(AI_SOURCE_STORAGE) ?? "openai";
   const key = localStorage.getItem(OPENAI_KEY_STORAGE)?.trim();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (key) headers["X-OpenAI-Key"] = key;
+  if (source === "replit") {
+    headers["X-AI-Source"] = "replit";
+  } else if (key) {
+    headers["X-OpenAI-Key"] = key;
+  }
   return headers;
 }
 

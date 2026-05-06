@@ -299,23 +299,23 @@ export function YoutubePlayerPanel() {
       {/* ── Persistent mini-player ────────────────────────────── */}
       {activeId && (
         <div style={getPlayerStyle()}>
-          {isHidden ? (
-            /* Hidden pill */
-            <div
-              className="relative rounded-full border border-border bg-background/95 backdrop-blur-md shadow-2xl overflow-hidden"
-              style={{ width: 220, height: 48 }}
-              data-testid="youtube-mini-player"
-            >
-              <iframe
-                ref={iframeRef}
-                key={activeId}
-                src={`https://www.youtube.com/embed/${activeId}?autoplay=1&enablejsapi=1&rel=0&origin=${encodeURIComponent(window.location.origin)}`}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                title="YouTube player"
-                style={{ position: "absolute", width: 272, height: 153, top: 0, left: 0, pointerEvents: "none" }}
-                onLoad={() => setTimeout(() => { ytCmd("setVolume", [volume]); if (muted) ytCmd("mute"); }, 1500)}
-              />
-              <div className="absolute inset-0 flex items-center gap-1 px-2 cursor-move select-none" onPointerDown={startDrag}>
+          {/*
+            Single container that morphs between pill (hidden) and full player.
+            The iframe is NEVER unmounted — only the outer container changes size.
+            overflow:hidden clips the full player content to the pill size when hidden,
+            keeping the iframe in the DOM so audio never stops.
+          */}
+          <div
+            className={`relative border border-border bg-background/95 backdrop-blur-md shadow-2xl overflow-hidden ${isHidden ? "rounded-full" : "rounded-2xl"}`}
+            style={isHidden ? { width: 220, height: 48 } : { width: 272 }}
+            data-testid="youtube-mini-player"
+          >
+            {/* Pill overlay — sits on top of the clipped content when hidden */}
+            {isHidden && (
+              <div
+                className="absolute inset-0 z-20 flex items-center gap-1 px-2 cursor-move select-none bg-background/95 rounded-full"
+                onPointerDown={startDrag}
+              >
                 <Music className="w-3.5 h-3.5 text-primary shrink-0 animate-pulse" />
                 <p className="flex-1 text-[11px] font-semibold truncate min-w-0 ml-1">{activeTitle}</p>
                 <button type="button" onPointerDown={e => e.stopPropagation()} onClick={togglePause}
@@ -327,11 +327,10 @@ export function YoutubePlayerPanel() {
                   <Eye className="w-3.5 h-3.5" />
                 </button>
               </div>
-            </div>
-          ) : (
-            /* Full player */
-            <div className="rounded-2xl border border-border bg-background/95 backdrop-blur-md shadow-2xl overflow-hidden"
-              style={{ width: 272 }} data-testid="youtube-mini-player">
+            )}
+
+            {/* Full player — always rendered; clipped by parent overflow:hidden in pill mode */}
+            <div style={{ width: 272 }}>
 
               {/* Drag / title bar */}
               <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-border/50 cursor-move select-none bg-muted/30"
@@ -360,15 +359,15 @@ export function YoutubePlayerPanel() {
                 </button>
               </div>
 
-              {/* Video */}
-              <div className="relative" style={{ aspectRatio: "16/9" }}>
+              {/* Video — single iframe, key only changes when song changes */}
+              <div className="relative" style={{ aspectRatio: "16/9", width: 272 }}>
                 <iframe
                   ref={iframeRef}
                   key={activeId}
                   src={`https://www.youtube.com/embed/${activeId}?autoplay=1&enablejsapi=1&rel=0&origin=${encodeURIComponent(window.location.origin)}`}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   title="YouTube player"
-                  className="w-full h-full"
+                  className="absolute inset-0 w-full h-full"
                   onLoad={() => setTimeout(() => { ytCmd("setVolume", [volume]); if (muted) ytCmd("mute"); }, 1500)}
                 />
               </div>
@@ -393,7 +392,7 @@ export function YoutubePlayerPanel() {
                 </Button>
               </div>
             </div>
-          )}
+          </div>
         </div>
       )}
 

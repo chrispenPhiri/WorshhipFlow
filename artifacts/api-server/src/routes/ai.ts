@@ -20,19 +20,33 @@ function getClientOrFail(
   res: import("express").Response,
 ): OpenAI | null {
   const userKey = (req.headers["x-openai-key"] as string | undefined)?.trim();
+  const aiSource = (req.headers["x-ai-source"] as string | undefined)?.trim();
+
   if (userKey) {
     return new OpenAI({ apiKey: userKey });
   }
-  if (managedClient) {
+  if (aiSource === "replit" && managedClient) {
     return managedClient;
+  }
+  if (aiSource === "replit" && !managedClient) {
+    res.status(402).json({
+      error: "replit_not_configured",
+      message: "Replit AI integration is not available on this server.",
+    });
+    return null;
   }
   res.status(402).json({
     error: "no_api_key",
     message:
-      "No OpenAI API key configured. Please add your OpenAI API key in Settings → AI Features.",
+      "No AI provider configured. Choose an AI provider in Settings → AI Features.",
   });
   return null;
 }
+
+/* ── AI availability status ──────────────────────────────────────── */
+router.get("/status", (_req, res) => {
+  res.json({ replitAvailable: managedClient !== null });
+});
 
 function sseHeaders(res: import("express").Response) {
   res.setHeader("Content-Type", "text/event-stream");
