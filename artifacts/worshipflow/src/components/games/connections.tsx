@@ -11,6 +11,7 @@ import {
   type ConnectionsDifficulty,
 } from "@/lib/games";
 import { useGameBroadcast } from "@/lib/game-broadcast";
+import type { ConnectionsStagePayload } from "@/lib/game-stage-payload";
 
 const LIVES = 4;
 
@@ -43,7 +44,7 @@ export function ConnectionsGame() {
   const [shake, setShake] = useState(false);
   const [oneAway, setOneAway] = useState(false);
   const [revealedAll, setRevealedAll] = useState<ConnectionsCategory[] | null>(null);
-  const { presentOnScreen } = useGameBroadcast();
+  const { presentGameView } = useGameBroadcast();
 
   const lost = lives === 0 && solved.length < 4;
   const won = solved.length === 4;
@@ -120,18 +121,29 @@ export function ConnectionsGame() {
   }
 
   function sendPuzzleToScreen() {
-    const remaining = board.map(b => b.text);
-    presentOnScreen(
-      "Bible Connections",
-      puzzle.title,
-      `Find four groups of four:\n\n${chunk4(remaining).map(row => row.join("   ·   ")).join("\n")}`,
-    );
+    const payload: ConnectionsStagePayload = {
+      kind: "connections",
+      title: puzzle.title,
+      tiles: board.map(b => b.text),
+      solved: solved.map(c => ({ name: c.name, items: c.items, difficulty: c.difficulty })),
+      lives,
+      livesMax: LIVES,
+      revealed: false,
+    };
+    presentGameView("Bible Connections", puzzle.title, payload);
   }
   function sendSolutionToScreen() {
-    const lines = puzzle.categories
-      .map(c => `${c.name.toUpperCase()}: ${c.items.join(" · ")}`)
-      .join("\n\n");
-    presentOnScreen("Bible Connections — Solution", puzzle.title, lines);
+    const payload: ConnectionsStagePayload = {
+      kind: "connections",
+      title: puzzle.title,
+      tiles: [],
+      solved: [],
+      lives,
+      livesMax: LIVES,
+      revealed: true,
+      categories: puzzle.categories.map(c => ({ name: c.name, items: c.items, difficulty: c.difficulty })),
+    };
+    presentGameView("Bible Connections — Solution", puzzle.title, payload);
   }
 
   return (

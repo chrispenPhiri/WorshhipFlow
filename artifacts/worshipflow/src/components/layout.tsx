@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ChevronsLeft, ChevronsRight, LogOut, Menu, Tv, User as UserIcon, BookOpen, Radio } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, LogOut, Menu, Tv, User as UserIcon, BookOpen, Radio, Pencil } from "lucide-react";
 import { LivePreview } from "./live-preview";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -14,6 +14,8 @@ import {
 import { useAuth } from "@/lib/auth/context";
 import { useBibleOnlyMode, isPathAllowedInBibleOnly } from "@/lib/bible-only-mode";
 import { useGetScreenState, getGetScreenStateQueryKey } from "@workspace/api-client-react";
+import { ProfileDialog } from "./profile-dialog";
+import { AiQuickPanel } from "./ai-quick-panel";
 
 /**
  * Three viewport modes drive the layout shape:
@@ -41,29 +43,50 @@ function useViewportMode(): "mobile" | "tablet" | "desktop" {
   return mode;
 }
 
-function UserMenu({ collapsed }: { collapsed: boolean }) {
+function UserMenu({ collapsed, onOpenProfile }: { collapsed: boolean; onOpenProfile: () => void }) {
   const { user, logout } = useAuth();
   if (!user) return null;
+
+  const avatar = (user as { avatar?: string }).avatar;
+
   if (collapsed) {
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            onClick={logout}
-            className="h-10 w-10 mx-auto text-sidebar-foreground/80 hover:text-sidebar-foreground"
-            aria-label={`Sign out (${user.displayName})`}
-            data-testid="button-logout"
-          >
-            <LogOut className="h-5 w-5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="right">
-          Signed in as {user.displayName} — click to sign out
-        </TooltipContent>
-      </Tooltip>
+      <div className="flex flex-col items-center gap-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={onOpenProfile}
+              className="w-9 h-9 rounded-full bg-primary/20 text-primary flex items-center justify-center hover:ring-2 hover:ring-primary/60 transition-all overflow-hidden"
+              aria-label={`Edit profile (${user.displayName})`}
+              data-testid="button-profile-collapsed"
+            >
+              {avatar
+                ? <img src={avatar} alt="" className="w-full h-full object-cover" />
+                : <UserIcon className="w-4 h-4" />}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            {user.displayName} · Edit profile
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              onClick={logout}
+              className="h-7 w-7 mx-auto text-sidebar-foreground/60 hover:text-destructive"
+              aria-label="Sign out"
+              data-testid="button-logout"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">Sign out</TooltipContent>
+        </Tooltip>
+      </div>
     );
   }
   return (
@@ -71,13 +94,28 @@ function UserMenu({ collapsed }: { collapsed: boolean }) {
       className="flex items-center gap-2 px-3 py-2 rounded-md bg-sidebar-accent/40"
       data-testid="user-menu"
     >
-      <div className="bg-primary/20 text-primary rounded-full w-8 h-8 flex items-center justify-center shrink-0">
-        <UserIcon className="w-4 h-4" />
-      </div>
+      <button
+        type="button"
+        onClick={onOpenProfile}
+        className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center shrink-0 hover:ring-2 hover:ring-primary/60 transition-all overflow-hidden"
+        aria-label="Edit profile"
+        data-testid="button-profile"
+      >
+        {avatar
+          ? <img src={avatar} alt="" className="w-full h-full object-cover" />
+          : <UserIcon className="w-4 h-4" />}
+      </button>
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium truncate" data-testid="text-current-username">
-          {user.displayName}
-        </div>
+        <button
+          type="button"
+          onClick={onOpenProfile}
+          className="flex items-center gap-1 hover:text-primary transition-colors w-full text-left group"
+        >
+          <div className="text-sm font-medium truncate" data-testid="text-current-username">
+            {user.displayName}
+          </div>
+          <Pencil className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-60 transition-opacity" />
+        </button>
         <div className="text-[11px] text-muted-foreground truncate">@{user.username}</div>
       </div>
       <Tooltip>
@@ -119,6 +157,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const [emojiMode] = useEmojiMode();
   const [menuOpen, setMenuOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const { data: screenState } = useGetScreenState({
     query: { queryKey: getGetScreenStateQueryKey(), refetchInterval: 3000 },
@@ -335,7 +374,7 @@ export function Layout({ children }: { children: ReactNode }) {
           )}
 
           <div className={`border-t border-border ${sidebarCollapsed ? "px-2" : "px-3"} py-3`}>
-            <UserMenu collapsed={sidebarCollapsed} />
+            <UserMenu collapsed={sidebarCollapsed} onOpenProfile={() => setProfileOpen(true)} />
           </div>
         </aside>
       )}
@@ -358,7 +397,7 @@ export function Layout({ children }: { children: ReactNode }) {
               {renderNav(true, () => setMenuOpen(false))}
             </div>
             <div className="border-t border-border p-3">
-              <UserMenu collapsed={false} />
+              <UserMenu collapsed={false} onOpenProfile={() => { setProfileOpen(true); setMenuOpen(false); }} />
             </div>
           </SheetContent>
         </Sheet>
@@ -409,6 +448,12 @@ export function Layout({ children }: { children: ReactNode }) {
           </SheetContent>
         </Sheet>
       )}
+
+      {/* ── Profile dialog ────────────────────────────────────────────── */}
+      <ProfileDialog open={profileOpen} onOpenChange={setProfileOpen} />
+
+      {/* ── AI quick panel (floating) ─────────────────────────────────── */}
+      <AiQuickPanel />
     </div>
   );
 }

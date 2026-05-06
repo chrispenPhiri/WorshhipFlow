@@ -1034,7 +1034,16 @@ export default function BroadcastPage() {
         const overflow = Math.max(0, el.scrollHeight - parent.clientHeight);
         textOverflowHRef.current = overflow;
         setTextOverflowH(overflow);
-        setScrollOffset(v => Math.min(v, overflow));
+        setScrollOffset(v => {
+          // If overflow measures as 0 while we already hold a positive offset,
+          // the DOM most likely hasn't finished re-laying out at the new natural
+          // font-size yet (effectiveAutoFitFactor just switched from <1 → 1 and
+          // the browser hasn't committed that paint).  Skip clamping so the
+          // offset stays in place; the next arrow press or auto-scroll tick will
+          // re-measure against the correctly-grown DOM.
+          if (overflow === 0 && v > 0) return v;
+          return Math.min(v, overflow);
+        });
       });
     });
   };

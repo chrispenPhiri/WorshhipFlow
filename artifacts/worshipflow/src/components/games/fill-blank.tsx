@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, XCircle, RotateCcw, ArrowRight, Trophy, Send } from "lucide-react";
 import { FILL_BLANK, shuffle, type FillBlankRound, type TriviaDifficulty } from "@/lib/games";
 import { useGameBroadcast } from "@/lib/game-broadcast";
+import type { FillBlankStagePayload } from "@/lib/game-stage-payload";
 
 const ROUNDS = 8;
 const DIFFICULTIES: (TriviaDifficulty | "Mixed")[] = ["Mixed", "Easy", "Medium", "Hard"];
@@ -21,7 +22,7 @@ export function FillBlankGame() {
   const [round, setRound] = useState(0);
   const [answers, setAnswers] = useState<Answered[]>([]);
   const [picked, setPicked] = useState<string | null>(null);
-  const { presentOnScreen } = useGameBroadcast();
+  const { presentGameView } = useGameBroadcast();
 
   const verses = useMemo<FillBlankRound[]>(() => {
     const pool = difficulty === "Mixed"
@@ -67,19 +68,27 @@ export function FillBlankGame() {
 
   function sendVerseToScreen() {
     if (!current) return;
-    presentOnScreen(
-      "Fill in the Blank",
-      current.reference,
-      `${current.verse.replace(/___/g, "______")}\n\n— ${current.reference}`,
-    );
+    const payload: FillBlankStagePayload = {
+      kind: "fill-blank",
+      verse: current.verse,
+      answer: current.answer,
+      reference: current.reference,
+      options: shuffledOptions,
+      revealed: false,
+    };
+    presentGameView("Fill in the Blank", current.reference, payload);
   }
   function sendAnswerToScreen() {
     if (!current) return;
-    presentOnScreen(
-      "Fill in the Blank — Answer",
-      current.reference,
-      `${current.verse.replace(/___/g, current.answer.toUpperCase())}\n\n— ${current.reference}`,
-    );
+    const payload: FillBlankStagePayload = {
+      kind: "fill-blank",
+      verse: current.verse,
+      answer: current.answer,
+      reference: current.reference,
+      options: shuffledOptions,
+      revealed: true,
+    };
+    presentGameView("Fill in the Blank — Answer", current.reference, payload);
   }
 
   if (finished) {

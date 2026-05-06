@@ -26,7 +26,10 @@ export type GameStagePayload =
   | EmojiQuizStagePayload
   | VerseScrambleStagePayload
   | WhoSaidItStagePayload
-  | SpellItStagePayload;
+  | SpellItStagePayload
+  | ConnectionsStagePayload
+  | FillBlankStagePayload
+  | OddOneOutStagePayload;
 
 export interface TriviaStagePayload {
   kind: "trivia";
@@ -130,6 +133,42 @@ export interface SpellItStagePayload {
   word?: string;
 }
 
+export interface ConnectionsStagePayload {
+  kind: "connections";
+  title: string;
+  /** Unsolved tiles still on the board. */
+  tiles: string[];
+  /** Already-solved category rows (shown above the grid). */
+  solved: Array<{ name: string; items: string[]; difficulty: string }>;
+  lives: number;
+  livesMax: number;
+  /** true = game ended, show full solution. */
+  revealed: boolean;
+  /** All 4 categories — used only when revealed=true. */
+  categories?: Array<{ name: string; items: string[]; difficulty: string }>;
+}
+
+export interface FillBlankStagePayload {
+  kind: "fill-blank";
+  /** Verse text with ___ where the missing word goes. */
+  verse: string;
+  answer: string;
+  reference: string;
+  /** Shuffled word options. */
+  options: string[];
+  revealed: boolean;
+}
+
+export interface OddOneOutStagePayload {
+  kind: "odd-one-out";
+  category: string;
+  items: string[];
+  oddIndex: number;
+  revealed: boolean;
+  connection?: string;
+  explanation?: string;
+}
+
 /**
  * Safely decode the JSON wire format.  Returns null if the content isn't
  * a *valid* game payload (recognised kind + the required shape for that
@@ -188,6 +227,15 @@ function validateGamePayload(p: unknown): GameStagePayload | null {
     case "spell-it":
       if (!isStr(obj.clue) || !isStr(obj.category) || !isNum(obj.wordLength) || !isBool(obj.revealed)) return null;
       return obj as unknown as SpellItStagePayload;
+    case "connections":
+      if (!isStr(obj.title) || !isStrArr(obj.tiles) || !Array.isArray(obj.solved) || !isNum(obj.lives) || !isNum(obj.livesMax) || !isBool(obj.revealed)) return null;
+      return obj as unknown as ConnectionsStagePayload;
+    case "fill-blank":
+      if (!isStr(obj.verse) || !isStr(obj.answer) || !isStr(obj.reference) || !isStrArr(obj.options) || !isBool(obj.revealed)) return null;
+      return obj as unknown as FillBlankStagePayload;
+    case "odd-one-out":
+      if (!isStr(obj.category) || !isStrArr(obj.items) || !isNum(obj.oddIndex) || !isBool(obj.revealed)) return null;
+      return obj as unknown as OddOneOutStagePayload;
     default:
       return null;
   }

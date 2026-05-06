@@ -29,6 +29,9 @@ import type {
   VerseScrambleStagePayload,
   WhoSaidItStagePayload,
   SpellItStagePayload,
+  ConnectionsStagePayload,
+  FillBlankStagePayload,
+  OddOneOutStagePayload,
 } from "@/lib/game-stage-payload";
 
 interface Props {
@@ -81,15 +84,18 @@ export function GameStageView({ payload, baseFontSize, textStyle }: Props) {
 
 function renderBody(payload: GameStagePayload, accent: string): ReactNode {
   switch (payload.kind) {
-    case "trivia":      return <TriviaBody p={payload} accent={accent} />;
-    case "two-truths":  return <TwoTruthsBody p={payload} accent={accent} />;
-    case "true-false":  return <TrueFalseBody p={payload} accent={accent} />;
-    case "charades":    return <CharadesBody p={payload} accent={accent} />;
-    case "hangman":     return <HangmanBody p={payload} accent={accent} />;
-    case "emoji-quiz":  return <EmojiQuizBody p={payload} accent={accent} />;
+    case "trivia":       return <TriviaBody p={payload} accent={accent} />;
+    case "two-truths":   return <TwoTruthsBody p={payload} accent={accent} />;
+    case "true-false":   return <TrueFalseBody p={payload} accent={accent} />;
+    case "charades":     return <CharadesBody p={payload} accent={accent} />;
+    case "hangman":      return <HangmanBody p={payload} accent={accent} />;
+    case "emoji-quiz":   return <EmojiQuizBody p={payload} accent={accent} />;
     case "verse-scramble": return <VerseScrambleBody p={payload} accent={accent} />;
-    case "who-said-it": return <WhoSaidItBody p={payload} accent={accent} />;
-    case "spell-it":    return <SpellItBody p={payload} accent={accent} />;
+    case "who-said-it":  return <WhoSaidItBody p={payload} accent={accent} />;
+    case "spell-it":     return <SpellItBody p={payload} accent={accent} />;
+    case "connections":  return <ConnectionsBody p={payload} accent={accent} />;
+    case "fill-blank":   return <FillBlankBody p={payload} accent={accent} />;
+    case "odd-one-out":  return <OddOneOutBody p={payload} accent={accent} />;
   }
 }
 
@@ -531,6 +537,167 @@ function SpellItBody({ p, accent }: { p: SpellItStagePayload; accent: string }) 
           );
         })}
       </div>
+    </>
+  );
+}
+
+const CONN_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  Easy:   { bg: "rgba(16,185,129,0.18)",  border: "rgba(16,185,129,0.55)",  text: "#6ee7b7" },
+  Medium: { bg: "rgba(245,158,11,0.18)",  border: "rgba(245,158,11,0.55)",  text: "#fcd34d" },
+  Hard:   { bg: "rgba(56,189,248,0.18)",  border: "rgba(56,189,248,0.55)",  text: "#7dd3fc" },
+  Tricky: { bg: "rgba(192,132,252,0.18)", border: "rgba(192,132,252,0.55)", text: "#d8b4fe" },
+};
+
+function ConnectionsBody({ p, accent }: { p: ConnectionsStagePayload; accent: string }) {
+  const livesArr = Array.from({ length: p.livesMax });
+  const livesRemaining = Math.max(0, p.lives);
+  const cats = p.revealed ? (p.categories ?? []) : [];
+
+  return (
+    <>
+      <GameLabel text="Bible Connections" accent={accent} />
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5em" }}>
+        <div style={{ fontSize: "0.6em", fontWeight: 700, color: "rgba(255,255,255,0.7)", letterSpacing: "0.04em" }}>
+          {p.title}
+        </div>
+        <div style={{ display: "flex", gap: "0.15em" }}>
+          {livesArr.map((_, i) => <HeartIcon key={i} filled={i < livesRemaining} />)}
+        </div>
+      </div>
+
+      {p.solved.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.25em" }}>
+          {p.solved.map((cat) => {
+            const c = CONN_COLORS[cat.difficulty] ?? { bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.2)", text: "#fff" };
+            return (
+              <div key={cat.name} style={{
+                background: c.bg, border: `0.04em solid ${c.border}`,
+                borderRadius: "0.35em", padding: "0.4em 0.7em",
+                display: "flex", flexDirection: "column", gap: "0.15em",
+              }}>
+                <div style={{ fontSize: "0.32em", fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: c.text }}>
+                  {cat.name}
+                </div>
+                <div style={{ fontSize: "0.42em", color: "rgba(255,255,255,0.8)" }}>
+                  {cat.items.join(" · ")}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {p.revealed && cats.length > 0 ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.25em" }}>
+          {cats.map((cat) => {
+            const c = CONN_COLORS[cat.difficulty] ?? { bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.2)", text: "#fff" };
+            return (
+              <div key={cat.name} style={{
+                background: c.bg, border: `0.04em solid ${c.border}`,
+                borderRadius: "0.35em", padding: "0.4em 0.7em",
+                display: "flex", flexDirection: "column", gap: "0.15em",
+              }}>
+                <div style={{ fontSize: "0.32em", fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: c.text }}>
+                  {cat.name}
+                </div>
+                <div style={{ fontSize: "0.42em", color: "rgba(255,255,255,0.8)" }}>
+                  {cat.items.join(" · ")}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : p.tiles.length > 0 ? (
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: "0.25em",
+        }}>
+          {p.tiles.map((tile, i) => (
+            <div key={i} style={{
+              background: "rgba(255,255,255,0.07)",
+              border: `0.04em solid rgba(255,255,255,0.15)`,
+              borderRadius: "0.3em",
+              padding: "0.45em 0.3em",
+              textAlign: "center",
+              fontSize: "0.42em",
+              fontWeight: 600,
+              lineHeight: 1.2,
+            }}>
+              {tile}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function FillBlankBody({ p, accent }: { p: FillBlankStagePayload; accent: string }) {
+  const verseParts = p.verse.split("___");
+  return (
+    <>
+      <GameLabel text="Fill in the Blank" accent={accent} />
+      <CardWrap borderColor={p.revealed ? COLOR_OK_BORDER : undefined}>
+        <div style={{ fontSize: "0.72em", lineHeight: 1.5, textAlign: "center", fontStyle: "italic" }}>
+          {verseParts.map((part, i) => (
+            <span key={i}>
+              {part}
+              {i < verseParts.length - 1 && (
+                <span style={{
+                  display: "inline-block",
+                  minWidth: "3.5em",
+                  borderBottom: `0.08em solid ${p.revealed ? "#4ade80" : accent}`,
+                  fontStyle: "normal",
+                  fontWeight: 800,
+                  color: p.revealed ? "#4ade80" : accent,
+                  padding: "0 0.25em",
+                  letterSpacing: "0.05em",
+                }}>
+                  {p.revealed ? p.answer.toUpperCase() : "___"}
+                </span>
+              )}
+            </span>
+          ))}
+        </div>
+        <div style={{ fontSize: "0.36em", color: COLOR_MUTED, textAlign: "center", marginTop: "0.6em", letterSpacing: "0.06em", fontWeight: 700 }}>
+          — {p.reference}
+        </div>
+      </CardWrap>
+      {!p.revealed && p.options.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.3em" }}>
+          {p.options.map((opt, i) => {
+            const letter = String.fromCharCode(65 + i);
+            return <OptionRow key={i} letter={letter} text={opt} state="neutral" />;
+          })}
+        </div>
+      )}
+    </>
+  );
+}
+
+function OddOneOutBody({ p, accent }: { p: OddOneOutStagePayload; accent: string }) {
+  return (
+    <>
+      <GameLabel text={`Odd One Out · ${p.category}`} accent={accent} />
+      <div style={{ fontSize: "0.45em", textAlign: "center", color: COLOR_MUTED, letterSpacing: "0.04em" }}>
+        {p.revealed ? "The odd one out:" : "Which one doesn't belong?"}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.35em" }}>
+        {p.items.map((item, i) => {
+          const isOdd = i === p.oddIndex;
+          let state: "neutral" | "correct" | "wrong" | "dim" = "neutral";
+          if (p.revealed) state = isOdd ? "wrong" : "dim";
+          const letter = String.fromCharCode(65 + i);
+          return <OptionRow key={i} letter={letter} text={item} state={state} />;
+        })}
+      </div>
+      {p.revealed && (
+        <ExplanationBlock
+          text={p.connection ? `The other three: ${p.connection}${p.explanation ? `\n\n${p.explanation}` : ""}` : p.explanation}
+          ok={false}
+        />
+      )}
     </>
   );
 }

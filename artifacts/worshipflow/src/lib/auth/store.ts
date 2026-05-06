@@ -27,6 +27,8 @@ export interface PublicUser {
   id: string;
   username: string;
   displayName: string;
+  /** Base64 data URL set by the user; undefined until they upload one. */
+  avatar?: string;
 }
 
 export interface Session {
@@ -53,7 +55,8 @@ export function validatePassword(password: string): string | null {
 }
 
 function toPublic(u: UserRecord): PublicUser {
-  return { id: u.id, username: u.username, displayName: u.displayName };
+  const rec = u as UserRecord & { avatar?: string };
+  return { id: u.id, username: u.username, displayName: u.displayName, ...(rec.avatar ? { avatar: rec.avatar } : {}) };
 }
 
 export async function userCount(): Promise<number> {
@@ -97,6 +100,43 @@ export async function signupUser(input: {
   };
   await put("users", rec);
   return toPublic(rec);
+}
+
+export async function updateUserProfile(
+  userId: string,
+  changes: {
+    displayName?: string;
+    newPassword?: string;
+    currentPassword?: string;
+    avatar?: string | null; // base64 data URL or null to clear
+  },
+): Promise<PublicUser> {
+  const rec = await getById<UserRecord>("users", userId);
+  if (!rec) throw new Error("Account not found.");
+
+  let updated = { ...rec };
+
+  if (changes.displayName !== undefined) {
+    const name = changes.displayName.trim();
+    if (!name) throw new Error("Display name cannot be empty.");
+    updated = { ...updated, displayName: name };
+  }
+
+  if (changes.newPassword !== undefined) {
+    if (!changes.currentPassword) throw new Error("Current password is required to set a new password.");
+    const ok = await verifyPassword(changes.currentPassword, rec.password);
+    if (!ok) throw new Error("Incorrect current password.");
+    const pwErr = validatePassword(changes.newPassword);
+    if (pwErr) throw new Error(pwErr);
+    updated = { ...updated, password: await hashPassword(changes.newPassword) };
+  }
+
+  if ("avatar" in changes) {
+    (updated as UserRecord & { avatar?: string | null }).avatar = changes.avatar ?? undefined;
+  }
+
+  await put("users", updated);
+  return toPublic(updated);
 }
 
 export async function loginUser(input: {

@@ -1,83 +1,67 @@
 # Phiri WorshipFlow
 
-## Overview
+Phiri WorshipFlow is a church worship presentation software that helps manage and display worship content for operators and audiences.
 
-Phiri WorshipFlow is a full-stack church worship presentation software designed to manage and display worship content including Bible passages, songs, custom text, and multimedia. It aims to provide a seamless operator experience and an engaging audience display with features like live previews, multi-display broadcasting, and rich content management. The project is a pnpm workspace monorepo built with Node.js 24 and TypeScript 5.9.
+## Run & Operate
 
-## User Preferences
+_Populate as you build_
+
+## Stack
+
+*   **Frontend:** React, Vite, Tailwind v4, shadcn/ui, Wouter, TanStack Query
+*   **Backend:** Express 5, PostgreSQL, Drizzle ORM, Zod, TypeScript 5.9, Node.js 24
+*   **Build:** pnpm monorepo, esbuild
+*   **API Codegen:** Orval
+
+## Where things live
+
+*   **DB Schema:** Drizzle ORM definitions (server-side), IndexedDB (`wf-local-api`) for client-side data.
+*   **API Contracts:** OpenAPI specification.
+*   **UI Customization:** `localStorage` for main menu icons, themes, and various UI states.
+*   **PWA Assets:** `sw.js` (Service Worker).
+*   **Application Data Backup:** File System Access API for single-file/folder backup/restore.
+*   **Bible-only mode:** `lib/bible-only-mode.ts`
+*   **Emoji Mode:** `wf-emoji-mode` in `localStorage`
+*   **Live Captions:** `components/live-captions-card.tsx`
+*   **Stream Destinations:** `components/stream-destinations-card.tsx`
+*   **Global Operator Scroll:** `hooks/use-global-scroll-keys.ts`, `components/layout.tsx`
+*   **AI Page Tabs:** TABS array (see `/ai` route)
+
+## Architecture decisions
+
+*   **Offline-first:** Most operations leverage client-side storage (IndexedDB) with `window.fetch` monkey-patched to intercept `/api/*` requests for offline functionality.
+*   **Cross-tab Synchronization:** Achieved using `BroadcastChannel` for real-time updates across multiple browser tabs.
+*   **Client-side Authentication:** Secure, device-local username/password authentication using PBKDF2-SHA256, stored in IndexedDB.
+*   **Dynamic AI Content Generation:** AI tools generate diverse content, with a shared `<ResultBlock>` for unified actions (Send to screen, Export PDF, Refine).
+*   **Broadcast Window Optimization:** Dedicated window (`/broadcast`) focused on lean rendering, auto-fit text, smooth camera transitions, and no-flash camera switching for optimal audience display.
+*   **Global Operator Scroll:** Allows operators to control screen content scroll from anywhere in the app using keyboard shortcuts.
+
+## Product
+
+*   **Content Management:** Bible passages (via `bible-api.com`), songs, custom text, multimedia.
+*   **Presentation Tools:** Live preview, multi-display broadcasting, customizable themes, live animated wallpapers, ticker bars.
+*   **Service Management:** Drag-and-drop schedule builder, sermon notes, prayer wall, hymn number projection, service countdown.
+*   **AI-Powered Features:** AI-generated teaching drafts, sermon outlines, devotionals, quizzes, cross-references, translations. Floating AI Quick Panel (`components/ai-quick-panel.tsx`) accessible from every tab — quick prompts (prayer, sermon, devotional, announcement) and free-text chat, with send-to-screen.
+*   **Interactive Elements:** Offline Bible games (all graphical broadcast via `game-stage-view.tsx`), live captions (Web Speech API), stream destination management.
+*   **User Accounts:** Local, secure account management with profile editing (display name, avatar, password) via `ProfileDialog` (`components/profile-dialog.tsx`).
+*   **Data Persistence:** PWA storage protection, single-file/folder backup and restore.
+
+## User preferences
 
 I want iterative development. I prefer detailed explanations for complex features. I want to be asked before making major architectural changes or introducing new external dependencies.
 
-## System Architecture
+## Gotchas
 
-The application is built as a pnpm monorepo using Node.js 24 and TypeScript 5.9. It follows an offline-first approach, leveraging client-side storage for most operations.
+*   **Offline API:** The React app intercepts `/api/*` requests to write to IndexedDB, so the Express server mainly serves as an AI proxy passthrough in production.
+*   **Screen Capture Gesture:** Browsers require a real user gesture in the receiving window to initiate `getDisplayMedia()`, so the broadcast page displays a click overlay for screen capture.
+*   **Live Captions (Web Speech API):** Chromium-only feature.
+*   **Teleprompter Auto-scroll:** Space bar (in broadcast or via global scroll keys) toggles teleprompter mode.
+*   **Scroll Alignment:** When scrolling is active, vertical alignment switches to `flex-start` to ensure the full text range is reachable.
 
-**Frontend:**
-*   **Framework:** React with Vite
-*   **Styling:** Tailwind v4, shadcn/ui
-*   **Routing:** Wouter
-*   **Data Fetching:** TanStack Query
-*   **UI/UX:** Customizable operator-facing controls, live preview sidebar (16:9 aspect ratio, 2s updates) with stage controls. Responsive layout supporting desktop, tablet, and mobile views. Customizable main menu icons stored in `localStorage`.
-*   **Offline / PWA Layer:** `window.fetch` is monkey-patched to intercept `/api/*` requests and direct them to a local API layer, ensuring offline functionality. A service worker caches app shell assets for PWA capabilities. Cross-tab synchronization is achieved via `BroadcastChannel`.
+## Pointers
 
-**Backend:**
-*   **API Framework:** Express 5
-*   **Database:** PostgreSQL with Drizzle ORM (primarily for server-side operations; client uses IndexedDB).
-*   **Validation:** Zod (`zod/v4`), `drizzle-zod`.
-*   **API Codegen:** Orval (from OpenAPI spec).
-*   **Build:** esbuild (CJS bundle).
-*   **Note:** In production, the React app intercepts `/api/*` requests to write to IndexedDB, making the Express server mainly host the AI proxy passthrough.
-
-**Core Features:**
-*   **Install & Local Storage:** Utilizes `navigator.storage.persist()` for PWA storage protection, and offers single-file or folder-based backup/restore of user data (songs, notes, schedules, accounts) via File System Access API.
-*   **Local Accounts:** Secure, device-local username/password authentication using PBKDF2-SHA256 for hashing, with credentials stored in IndexedDB.
-*   **Pages:**
-    *   **Bible:** Integrates with `bible-api.com` for passages, multiple translations, verse navigation, and search.
-    *   **Songs:** Library management with CRUD, categories, and bulk import functionality (JSON/CSV).
-    *   **Custom Text:** Free-form text editor with extensive styling controls.
-    *   **Themes:** 12 presets and 8 live animated wallpapers.
-    *   **Media & Broadcast:** Supports various media types (images, videos, webcam, URLs) and includes broadcast features like screen detection, auto-fullscreen, and ticker bars.
-    *   **Schedule:** Drag-and-drop service order builder.
-    *   **Sermon Notes:** Rich CRUD editor with search.
-    *   **Daily Inspiration:** Displays religious content.
-    *   **Teachings:** Provides 42 pre-made lessons, user-added custom teachings, and AI-generated drafts.
-    *   **Bible Games:** Thirteen offline games (e.g., Trivia, Connections, Fill in the Blank) with "Show on screen" and "Reveal answer on screen" projection capabilities.
-    *   **Prayer Wall:** Capture, search, categorise (Healing/Family/Salvation/Provision/Guidance/Praise/Other), and project the church's prayer requests. Per-request "Project / Mark answered / Delete" plus a "Project all active" bulk action. Persisted in `localStorage` (`wf-prayer-wall`).
-    *   **Hymn Number:** Quick large-display projection for traditional services using a printed hymnal — enter hymnal name + number + optional title, hit "Show on screen" for a giant `№ NNN` card. Last-25 history for one-tap re-show.
-    *   **Service Countdown:** Set a target time + label, pick a `+5/+10/+15/+30/+60 min` preset, then "Show on screen". Ticks locally every second and re-broadcasts the remaining time to the projection screen every minute, auto-stopping at zero. State survives a refresh.
-    *   **How To:** In-app user guide.
-    *   **Settings:** Application-wide configuration. Now includes a **Bible-only mode** toggle (`lib/bible-only-mode.ts`, persisted in `wf-bible-only-mode`) — when on, the sidebar collapses to just Bible + Settings, every other route redirects back to `/`, and a banner above the main content reminds the operator the mode is active. The **Main-menu icon palette** has been expanded to ~60 hand-picked church/worship Lucide icons so each nav entry can have a more lifelike identity. **Emoji Mode** toggle (`wf-emoji-mode` in localStorage, `useEmojiMode` hook) replaces sidebar icons with emoji characters — each `NavItemDef` carries a default `emoji` field; Settings shows a live preview row when the mode is on.
-*   **Broadcast Window (`/broadcast`):** Dedicated full-screen output window for audience display, synchronized with operator actions via IndexedDB and `BroadcastChannel`. Renders backgrounds and applies layout settings with a focus on performance. **Auto-fit text**: after each new content key, measures overflow and scales `fontSize` down (min 12%) so long passages are never clipped. **Text scroll**: `scrollOffset` state driven by arrow keys (↑/↓) and `BroadcastChannel` commands (`scroll_up`/`scroll_down`/`scroll_reset`); when scrolling is active `effectiveAutoFitFactor` is overridden to 1 so text renders at full size. **Smooth camera transitions**: CSS `opacity 0.45s ease` applied to all camera video elements (BackgroundLayer, CameraOverlay, QuadCameraLayer). **No-flash camera switch**: new stream is acquired before stopping the old one (`cameraStreamRef`) so there is never a black-screen gap.
-*   **AI Page (`/ai`):** Tabs registered via a TABS array (Ask a Prophet, Chapter Summary, Context Lens, Sermon Outline, Prayer, Worship Set, Announcements, Devotional [NEW], Bible Quiz [NEW], Cross-References [NEW], Translate [NEW], Children's Sermon [NEW]). Every one-shot generator wraps its result in a shared `<ResultBlock>` that exposes **Send to screen** (writes via `useUpdateScreenState`), **Export PDF** (print window), **Dismiss**, and an inline **`<RefinePanel>`** — a free-form follow-up box that POSTs to `/api/ai/refine` with the original output + user instruction and atomically swaps the result on success (drafts are buffered to keep the original visible if streaming fails mid-way). Tab list scrolls/wraps to fit ≥12 tabs.
-*   **Inspiration / Teachings / Prayer Wall — graphic send:** Each page can send a styled gradient card directly to the broadcast screen (`type: "gradient"`). Category-specific colours: verse=indigo, fact=amber, event=violet, prayer=rose, teaching categories (Youth/Mothers/Fathers/etc.) have their own palette.
-
-**Key Architectural Patterns:**
-*   **Offline-first Data Flow:** Content updates are written to IndexedDB, and changes are synchronized across tabs using `BroadcastChannel`, minimizing server interaction.
-*   **Live Studio enhancements**: Camera Switcher card (`wf-studio-sections`) enumerates `navigator.mediaDevices` and updates `background.cameraDeviceId`; Graphic Presets stored in `wf-graphic-presets` (localStorage), editable inline with emoji/label/lower-third fields and a reset-to-defaults button; Live Visualizations stored in `wf-vis-items` (localStorage), editable text/lower-third fields; all column-3 cards are collapsible with toggle state in `wf-studio-sections`.
-*   **Live Preview Stage Controls**: `SliderWithButtons` replaced with `NudgeControl` (± step buttons + value chip, optional big-step «» buttons). Text Scroll section in Presentation Remote exposes ↑/↓/reset buttons via `scroll_up`/`scroll_down`/`scroll_reset` BroadcastChannel commands.
-*   **Global Operator Scroll** (`hooks/use-global-scroll-keys.ts`, mounted in `components/layout.tsx`): listens for ↑/↓/PageUp/PageDown/Home/End anywhere in the operator app and posts the matching `scroll_up`/`scroll_down`/`scroll_reset` command on the `wf-broadcast-cmd` BroadcastChannel. Skips when an `<input>`/`<textarea>`/`contentEditable` element is focused, when modifier keys are held, and when the operator is on `/broadcast` itself (that page already binds its own keydown). Lets the operator nudge long Bible passages and sermon text on the audience screen without focusing any specific button. Live Preview's "Text Scroll" hint advertises the keys as `↑ ↓ scroll · Home reset · Works anywhere in the app`.
-*   **Media page Camera & Broadcast tab** is now organised into collapsible cards (`Camera Source`, `Camera Layout`, `Camera Adjustments`) with persisted per-section state in `wf-media-cam-sections` (localStorage). Header titles include a tiny live-status hint (`· device`, `· fullscreen`, `· customised`) so the operator can see active settings while sections are collapsed. The Broadcast Output sub-section continues to use its existing `broadcastOpen` toggle.
-*   **Live Captions (AI)** — `components/live-captions-card.tsx` uses the browser's Web Speech API (`SpeechRecognition` / `webkitSpeechRecognition`, Chromium-only) to transcribe the operator's microphone in real time and pushes interim/final transcripts to the broadcast window via the `wf-broadcast-cmd` BroadcastChannel using new `caption_set { text, isFinal? }` and `caption_clear` commands. The broadcast page renders the caption above the ticker (z-30, `clamp(20px, 2.6vw, 38px)`, blurred dark backdrop). Settings (language, interim words, auto-clear delay) persist in localStorage. Auto-restarts the recogniser when Chrome ends the session after silence.
-*   **Stream Destinations** — `components/stream-destinations-card.tsx` stores YouTube / Facebook / Twitch / custom RTMP URL + stream key pairs in `wf-stream-destinations` (localStorage; never sent to the server). Provides copy-to-clipboard buttons so the operator can paste credentials into OBS or similar streaming tools (browsers cannot push native RTMP). Each destination has on/off toggle, masked key input, and platform-specific "get a key" link.
-*   **Tab/result persistence** — `hooks/use-session-storage.ts` is a `sessionStorage` twin of `useLocalStorage` (cross-instance custom-event sync). Used to keep the looked-up Bible verse (`wf-bible-result`, `wf-bible-result-2`, `wf-bible-current-verse-idx`) and the active AI tab (`wf-ai-active-tab`) visible after switching tabs. State clears when the browser tab is closed.
-*   **Auto-scroll teleprompter** — `pages/broadcast.tsx` runs an interval (`AUTO_SCROLL_TICK_MS=33`, ≈30 fps) with a fractional-pixel accumulator so slow speeds (e.g. 30 px/s) advance smoothly. Re-measures `scrollHeight - clientHeight` every tick and stops automatically when the bottom is reached or when the displayed content changes. Manual scroll step is now viewport-relative (`getScrollStep()` ≈ 15% of `window.innerHeight`, min 100px) so each arrow press makes a meaningful jump even when auto-fit has been disabled by `scrollOffset > 0`. New `BroadcastCommand`s `scroll_auto_start { speed? }`, `scroll_auto_stop`, and `scroll_auto_toggle { speed? }` (toggle is the canonical entry point — the broadcast window is the single source of truth for running/stopped state to prevent UI desync). Broadcast emits `BroadcastStatus` `scroll_auto_state { running, speed }` whenever it starts, stops, changes speed, or auto-stops at end-of-text; `LivePreview` subscribes to keep its toggle and speed selector in sync. Space bar (both inside the broadcast window and via `useGlobalScrollKeys` anywhere in the controller) toggles teleprompter mode. A slim primary-coloured progress bar across the bottom of the broadcast shows scroll progress while running.
-*   **Scroll alignment fix** — When in scroll mode (`scrollOffset > 0` or auto-scroll running), the renderer's `containerStyle.alignItems` switches from the operator-configured vertical alignment (default `center`) to `flex-start`. Previously, centering long overflowing text split the hidden portion equally above and below the parent, so `scrollOffset = 0` showed the *middle* of the passage and a couple of arrow presses would push everything off-screen — making scroll appear broken on long Bible chapters. Top-anchoring during scroll mode means `scrollOffset = 0` is the start of the text and the full overflow range is reachable, so manual scroll, auto-scroll teleprompter, and the Home reset all behave intuitively. When scroll resets to 0 and auto-scroll is stopped, the renderer returns to the operator's chosen vertical alignment.
-*   **Screen capture in any camera layout** — Previously only the quad/dual layouts supported screen capture (via the `__screen__` sentinel and per-slot click-to-capture). Now `pages/media.tsx` `sendCameraToScreen` also routes `cameraSource === "screen"` through `cameraDeviceId: "__screen__"` for fullscreen / PiP / side-by-side layouts. The broadcast page detects the sentinel in its camera lifecycle effect, skips `getUserMedia()`, and shows a fullscreen click overlay (`overlay-screen-capture-pick`) that calls `getDisplayMedia()` on click — required because browsers reject display-media calls without a real user gesture in the receiving window. When the user revokes screen sharing from the browser chrome, the `track.ended` listener clears the stream and re-shows the picker.
-*   **`safeBase` / `safeFullState`:** Ensures data consistency before updates.
-*   **Partial Updates:** Facilitates efficient patching of data.
-*   **Persistent UI State:** Manages long-lived UI state across route changes.
-*   **Broadcast Performance:** Broadcast window is optimized for performance with lean rendering.
-*   **Alpha Composition:** Ensures proper background alpha application without affecting foreground text.
-
-## External Dependencies
-
-*   `bible-api.com`: For fetching Bible passages and translations.
-*   Replit AI Integrations OpenAI proxy (`gpt-5.4`): For AI-generated teaching drafts and all 12 AI tools on `/ai`. New endpoints in `routes/ai.ts` for this batch: `/refine`, `/devotional`, `/quiz`, `/cross-refs`, `/translate`, `/childrens-sermon`. All stream SSE chunks via the shared `streamCompletion` helper.
-*   PostgreSQL: Used as the primary backend database.
-*   OpenAPI Specification: Defines the API contract for client-side code generation.
-*   Window Management API: For multi-display handling in broadcast.
-*   `localStorage`: Stores user preferences, custom teachings, and UI settings.
-*   `IndexedDB` (database `wf-local-api`): Stores all client-side application data, supporting offline functionality.
-*   `BroadcastChannel("wf-screen-state")`: Facilitates cross-tab synchronization.
-*   Service Worker (`/sw.js`): Caches app shell for PWA and offline access.
-*   `sessionStorage`: For session-scoped UI state.
+*   **Replit AI Integrations:** OpenAI proxy for AI features.
+*   **bible-api.com:** External API for Bible content.
+*   **W3C Window Management API:** For multi-display handling.
+*   **Web Speech API:** Browser API for live captions.
+*   **File System Access API:** For data backup/restore.

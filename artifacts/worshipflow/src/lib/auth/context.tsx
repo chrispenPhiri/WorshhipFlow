@@ -16,6 +16,7 @@ import {
   rehydrateSession,
   signupUser,
   subscribeSession,
+  updateUserProfile,
   userCount,
   writeSession,
 } from "./store";
@@ -32,6 +33,12 @@ interface AuthContextValue {
   login: (input: { username: string; password: string }) => Promise<void>;
   logout: () => void;
   refreshUserCount: () => Promise<void>;
+  updateProfile: (changes: {
+    displayName?: string;
+    newPassword?: string;
+    currentPassword?: string;
+    avatar?: string | null;
+  }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -120,9 +127,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateProfile = useCallback<AuthContextValue["updateProfile"]>(
+    async (changes) => {
+      const s = readSession();
+      if (!s) throw new Error("Not signed in.");
+      const u = await updateUserProfile(s.userId, changes);
+      ++opVersion.current;
+      writeSession({ userId: u.id, username: u.username, displayName: u.displayName });
+      setUser(u);
+    },
+    [],
+  );
+
   const value = useMemo<AuthContextValue>(
-    () => ({ user, loading, hasAnyUsers, signup, login, logout, refreshUserCount }),
-    [user, loading, hasAnyUsers, signup, login, logout, refreshUserCount],
+    () => ({ user, loading, hasAnyUsers, signup, login, logout, refreshUserCount, updateProfile }),
+    [user, loading, hasAnyUsers, signup, login, logout, refreshUserCount, updateProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

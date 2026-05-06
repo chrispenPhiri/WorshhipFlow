@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, XCircle, RotateCcw, ArrowRight, Trophy, Send } from "lucide-react";
 import { ODD_ONE_OUT, shuffle, type OddOneOutRound, type TriviaDifficulty } from "@/lib/games";
 import { useGameBroadcast } from "@/lib/game-broadcast";
+import type { OddOneOutStagePayload } from "@/lib/game-stage-payload";
 
 const ROUNDS = 8;
 const DIFFICULTIES: (TriviaDifficulty | "Mixed")[] = ["Mixed", "Easy", "Medium", "Hard"];
@@ -41,7 +42,7 @@ export function OddOneOutGame() {
   const [round, setRound] = useState(0);
   const [answers, setAnswers] = useState<Answered[]>([]);
   const [picked, setPicked] = useState<number | null>(null);
-  const { presentOnScreen } = useGameBroadcast();
+  const { presentGameView } = useGameBroadcast();
 
   const rounds = useMemo<Display[]>(() => {
     const pool = difficulty === "Mixed"
@@ -83,20 +84,27 @@ export function OddOneOutGame() {
 
   function sendQuestionToScreen() {
     if (!current) return;
-    presentOnScreen(
-      "Odd One Out",
-      current.round.category,
-      `Which one doesn't belong?\n\n${current.items.map(it => `• ${it}`).join("\n")}`,
-    );
+    const payload: OddOneOutStagePayload = {
+      kind: "odd-one-out",
+      category: current.round.category,
+      items: current.items,
+      oddIndex: current.oddDisplayIndex,
+      revealed: false,
+    };
+    presentGameView("Odd One Out", current.round.category, payload);
   }
   function sendAnswerToScreen() {
     if (!current) return;
-    const odd = current.items[current.oddDisplayIndex]!;
-    presentOnScreen(
-      "Odd One Out — Answer",
-      current.round.category,
-      `Odd one: ${odd}\n\nThe other three: ${current.round.connection}\n\n${current.round.explanation}`,
-    );
+    const payload: OddOneOutStagePayload = {
+      kind: "odd-one-out",
+      category: current.round.category,
+      items: current.items,
+      oddIndex: current.oddDisplayIndex,
+      revealed: true,
+      connection: current.round.connection,
+      explanation: current.round.explanation,
+    };
+    presentGameView("Odd One Out — Answer", current.round.category, payload);
   }
 
   if (finished) {
