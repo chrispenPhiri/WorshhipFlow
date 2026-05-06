@@ -86,15 +86,15 @@ export function ProfileDialog({ open, onOpenChange }: Props) {
               className="relative group rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               aria-label="Change profile picture"
             >
-              <div className="w-20 h-20 rounded-full bg-primary/20 text-primary flex items-center justify-center overflow-hidden border-2 border-border group-hover:border-primary transition-colors">
+              <div className="w-32 h-32 rounded-full bg-primary/20 text-primary flex items-center justify-center overflow-hidden border-2 border-border group-hover:border-primary transition-colors">
                 {avatarPreview ? (
                   <img src={avatarPreview} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
-                  <UserIcon className="w-9 h-9" />
+                  <UserIcon className="w-14 h-14" />
                 )}
               </div>
-              <div className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-1 shadow-md">
-                <Camera className="w-3 h-3" />
+              <div className="absolute bottom-1 right-1 bg-primary text-primary-foreground rounded-full p-1.5 shadow-md">
+                <Camera className="w-4 h-4" />
               </div>
             </button>
             <input
