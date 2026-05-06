@@ -60,7 +60,7 @@ I want iterative development. I prefer detailed explanations for complex feature
 
 ## Pointers
 
-*   **Multi-Provider AI:** Server (`artifacts/api-server/src/routes/ai.ts`) resolves provider via `X-AI-Source` (replit) or `X-AI-Provider` + `X-AI-Key` headers (openai/gemini/openrouter). Providers use OpenAI SDK with different base URLs. Keys stored per-provider in `localStorage` (`wf-openai-key`, `wf-gemini-key`, `wf-openrouter-key`); source stored as `wf-ai-source`. Image generation (DALL-E 3) requires OpenAI or OpenRouter — Gemini returns 400.
+*   **Multi-Provider AI:** Server (`artifacts/api-server/src/routes/ai.ts`) resolves provider via `X-AI-Provider` + `X-AI-Key` headers (openai/gemini/openrouter/deepseek/groq). All providers use OpenAI SDK with different base URLs. Keys stored per-provider in `localStorage` (`wf-openai-key`, `wf-gemini-key`, `wf-openrouter-key`, `wf-deepseek-key`, `wf-groq-key`); active source stored as `wf-ai-source`. Image generation (DALL-E 3) requires OpenAI or OpenRouter — Gemini returns 400. Replit Credits option intentionally removed (would bill app-owner for all users).
 *   **YouTube Mini-Player:** Drag anywhere via pointer events; hide/show (iframe stays rendered in overflow:hidden container to keep audio alive); monitor button opens YouTube in popup window for presentation screen.
 *   **bible-api.com:** External API for Bible content.
 *   **W3C Window Management API:** For multi-display handling.

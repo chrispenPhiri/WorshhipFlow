@@ -4,7 +4,7 @@ import OpenAI from "openai";
 const router = Router();
 
 /* ── Types ──────────────────────────────────────────────────────── */
-type AiProvider = "openai" | "replit" | "gemini" | "openrouter";
+type AiProvider = "openai" | "replit" | "gemini" | "openrouter" | "deepseek" | "groq";
 
 interface AiSetup {
   client: OpenAI;
@@ -18,6 +18,8 @@ const DEFAULT_MODELS: Record<AiProvider, string> = {
   replit:     "gpt-4o",
   gemini:     "gemini-2.0-flash",
   openrouter: "openai/gpt-4o",
+  deepseek:   "deepseek-chat",
+  groq:       "llama-3.3-70b-versatile",
 };
 
 /* ── Replit-managed client (app-owner's integration credits) ────── */
@@ -80,6 +82,12 @@ function getAiSetup(
           "X-Title": "Phiri WorshipFlow",
         },
       });
+      break;
+    case "deepseek":
+      client = new OpenAI({ apiKey: key, baseURL: "https://api.deepseek.com" });
+      break;
+    case "groq":
+      client = new OpenAI({ apiKey: key, baseURL: "https://api.groq.com/openai/v1" });
       break;
     default: // openai
       client = new OpenAI({ apiKey: key });

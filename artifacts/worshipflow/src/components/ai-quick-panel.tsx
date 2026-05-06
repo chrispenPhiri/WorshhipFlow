@@ -21,6 +21,8 @@ const KEY_STORAGE_MAP: Record<string, string> = {
   openai:     "wf-openai-key",
   gemini:     "wf-gemini-key",
   openrouter: "wf-openrouter-key",
+  deepseek:   "wf-deepseek-key",
+  groq:       "wf-groq-key",
 };
 
 function getAiHeaders(): Record<string, string> {

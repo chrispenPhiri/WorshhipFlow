@@ -30,8 +30,10 @@ import { getDailyImageCount } from "@/lib/ai-usage";
 const OPENAI_KEY_STORAGE     = "wf-openai-key";
 const GEMINI_KEY_STORAGE     = "wf-gemini-key";
 const OPENROUTER_KEY_STORAGE = "wf-openrouter-key";
+const DEEPSEEK_KEY_STORAGE   = "wf-deepseek-key";
+const GROQ_KEY_STORAGE       = "wf-groq-key";
 const AI_SOURCE_STORAGE      = "wf-ai-source";
-type AiSource = "openai" | "replit" | "gemini" | "openrouter";
+type AiSource = "openai" | "gemini" | "openrouter" | "deepseek" | "groq";
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
@@ -189,17 +191,8 @@ function AiSettingsCard() {
   /* ── AI provider ── */
   const [aiSource, setAiSourceState] = useState<AiSource>(() => {
     const v = localStorage.getItem(AI_SOURCE_STORAGE);
-    return (["openai","replit","gemini","openrouter"].includes(v ?? "") ? v : "openai") as AiSource;
+    return (["openai","gemini","openrouter","deepseek","groq"].includes(v ?? "") ? v : "openai") as AiSource;
   });
-  const [replitAvailable, setReplitAvailable] = useState(false);
-
-  useEffect(() => {
-    const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-    fetch(`${BASE}/api/ai/status`)
-      .then(r => r.json())
-      .then((d: { replitAvailable?: boolean }) => setReplitAvailable(d.replitAvailable ?? false))
-      .catch(() => { /* offline / not deployed */ });
-  }, []);
 
   function selectAiSource(src: AiSource) {
     setAiSourceState(src);
@@ -208,28 +201,49 @@ function AiSettingsCard() {
   }
 
   /* ── Per-provider keys ── */
-  const [apiKey,         setApiKey]         = useState(() => localStorage.getItem(OPENAI_KEY_STORAGE)     ?? "");
-  const [keyInput,       setKeyInput]       = useState(() => localStorage.getItem(OPENAI_KEY_STORAGE)     ?? "");
-  const [geminiKey,      setGeminiKey]      = useState(() => localStorage.getItem(GEMINI_KEY_STORAGE)     ?? "");
-  const [geminiInput,    setGeminiInput]    = useState(() => localStorage.getItem(GEMINI_KEY_STORAGE)     ?? "");
-  const [orKey,          setOrKey]          = useState(() => localStorage.getItem(OPENROUTER_KEY_STORAGE) ?? "");
-  const [orInput,        setOrInput]        = useState(() => localStorage.getItem(OPENROUTER_KEY_STORAGE) ?? "");
-  const [showKey,        setShowKey]        = useState(false);
-  const [testStatus,     setTestStatus]     = useState<"idle" | "testing" | "ok" | "error">("idle");
-  const [testError,      setTestError]      = useState("");
+  const [apiKey,      setApiKey]      = useState(() => localStorage.getItem(OPENAI_KEY_STORAGE)     ?? "");
+  const [keyInput,    setKeyInput]    = useState(() => localStorage.getItem(OPENAI_KEY_STORAGE)     ?? "");
+  const [geminiKey,   setGeminiKey]   = useState(() => localStorage.getItem(GEMINI_KEY_STORAGE)     ?? "");
+  const [geminiInput, setGeminiInput] = useState(() => localStorage.getItem(GEMINI_KEY_STORAGE)     ?? "");
+  const [orKey,       setOrKey]       = useState(() => localStorage.getItem(OPENROUTER_KEY_STORAGE) ?? "");
+  const [orInput,     setOrInput]     = useState(() => localStorage.getItem(OPENROUTER_KEY_STORAGE) ?? "");
+  const [dsKey,       setDsKey]       = useState(() => localStorage.getItem(DEEPSEEK_KEY_STORAGE)   ?? "");
+  const [dsInput,     setDsInput]     = useState(() => localStorage.getItem(DEEPSEEK_KEY_STORAGE)   ?? "");
+  const [groqKey,     setGroqKey]     = useState(() => localStorage.getItem(GROQ_KEY_STORAGE)       ?? "");
+  const [groqInput,   setGroqInput]   = useState(() => localStorage.getItem(GROQ_KEY_STORAGE)       ?? "");
+  const [showKey,     setShowKey]     = useState(false);
+  const [testStatus,  setTestStatus]  = useState<"idle" | "testing" | "ok" | "error">("idle");
+  const [testError,   setTestError]   = useState("");
 
   const keyConfigured = (() => {
-    if (aiSource === "replit")     return replitAvailable;
     if (aiSource === "gemini")     return geminiKey.length > 8;
     if (aiSource === "openrouter") return orKey.length > 8;
+    if (aiSource === "deepseek")   return dsKey.length > 8;
+    if (aiSource === "groq")       return groqKey.length > 8;
     return apiKey.startsWith("sk-");
   })();
 
-  /* Active input/storage helpers for the current BYOK provider */
-  const activeInput  = aiSource === "gemini" ? geminiInput : aiSource === "openrouter" ? orInput : keyInput;
-  const setActiveInput = aiSource === "gemini" ? setGeminiInput : aiSource === "openrouter" ? setOrInput : setKeyInput;
-  const activeStorageKey = aiSource === "gemini" ? GEMINI_KEY_STORAGE : aiSource === "openrouter" ? OPENROUTER_KEY_STORAGE : OPENAI_KEY_STORAGE;
-  const setActiveKey = aiSource === "gemini" ? setGeminiKey : aiSource === "openrouter" ? setOrKey : setApiKey;
+  /* Active input/storage helpers for the current provider */
+  const activeInput =
+    aiSource === "gemini"     ? geminiInput :
+    aiSource === "openrouter" ? orInput :
+    aiSource === "deepseek"   ? dsInput :
+    aiSource === "groq"       ? groqInput : keyInput;
+  const setActiveInput =
+    aiSource === "gemini"     ? setGeminiInput :
+    aiSource === "openrouter" ? setOrInput :
+    aiSource === "deepseek"   ? setDsInput :
+    aiSource === "groq"       ? setGroqInput : setKeyInput;
+  const activeStorageKey =
+    aiSource === "gemini"     ? GEMINI_KEY_STORAGE :
+    aiSource === "openrouter" ? OPENROUTER_KEY_STORAGE :
+    aiSource === "deepseek"   ? DEEPSEEK_KEY_STORAGE :
+    aiSource === "groq"       ? GROQ_KEY_STORAGE : OPENAI_KEY_STORAGE;
+  const setActiveKey =
+    aiSource === "gemini"     ? setGeminiKey :
+    aiSource === "openrouter" ? setOrKey :
+    aiSource === "deepseek"   ? setDsKey :
+    aiSource === "groq"       ? setGroqKey : setApiKey;
 
   function saveKey() {
     const trimmed = activeInput.trim();
@@ -307,7 +321,7 @@ function AiSettingsCard() {
           AI Features
         </CardTitle>
         <CardDescription>
-          Choose how AI is powered — Replit credits, your own OpenAI key, Google Gemini, or OpenRouter (Claude, Llama &amp; more).
+          Choose your AI provider — each user brings their own key. Groq and Gemini have free tiers to get started.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -317,17 +331,6 @@ function AiSettingsCard() {
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AI Provider</p>
           <div className="grid grid-cols-2 gap-2">
 
-            {/* Replit Credits */}
-            <button type="button" onClick={() => selectAiSource("replit")}
-              className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${aiSource === "replit" ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border bg-muted/20 hover:bg-muted/40"}`}>
-              <div className="flex items-center gap-2 w-full">
-                <span className="text-sm font-semibold flex-1">Replit Credits</span>
-                {replitAvailable ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
-              </div>
-              <p className="text-[11px] text-muted-foreground leading-snug">App-owner's Replit credits. No key needed.</p>
-              {!replitAvailable && <p className="text-[10px] text-amber-500">Not configured on this server</p>}
-            </button>
-
             {/* OpenAI */}
             <button type="button" onClick={() => selectAiSource("openai")}
               className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${aiSource === "openai" ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border bg-muted/20 hover:bg-muted/40"}`}>
@@ -335,7 +338,7 @@ function AiSettingsCard() {
                 <span className="text-sm font-semibold flex-1">OpenAI</span>
                 {apiKey.startsWith("sk-") ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
               </div>
-              <p className="text-[11px] text-muted-foreground leading-snug">GPT-4o. Your own OpenAI key.</p>
+              <p className="text-[11px] text-muted-foreground leading-snug">GPT-4o. Paid, high quality.</p>
             </button>
 
             {/* Google Gemini */}
@@ -348,25 +351,47 @@ function AiSettingsCard() {
               <p className="text-[11px] text-muted-foreground leading-snug">Gemini 2.0 Flash. Free tier available.</p>
             </button>
 
+            {/* DeepSeek */}
+            <button type="button" onClick={() => selectAiSource("deepseek")}
+              className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${aiSource === "deepseek" ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border bg-muted/20 hover:bg-muted/40"}`}>
+              <div className="flex items-center gap-2 w-full">
+                <span className="text-sm font-semibold flex-1">DeepSeek</span>
+                {dsKey.length > 8 ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-snug">DeepSeek-V3. Very affordable.</p>
+            </button>
+
+            {/* Groq */}
+            <button type="button" onClick={() => selectAiSource("groq")}
+              className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${aiSource === "groq" ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border bg-muted/20 hover:bg-muted/40"}`}>
+              <div className="flex items-center gap-2 w-full">
+                <span className="text-sm font-semibold flex-1">Groq</span>
+                {groqKey.length > 8 ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-snug">Llama 3.3 70B. Free tier, ultra-fast.</p>
+            </button>
+
             {/* OpenRouter */}
             <button type="button" onClick={() => selectAiSource("openrouter")}
-              className={`flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${aiSource === "openrouter" ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border bg-muted/20 hover:bg-muted/40"}`}>
+              className={`col-span-2 flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-all ${aiSource === "openrouter" ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border bg-muted/20 hover:bg-muted/40"}`}>
               <div className="flex items-center gap-2 w-full">
                 <span className="text-sm font-semibold flex-1">OpenRouter</span>
                 {orKey.length > 8 ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
               </div>
-              <p className="text-[11px] text-muted-foreground leading-snug">Claude, Llama, Gemini &amp; 200+ models.</p>
+              <p className="text-[11px] text-muted-foreground leading-snug">One key for Claude, Llama, Mistral, Gemini &amp; 200+ models. Some free.</p>
             </button>
 
           </div>
         </div>
 
-        {/* ── BYOK key input (shown for any non-Replit provider) ── */}
-        {aiSource !== "replit" && (() => {
+        {/* ── Key input ── */}
+        {(() => {
           const cfg = {
-            openai:     { label: "OpenAI API Key",     placeholder: "sk-...",     link: "https://platform.openai.com/api-keys",      linkLabel: "platform.openai.com" },
-            gemini:     { label: "Google AI Studio Key", placeholder: "AIza...",  link: "https://aistudio.google.com/apikey",         linkLabel: "aistudio.google.com" },
-            openrouter: { label: "OpenRouter API Key", placeholder: "sk-or-...", link: "https://openrouter.ai/keys",                linkLabel: "openrouter.ai/keys" },
+            openai:     { label: "OpenAI API Key",       placeholder: "sk-...",     link: "https://platform.openai.com/api-keys",   linkLabel: "platform.openai.com" },
+            gemini:     { label: "Google AI Studio Key", placeholder: "AIza...",    link: "https://aistudio.google.com/apikey",     linkLabel: "aistudio.google.com" },
+            openrouter: { label: "OpenRouter API Key",   placeholder: "sk-or-...", link: "https://openrouter.ai/keys",              linkLabel: "openrouter.ai/keys" },
+            deepseek:   { label: "DeepSeek API Key",     placeholder: "sk-...",     link: "https://platform.deepseek.com/api_keys", linkLabel: "platform.deepseek.com" },
+            groq:       { label: "Groq API Key",         placeholder: "gsk_...",    link: "https://console.groq.com/keys",          linkLabel: "console.groq.com" },
           }[aiSource];
           return (
             <div className="rounded-lg border border-border bg-muted/20 px-4 py-4 space-y-3">
