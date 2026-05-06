@@ -53,7 +53,7 @@ const PROVIDER_MODELS: Record<AiSource, { id: string; label: string; free?: bool
     { id: "openai/gpt-4o-mini",                           label: "GPT-4o mini" },
     { id: "anthropic/claude-3-5-haiku",                   label: "Claude 3.5 Haiku" },
     { id: "meta-llama/llama-3.3-70b-instruct:free",       label: "Llama 3.3 70B", free: true },
-    { id: "google/gemini-2.0-flash-exp:free",             label: "Gemini 2.0 Flash", free: true },
+    { id: "deepseek/deepseek-r1:free",                    label: "DeepSeek R1", free: true },
     { id: "mistralai/mistral-7b-instruct:free",           label: "Mistral 7B", free: true },
   ],
   deepseek: [
