@@ -1,3 +1,4 @@
+import { getAiHeaders } from "@/lib/ai-headers";
 import { useState } from "react";
 import { Sparkles, Loader2, Download, X, ImageOff, Cast } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,7 @@ export function VerseToArt({ verse, reference, book, onSetAsBackground }: Props)
     try {
       const res = await fetch(`${BASE}/api/ai/verse-art`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAiHeaders(),
         body: JSON.stringify({ verse, reference, book }),
       });
       if (!res.ok) {

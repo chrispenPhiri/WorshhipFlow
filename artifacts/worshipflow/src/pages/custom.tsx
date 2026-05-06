@@ -1,3 +1,4 @@
+import { getAiHeaders } from "@/lib/ai-headers";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
@@ -120,7 +121,7 @@ export default function CustomTextPage() {
     try {
       const res = await fetch(`${import.meta.env.BASE_URL}api/ai/enhance-text`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAiHeaders(),
         body: JSON.stringify({ text: content }),
         signal: ctrl.signal,
       });
@@ -156,7 +157,7 @@ export default function CustomTextPage() {
     try {
       const res = await fetch(`${import.meta.env.BASE_URL}api/ai/custom-image`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAiHeaders(),
         body: JSON.stringify({ prompt: imgPrompt }),
       });
       const data = await res.json() as { b64_json?: string; error?: string };

@@ -20,6 +20,8 @@ import {
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 
+import { getAiHeaders } from "@/lib/ai-headers";
+
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 async function streamPost(
@@ -29,7 +31,7 @@ async function streamPost(
 ): Promise<void> {
   const res = await fetch(`${BASE}/api/ai${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAiHeaders(),
     body: JSON.stringify(body),
   });
   if (!res.ok || !res.body) throw new Error(await res.text());

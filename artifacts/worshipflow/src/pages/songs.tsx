@@ -1,3 +1,4 @@
+import { getAiHeaders } from "@/lib/ai-headers";
 import { useEffect, useState } from "react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useRecentlyPresented } from "@/hooks/use-recently-presented";
@@ -185,7 +186,7 @@ export default function SongsPage() {
       const base = (import.meta.env.BASE_URL as string).replace(/\/$/, "");
       const res = await fetch(`${base}/api/ai/generate-song`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAiHeaders(),
         body: JSON.stringify({ theme: aiSongTheme, title: aiSongTitle_ || undefined, style: aiSongStyle, numVerses: aiSongNumVerses }),
       });
       if (!res.ok || !res.body) throw new Error("AI error");
