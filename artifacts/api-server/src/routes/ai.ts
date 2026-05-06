@@ -591,15 +591,16 @@ Guidelines:
 router.post("/chat", async (req, res) => {
   const setup = getAiSetup(req, res);
   if (!setup) return;
-  const { messages } = req.body as {
+  const { messages, max_tokens } = req.body as {
     messages: { role: "user" | "assistant"; content: string }[];
+    max_tokens?: number;
   };
   if (!messages?.length) { res.status(400).json({ error: "messages is required" }); return; }
   sseHeaders(res);
   try {
     const stream = await setup.client.chat.completions.create({
       model: setup.model,
-      max_completion_tokens: 8192,
+      max_completion_tokens: max_tokens ?? 8192,
       messages: [
         {
           role: "system",

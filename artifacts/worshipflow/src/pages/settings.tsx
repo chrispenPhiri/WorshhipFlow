@@ -273,7 +273,7 @@ function AiSettingsCard() {
       const res = await fetch(`${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/ai/chat`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ messages: [{ role: "user", content: "Say OK" }] }),
+        body: JSON.stringify({ messages: [{ role: "user", content: "Say OK" }], max_tokens: 10 }),
       });
       if (!res.ok) {
         const txt = await res.text();
@@ -285,6 +285,8 @@ function AiSettingsCard() {
         msg = msg.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
         if (res.status === 429 || /\b429\b|rate.?limit|too many requests/i.test(msg)) {
           msg = "Rate limited by provider — please wait a moment and try again. (Free tiers have strict limits; Groq is usually most generous.)";
+        } else if (res.status === 402 || /\b402\b|credits|afford|upgrade.*paid/i.test(msg)) {
+          msg = "Insufficient credits on this account. Add credits at your provider's billing page, or switch to Groq/Gemini which have free tiers.";
         } else if (res.status === 401 || /401|unauthor|invalid.*key|incorrect.*api/i.test(msg)) {
           msg = "Invalid API key — double-check the key you pasted.";
         } else if (!msg) {
