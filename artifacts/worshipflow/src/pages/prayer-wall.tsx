@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -177,14 +178,13 @@ export default function PrayerWallPage() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Add a request
-          </CardTitle>
-          <CardDescription>Name is optional — leave blank for anonymous.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      <CollapsibleCard
+        id="prayer-add"
+        icon={HandHeart}
+        title="Add a request"
+        description="Name is optional — leave blank for anonymous."
+        contentClassName="space-y-3"
+      >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               placeholder="Name (optional)"
@@ -217,8 +217,7 @@ export default function PrayerWallPage() {
               <Plus className="w-4 h-4" /> Add request
             </Button>
           </div>
-        </CardContent>
-      </Card>
+      </CollapsibleCard>
 
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative flex-1 min-w-[180px]">

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -110,12 +111,13 @@ export default function CountdownPage() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Set the target</CardTitle>
-          <CardDescription>The screen refreshes every minute while the countdown is active.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <CollapsibleCard
+        id="countdown-target"
+        icon={Clock}
+        title="Set the target"
+        description="Screen refreshes every minute while the countdown is active."
+        contentClassName="space-y-4"
+      >
           <div>
             <label className="text-xs text-muted-foreground">Label</label>
             <Input
@@ -155,8 +157,7 @@ export default function CountdownPage() {
               {targetTimeStr && <span> ({targetTimeStr})</span>}
             </div>
           )}
-        </CardContent>
-      </Card>
+      </CollapsibleCard>
 
       <Card className="text-center">
         <CardContent className="py-10 space-y-4">

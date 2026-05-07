@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useUpdateScreenState, useGetScreenState, getGetScreenStateQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SliderWithButtons } from "@/components/slider-with-buttons";
@@ -304,11 +305,12 @@ export default function ThemesPage() {
           <div className="grid md:grid-cols-2 gap-6">
 
             {/* Font controls */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Type className="w-4 h-4" /> Typography</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-5">
+            <CollapsibleCard
+              id="themes-typography"
+              icon={Type}
+              title="Typography"
+              contentClassName="space-y-5"
+            >
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Font Family</label>
                   <Select value={customFont} onValueChange={setCustomFont}>
@@ -367,16 +369,16 @@ export default function ThemesPage() {
                 <Button onClick={applyCustomTypography} className="w-full gap-2">
                   <Cast className="w-4 h-4" /> Apply Typography
                 </Button>
-              </CardContent>
-            </Card>
+            </CollapsibleCard>
 
             {/* Colour controls */}
             <div className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><Palette className="w-4 h-4" /> Text Colour</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+              <CollapsibleCard
+                id="themes-text-colour"
+                icon={Palette}
+                title="Text Colour"
+                contentClassName="space-y-4"
+              >
                   <div className="flex gap-3 items-center">
                     <Input type="color" value={customColor} onChange={(e) => setCustomColor(e.target.value)} className="w-14 h-10 p-1 cursor-pointer" />
                     <Input value={customColor} onChange={(e) => setCustomColor(e.target.value)} className="flex-1 font-mono" />
@@ -398,14 +400,14 @@ export default function ThemesPage() {
                       </div>
                     </div>
                   ))}
-                </CardContent>
-              </Card>
+              </CollapsibleCard>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Background Colour</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
+              <CollapsibleCard
+                id="themes-bg-colour"
+                icon={Sparkles}
+                title="Background Colour"
+                contentClassName="space-y-3"
+              >
                   <div className="flex gap-3 items-center">
                     <Input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="w-14 h-10 p-1 cursor-pointer" />
                     <Input value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="flex-1 font-mono" />
@@ -422,8 +424,7 @@ export default function ThemesPage() {
                       />
                     ))}
                   </div>
-                </CardContent>
-              </Card>
+              </CollapsibleCard>
             </div>
 
           </div>

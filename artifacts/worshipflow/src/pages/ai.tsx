@@ -9,7 +9,8 @@ import {
   FileText, HandHeart, ListMusic, Megaphone,
   Sunrise, ListChecks, Link2, Languages, Baby, Wand2,
 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -1185,18 +1186,14 @@ export default function AIPage() {
 
         {TABS.map(({ value, label, Icon, description, Component, badge }) => (
           <TabsContent key={value} value={value} className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Icon className="w-4 h-4 text-primary" /> {label}
-                  {badge && <Badge variant="outline" className="text-[10px] ml-auto">{badge}</Badge>}
-                </CardTitle>
-                <CardDescription>{description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Component onSendToScreen={sendToScreen} />
-              </CardContent>
-            </Card>
+            <CollapsibleCard
+              id={`ai-tool-${value}`}
+              icon={Icon}
+              title={badge ? <>{label} <Badge variant="outline" className="text-[10px] ml-1">{badge}</Badge></> : label}
+              description={description}
+            >
+              <Component onSendToScreen={sendToScreen} />
+            </CollapsibleCard>
           </TabsContent>
         ))}
       </Tabs>

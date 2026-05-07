@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -71,12 +72,13 @@ export default function HymnNumberPage() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Show a hymn</CardTitle>
-          <CardDescription>Number is required; title is optional.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <CollapsibleCard
+        id="hymn-show"
+        icon={Music2}
+        title="Show a hymn"
+        description="Number is required; title is optional."
+        contentClassName="space-y-4"
+      >
           <div>
             <label className="text-xs text-muted-foreground">Hymnal name</label>
             <Input
@@ -112,8 +114,7 @@ export default function HymnNumberPage() {
               <Send className="w-4 h-4" /> Show on screen
             </Button>
           </div>
-        </CardContent>
-      </Card>
+      </CollapsibleCard>
 
       <Card className="text-center">
         <CardContent className="py-8">
@@ -125,19 +126,17 @@ export default function HymnNumberPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base flex items-center gap-2">
-            <History className="w-4 h-4" /> Recent
-            <Badge variant="outline" data-testid="badge-hymn-history-count">{history.length}</Badge>
-          </CardTitle>
-          {history.length > 0 && (
-            <Button size="sm" variant="ghost" onClick={clearHistory} className="gap-1.5" data-testid="button-hymn-clear-history">
-              <Trash2 className="w-3.5 h-3.5" /> Clear
-            </Button>
-          )}
-        </CardHeader>
-        <CardContent>
+      <CollapsibleCard
+        id="hymn-recent"
+        icon={History}
+        title={<>Recent <Badge variant="outline" className="ml-1" data-testid="badge-hymn-history-count">{history.length}</Badge></>}
+        contentClassName=""
+        actions={history.length > 0 ? (
+          <Button size="sm" variant="ghost" onClick={clearHistory} className="gap-1.5" data-testid="button-hymn-clear-history">
+            <Trash2 className="w-3.5 h-3.5" /> Clear
+          </Button>
+        ) : undefined}
+      >
           {history.length === 0 ? (
             <p className="text-sm text-muted-foreground">No hymns shown yet.</p>
           ) : (
@@ -156,8 +155,7 @@ export default function HymnNumberPage() {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+      </CollapsibleCard>
     </div>
   );
 }

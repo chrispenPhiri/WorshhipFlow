@@ -28,10 +28,12 @@ export function CollapsibleCard({
 
   return (
     <Card data-testid={testId} className="overflow-hidden">
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 px-6 py-4 text-left hover:bg-muted/20 transition-colors"
+        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setOpen(!open)}
+        className="w-full flex items-center gap-3 px-6 py-4 text-left cursor-pointer select-none hover:bg-muted/20 transition-colors"
         aria-expanded={open}
       >
         {Icon && <Icon className="w-5 h-5 text-primary shrink-0" />}
@@ -50,7 +52,7 @@ export function CollapsibleCard({
           className="w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200"
           style={{ transform: open ? "rotate(0deg)" : "rotate(-90deg)" }}
         />
-      </button>
+      </div>
       {open && (
         <div className={`border-t border-border/40 px-6 pb-6 pt-4 ${contentClassName ?? "space-y-4"}`}>
           {children}

@@ -81,7 +81,7 @@ export default function MediaPage() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
-  const [broadcastOpen, setBroadcastOpen] = useState(true);
+  const [broadcastOpen, setBroadcastOpen] = useLocalStorage("wf-card:broadcast-output:open", true);
   // Persisted per-section open/closed state for the Camera & Broadcast tab so
   // operators see a tidy collapsed panel by default after their first visit.
   const [camSections, setCamSections] = useLocalStorage<Record<CamSectionKey, boolean>>(
