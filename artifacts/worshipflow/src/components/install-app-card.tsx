@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -216,18 +216,14 @@ export function InstallAppCard() {
     );
 
   return (
-    <Card data-testid="card-install-app">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Download className="h-5 w-5" /> Install &amp; Local Storage
-        </CardTitle>
-        <CardDescription>
-          Install Phiri WorshipFlow as a desktop app, protect your data from
-          being deleted, and back up your full library to a real folder on this
-          PC.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-5">
+    <CollapsibleCard
+      id="install-app"
+      testId="card-install-app"
+      icon={Download}
+      title="Install & Local Storage"
+      description="Install as desktop app, protect storage, back up your library"
+      contentClassName="space-y-5"
+    >
         {/* Status row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
           <div className="flex items-center gap-2 rounded-md border bg-muted/30 p-3">
@@ -438,8 +434,6 @@ export function InstallAppCard() {
           broadcast window.<br />
           <strong>Needs internet:</strong> looking up new Bible verses, generating teachings with AI.
         </div>
-      </CardContent>
-
       <AlertDialog open={confirmRestore !== null} onOpenChange={(o) => !o && setConfirmRestore(null)}>
         <AlertDialogContent data-testid="dialog-confirm-restore">
           <AlertDialogHeader>
@@ -465,6 +459,6 @@ export function InstallAppCard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </CollapsibleCard>
   );
 }

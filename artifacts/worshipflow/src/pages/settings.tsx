@@ -5,7 +5,6 @@ import {
   getGetSettingsQueryKey
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -32,6 +31,7 @@ import {
 import { InstallAppCard } from "@/components/install-app-card";
 import { getDailyImageCount } from "@/lib/ai-usage";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
 
 const OPENAI_KEY_STORAGE     = "wf-openai-key";
 const GEMINI_KEY_STORAGE     = "wf-gemini-key";
@@ -186,8 +186,13 @@ export default function SettingsPage() {
         title="General Settings"
         description="Church name, default Bible version, font, and ticker bar"
       >
-        <Card>
-          <CardContent className="space-y-6 pt-6">
+        <CollapsibleCard
+          id="general-settings"
+          icon={SettingsIcon}
+          title="Configure"
+          description="Church name, Bible version, font, ticker bar"
+          contentClassName="space-y-6"
+        >
             <div className="space-y-2">
               <label className="text-sm font-medium">Church Name</label>
               <Input
@@ -253,8 +258,7 @@ export default function SettingsPage() {
                 {isPending ? "Saving..." : "Save Settings"}
               </Button>
             </div>
-          </CardContent>
-        </Card>
+        </CollapsibleCard>
       </SettingsGroup>
 
       <SettingsGroup
@@ -328,16 +332,14 @@ function ImageSourceCard() {
   };
 
   return (
-    <Card data-testid="card-image-source">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ImageIcon className="w-5 h-5 text-primary" /> Image Generation Source
-        </CardTitle>
-        <CardDescription>
-          Choose where AI-generated images (custom backgrounds &amp; verse art) come from.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <CollapsibleCard
+      id="image-source"
+      testId="card-image-source"
+      icon={ImageIcon}
+      title="Image Generation Source"
+      description="Choose where AI-generated images come from"
+      contentClassName="space-y-4"
+    >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <button
             type="button"
@@ -387,8 +389,7 @@ function ImageSourceCard() {
             </p>
           </div>
         )}
-      </CardContent>
-    </Card>
+    </CollapsibleCard>
   );
 }
 
@@ -438,16 +439,14 @@ function SidebarCustomizationCard() {
   };
 
   return (
-    <Card data-testid="card-sidebar-customization">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <LayoutGrid className="w-5 h-5 text-primary" /> Scrollbars &amp; Sidebar
-        </CardTitle>
-        <CardDescription>
-          Customise every scrollbar and the sidebar width. Saved on this device.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
+    <CollapsibleCard
+      id="scrollbars-sidebar"
+      testId="card-sidebar-customization"
+      icon={LayoutGrid}
+      title="Scrollbars & Sidebar"
+      description="Every scrollbar style and sidebar width"
+      contentClassName="space-y-6"
+    >
         <ScrollbarPicker
           label="Left sidebar scrollbar"
           value={scrollbarStyle}
@@ -489,8 +488,7 @@ function SidebarCustomizationCard() {
             ))}
           </div>
         </div>
-      </CardContent>
-    </Card>
+    </CollapsibleCard>
   );
 }
 
@@ -671,17 +669,13 @@ function AiSettingsCard() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-primary" />
-          AI Features
-        </CardTitle>
-        <CardDescription>
-          Choose your AI provider — each user brings their own key. Groq and Gemini have free tiers to get started.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-5">
+    <CollapsibleCard
+      id="ai-features"
+      icon={Sparkles}
+      title="AI Features"
+      description="Provider, API key, model selection, and usage limits"
+      contentClassName="space-y-5"
+    >
 
         {/* ── AI Provider selector ────────────────────────────────── */}
         <div className="space-y-2">
@@ -952,8 +946,7 @@ function AiSettingsCard() {
             {isPending ? "Saving…" : "Save AI Settings"}
           </Button>
         </div>
-      </CardContent>
-    </Card>
+    </CollapsibleCard>
   );
 }
 
@@ -978,17 +971,13 @@ function BibleOnlyModeCard() {
   };
 
   return (
-    <Card data-testid="card-bible-only-mode">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <BookOpen className="w-5 h-5" /> Bible-only mode
-        </CardTitle>
-        <CardDescription>
-          Hide every menu item except Bible and Settings — perfect for a
-          focused reading device or a kiosk on the lectern.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <CollapsibleCard
+      id="bible-only-mode"
+      testId="card-bible-only-mode"
+      icon={BookOpen}
+      title="Bible-only Mode"
+      description="Show only Bible and Settings in the sidebar"
+    >
         <div className="flex items-center justify-between gap-3">
           <div className="text-sm">
             <div className="font-medium">Enable Bible-only mode</div>
@@ -1002,8 +991,7 @@ function BibleOnlyModeCard() {
             data-testid="switch-bible-only-mode"
           />
         </div>
-      </CardContent>
-    </Card>
+    </CollapsibleCard>
   );
 }
 
@@ -1026,32 +1014,25 @@ function MainMenuCustomizationCard() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <LayoutGrid className="w-5 h-5 text-primary" />
-              Main Menu Icons
-            </CardTitle>
-            <CardDescription className="mt-1">
-              Personalise the icons in your sidebar. Click any icon to pick a new one.
-              Saved on this device only.
-            </CardDescription>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onReset}
-            disabled={!hasAnyOverride}
-            className="text-muted-foreground hover:text-foreground"
-            data-testid="button-reset-menu-icons"
-          >
-            <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Reset all
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <CollapsibleCard
+      id="main-menu-icons"
+      icon={LayoutGrid}
+      title="Main Menu Icons"
+      description="Personalise sidebar icons. Saved on this device only."
+      contentClassName="space-y-4"
+      actions={
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onReset}
+          disabled={!hasAnyOverride}
+          className="text-muted-foreground hover:text-foreground"
+          data-testid="button-reset-menu-icons"
+        >
+          <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Reset all
+        </Button>
+      }
+    >
         {/* Emoji Mode Toggle */}
         <div className="flex items-center justify-between gap-3 py-2 px-3 rounded-lg border border-border bg-muted/30">
           <div className="flex items-center gap-2">
@@ -1156,8 +1137,7 @@ function MainMenuCustomizationCard() {
             );
           })}
         </div>
-      </CardContent>
-    </Card>
+    </CollapsibleCard>
   );
 }
 
@@ -1175,31 +1155,24 @@ function ControlAppearanceCard() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Palette className="w-5 h-5 text-primary" />
-              Control Screen Appearance
-            </CardTitle>
-            <CardDescription className="mt-1">
-              Personalise the operator interface. These settings are saved on this device only and do
-              not affect the broadcast / presentation screen.
-            </CardDescription>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={reset}
-            className="text-muted-foreground hover:text-foreground"
-            data-testid="button-reset-appearance"
-          >
-            <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Reset
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
+    <CollapsibleCard
+      id="control-appearance"
+      icon={Palette}
+      title="Control Screen Appearance"
+      description="Theme color and font for the operator interface only"
+      contentClassName="space-y-6"
+      actions={
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={reset}
+          className="text-muted-foreground hover:text-foreground"
+          data-testid="button-reset-appearance"
+        >
+          <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Reset
+        </Button>
+      }
+    >
 
         {/* ── Theme color picker ─────────────────────────────────────────── */}
         <div className="space-y-3">
@@ -1279,7 +1252,6 @@ function ControlAppearanceCard() {
           </div>
         </div>
 
-      </CardContent>
-    </Card>
+    </CollapsibleCard>
   );
 }
