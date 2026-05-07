@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocalStorage } from "@/hooks/use-local-storage";
+import { CollapsibleTabsBar } from "@/components/ui/collapsible-tabs";
 import { useDraggableButton } from "@/hooks/use-draggable-button";
 import {
   Youtube, X, Play, Pause, Music, Search, ExternalLink,
@@ -83,6 +85,8 @@ export function YoutubePlayerPanel() {
   /* Sheet / tabs */
   const [open, setOpen]         = useState(false);
   const [tab, setTab]           = useState("library");
+  const [ytTabsCollapsed, setYtTabsCollapsed] = useLocalStorage<boolean>("wf-tabs:yt-panel:collapsed", false);
+  const YT_TAB_LABELS: Record<string, string> = { library: "Library", queue: "Queue", url: "Add URL" };
 
   /* URL tab inputs */
   const [urlInput, setUrlInput]     = useState("");
@@ -467,22 +471,29 @@ export function YoutubePlayerPanel() {
           )}
 
           <Tabs value={tab} onValueChange={setTab} className="flex flex-col flex-1 min-h-0">
-            <TabsList className="mx-4 mt-3 shrink-0 grid grid-cols-3">
-              <TabsTrigger value="library" className="gap-1 text-xs">
-                <Music className="w-3.5 h-3.5" />Library
-              </TabsTrigger>
-              <TabsTrigger value="queue" className="gap-1 text-xs relative">
-                <ListMusic className="w-3.5 h-3.5" />Queue
-                {queue.length > 0 && (
-                  <span className="ml-1 text-[9px] font-bold bg-primary text-primary-foreground rounded-full w-4 h-4 flex items-center justify-center">
-                    {queue.length}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="url" className="gap-1 text-xs">
-                <Search className="w-3.5 h-3.5" />Add URL
-              </TabsTrigger>
-            </TabsList>
+            <CollapsibleTabsBar
+              collapsed={ytTabsCollapsed}
+              onToggle={() => setYtTabsCollapsed(!ytTabsCollapsed)}
+              activeLabel={YT_TAB_LABELS[tab]}
+              className="mx-4 mt-3 shrink-0"
+            >
+              <TabsList className="grid grid-cols-3 w-full">
+                <TabsTrigger value="library" className="gap-1 text-xs">
+                  <Music className="w-3.5 h-3.5" />Library
+                </TabsTrigger>
+                <TabsTrigger value="queue" className="gap-1 text-xs relative">
+                  <ListMusic className="w-3.5 h-3.5" />Queue
+                  {queue.length > 0 && (
+                    <span className="ml-1 text-[9px] font-bold bg-primary text-primary-foreground rounded-full w-4 h-4 flex items-center justify-center">
+                      {queue.length}
+                    </span>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="url" className="gap-1 text-xs">
+                  <Search className="w-3.5 h-3.5" />Add URL
+                </TabsTrigger>
+              </TabsList>
+            </CollapsibleTabsBar>
 
             {/* ── Library tab ─────────────────────────────────────── */}
             <TabsContent value="library" className="flex-1 overflow-y-auto p-4 space-y-2 mt-0 min-h-0">

@@ -8,7 +8,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useGlobalScrollKeys } from "@/hooks/use-global-scroll-keys";
 import {
-  useSidebarScrollbar, useSidebarWidth, getScrollbarClass, getWidthPx,
+  useSidebarScrollbar, useSidebarWidth, useContentScrollbar, usePreviewScrollbar,
+  getScrollbarClass, getWidthPx,
 } from "@/lib/sidebar-customization";
 import {
   DEFAULT_NAV_ITEMS, effectiveIconId, effectiveEmoji, getIconComponent,
@@ -147,6 +148,8 @@ export function Layout({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useLocalStorage<boolean>("wf-sidebar-collapsed", false);
   const [scrollbarStyle] = useSidebarScrollbar();
   const [widthPref] = useSidebarWidth();
+  const [contentScrollbar] = useContentScrollbar();
+  const [previewScrollbar] = usePreviewScrollbar();
   const { overrides } = useMenuCustomization();
   const { enabled: bibleOnly } = useBibleOnlyMode();
   const mode = useViewportMode();
@@ -409,7 +412,7 @@ export function Layout({ children }: { children: ReactNode }) {
       )}
 
       {/* ── Main content ──────────────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto min-w-0">
+      <main className={`flex-1 overflow-y-auto min-w-0 ${getScrollbarClass(contentScrollbar)}`}>
         {bibleOnly && (
           <div
             className="flex items-center justify-center gap-2 px-4 py-1.5 text-xs bg-primary/10 text-primary border-b border-primary/20"
@@ -430,7 +433,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <div className="p-4 border-b border-border">
             <h2 className="font-semibold text-lg">Live Preview</h2>
           </div>
-          <div className="flex-1 p-4 flex flex-col gap-4 overflow-y-auto">
+          <div className={`flex-1 p-4 flex flex-col gap-4 overflow-y-auto ${getScrollbarClass(previewScrollbar)}`}>
             <LivePreview />
           </div>
         </aside>

@@ -4,9 +4,9 @@ export type ScrollbarStyle = "modern" | "thin" | "auto-hide" | "default";
 export type SidebarWidth = "compact" | "normal" | "wide";
 
 export const SCROLLBAR_STYLES: { id: ScrollbarStyle; label: string; description: string }[] = [
-  { id: "modern",    label: "Modern",     description: "Slim themed bar that matches the sidebar" },
-  { id: "thin",      label: "Thin",       description: "Minimal 4px bar — barely there" },
-  { id: "auto-hide", label: "Auto-hide",  description: "Hidden until you hover the sidebar" },
+  { id: "modern",    label: "Modern",     description: "Slim themed scrollbar" },
+  { id: "thin",      label: "Thin",       description: "Minimal 4 px — barely there" },
+  { id: "auto-hide", label: "Auto-hide",  description: "Hidden until you hover" },
   { id: "default",   label: "Default",    description: "Browser native scrollbar" },
 ];
 
@@ -22,6 +22,14 @@ export function useSidebarScrollbar() {
 
 export function useSidebarWidth() {
   return useLocalStorage<SidebarWidth>("wf-sidebar-width", "normal");
+}
+
+export function useContentScrollbar() {
+  return useLocalStorage<ScrollbarStyle>("wf-content-scrollbar", "default");
+}
+
+export function usePreviewScrollbar() {
+  return useLocalStorage<ScrollbarStyle>("wf-preview-scrollbar", "modern");
 }
 
 export function getScrollbarClass(style: ScrollbarStyle): string {

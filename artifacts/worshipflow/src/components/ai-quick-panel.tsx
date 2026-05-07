@@ -1,5 +1,7 @@
 import { getAiHeaders } from "@/lib/ai-headers";
 import { useRef, useState, useCallback } from "react";
+import { useLocalStorage } from "@/hooks/use-local-storage";
+import { CollapsibleTabsBar } from "@/components/ui/collapsible-tabs";
 import { useDraggableButton } from "@/hooks/use-draggable-button";
 import {
   Sparkles, Send, Loader2, X, Monitor, Music2, ImageIcon,
@@ -94,6 +96,8 @@ export function AiQuickPanel() {
 
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState("chat");
+  const [aiPanelTabsCollapsed, setAiPanelTabsCollapsed] = useLocalStorage<boolean>("wf-tabs:ai-panel:collapsed", false);
+  const AI_PANEL_TAB_LABELS: Record<string, string> = { chat: "Chat", song: "Song", image: "Image" };
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
@@ -289,17 +293,24 @@ export function AiQuickPanel() {
           )}
 
           <Tabs value={tab} onValueChange={setTab} className="flex flex-col flex-1 min-h-0">
-            <TabsList className="mx-4 mt-3 shrink-0 grid grid-cols-3">
-              <TabsTrigger value="chat" className="gap-1.5 text-xs" disabled={!chatEnabled}>
-                <MessageSquare className="w-3.5 h-3.5" />Chat
-              </TabsTrigger>
-              <TabsTrigger value="song" className="gap-1.5 text-xs" disabled={!songEnabled}>
-                <Music2 className="w-3.5 h-3.5" />Song
-              </TabsTrigger>
-              <TabsTrigger value="image" className="gap-1.5 text-xs" disabled={!imageEnabled}>
-                <ImageIcon className="w-3.5 h-3.5" />Image
-              </TabsTrigger>
-            </TabsList>
+            <CollapsibleTabsBar
+              collapsed={aiPanelTabsCollapsed}
+              onToggle={() => setAiPanelTabsCollapsed(!aiPanelTabsCollapsed)}
+              activeLabel={AI_PANEL_TAB_LABELS[tab]}
+              className="mx-4 mt-3 shrink-0"
+            >
+              <TabsList className="grid grid-cols-3 w-full">
+                <TabsTrigger value="chat" className="gap-1.5 text-xs" disabled={!chatEnabled}>
+                  <MessageSquare className="w-3.5 h-3.5" />Chat
+                </TabsTrigger>
+                <TabsTrigger value="song" className="gap-1.5 text-xs" disabled={!songEnabled}>
+                  <Music2 className="w-3.5 h-3.5" />Song
+                </TabsTrigger>
+                <TabsTrigger value="image" className="gap-1.5 text-xs" disabled={!imageEnabled}>
+                  <ImageIcon className="w-3.5 h-3.5" />Image
+                </TabsTrigger>
+              </TabsList>
+            </CollapsibleTabsBar>
 
             {/* ── CHAT TAB ─────────────────────────────────── */}
             <TabsContent value="chat" className="flex flex-col flex-1 min-h-0 mt-0 data-[state=inactive]:hidden">

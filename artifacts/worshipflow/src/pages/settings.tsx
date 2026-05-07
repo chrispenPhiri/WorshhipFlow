@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Settings as SettingsIcon, Palette, Type, RotateCcw, Check, LayoutGrid, BookOpen, Smile, Sparkles, ExternalLink, ImageIcon, Music2, MessageSquare, KeyRound, Eye, EyeOff, CheckCircle2, XCircle, ChevronDown, Smartphone } from "lucide-react";
 import {
-  useSidebarScrollbar, useSidebarWidth,
+  useSidebarScrollbar, useSidebarWidth, useContentScrollbar, usePreviewScrollbar,
   SCROLLBAR_STYLES, SIDEBAR_WIDTHS,
   type ScrollbarStyle, type SidebarWidth,
 } from "@/lib/sidebar-customization";
@@ -396,15 +396,42 @@ function ImageSourceCard() {
  * Sidebar look-and-feel: scrollbar style + width. Operator-local; persisted
  * to localStorage. Used by the Layout component on every render.
  */
+function ScrollbarPicker({
+  label, value, onChange, testIdPrefix,
+}: {
+  label: string;
+  value: ScrollbarStyle;
+  onChange: (id: ScrollbarStyle) => void;
+  testIdPrefix: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium">{label}</label>
+      <div className="grid grid-cols-2 gap-2">
+        {SCROLLBAR_STYLES.map(o => (
+          <button
+            key={o.id}
+            type="button"
+            onClick={() => onChange(o.id)}
+            className={`text-left rounded-md border-2 px-3 py-2 transition-all ${value === o.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
+            data-testid={`${testIdPrefix}-${o.id}`}
+          >
+            <div className="text-sm font-medium">{o.label}</div>
+            <div className="text-[11px] text-muted-foreground mt-0.5">{o.description}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function SidebarCustomizationCard() {
   const [scrollbarStyle, setScrollbarStyle] = useSidebarScrollbar();
+  const [contentScrollbar, setContentScrollbar] = useContentScrollbar();
+  const [previewScrollbar, setPreviewScrollbar] = usePreviewScrollbar();
   const [widthPref, setWidthPref] = useSidebarWidth();
   const { toast } = useToast();
 
-  const saveScroll = (id: ScrollbarStyle) => {
-    setScrollbarStyle(id);
-    toast({ title: "Scrollbar updated", description: SCROLLBAR_STYLES.find(o => o.id === id)?.label });
-  };
   const saveWidth = (id: SidebarWidth) => {
     setWidthPref(id);
     toast({ title: "Sidebar width updated", description: SIDEBAR_WIDTHS.find(o => o.id === id)?.label });
@@ -414,32 +441,39 @@ function SidebarCustomizationCard() {
     <Card data-testid="card-sidebar-customization">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <LayoutGrid className="w-5 h-5 text-primary" /> Sidebar Appearance
+          <LayoutGrid className="w-5 h-5 text-primary" /> Scrollbars &amp; Sidebar
         </CardTitle>
         <CardDescription>
-          Customise the main menu scrollbar and sidebar width. Saved on this device.
+          Customise every scrollbar and the sidebar width. Saved on this device.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-5">
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Scrollbar style</label>
-          <div className="grid grid-cols-2 gap-2">
-            {SCROLLBAR_STYLES.map(o => (
-              <button
-                key={o.id}
-                type="button"
-                onClick={() => saveScroll(o.id)}
-                className={`text-left rounded-md border-2 px-3 py-2 transition-all ${scrollbarStyle === o.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
-                data-testid={`button-scrollbar-${o.id}`}
-              >
-                <div className="text-sm font-medium">{o.label}</div>
-                <div className="text-[11px] text-muted-foreground mt-0.5">{o.description}</div>
-              </button>
-            ))}
-          </div>
+      <CardContent className="space-y-6">
+        <ScrollbarPicker
+          label="Left sidebar scrollbar"
+          value={scrollbarStyle}
+          onChange={(id) => { setScrollbarStyle(id); toast({ title: "Sidebar scrollbar updated", description: SCROLLBAR_STYLES.find(o => o.id === id)?.label }); }}
+          testIdPrefix="button-scrollbar-sidebar"
+        />
+
+        <div className="border-t border-border/60 pt-5">
+          <ScrollbarPicker
+            label="Main content area scrollbar"
+            value={contentScrollbar}
+            onChange={(id) => { setContentScrollbar(id); toast({ title: "Content scrollbar updated", description: SCROLLBAR_STYLES.find(o => o.id === id)?.label }); }}
+            testIdPrefix="button-scrollbar-content"
+          />
         </div>
 
-        <div className="space-y-2">
+        <div className="border-t border-border/60 pt-5">
+          <ScrollbarPicker
+            label="Live Preview panel scrollbar"
+            value={previewScrollbar}
+            onChange={(id) => { setPreviewScrollbar(id); toast({ title: "Preview scrollbar updated", description: SCROLLBAR_STYLES.find(o => o.id === id)?.label }); }}
+            testIdPrefix="button-scrollbar-preview"
+          />
+        </div>
+
+        <div className="border-t border-border/60 pt-5 space-y-2">
           <label className="text-sm font-medium">Sidebar width</label>
           <div className="grid grid-cols-3 gap-2">
             {SIDEBAR_WIDTHS.map(o => (
