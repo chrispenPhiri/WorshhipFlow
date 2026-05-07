@@ -7,8 +7,8 @@ import OpenAI from "openai";
  * POST /api/teachings/generate { topic: string, category: string }
  *   → returns a structured teaching object (no id; client persists to localStorage).
  *
- * Uses the Replit AI Integrations OpenAI proxy (no user-supplied API key needed
- * — the AI_INTEGRATIONS_OPENAI_* env vars are auto-provisioned).
+ * Uses the user's own AI key/provider forwarded via request headers
+ * (X-AI-Key, X-AI-Provider, X-AI-Model) — the same pattern as /api/ai/*.
  */
 
 const router = Router();
@@ -24,15 +24,54 @@ function isCategory(x: unknown): x is Category {
   return typeof x === "string" && (ALLOWED_CATEGORIES as readonly string[]).includes(x);
 }
 
+type AiProvider = "openai" | "gemini" | "openrouter" | "deepseek" | "groq";
+
+const DEFAULT_MODELS: Record<AiProvider, string> = {
+  openai:     "gpt-4o",
+  gemini:     "gemini-2.0-flash",
+  openrouter: "openai/gpt-4o",
+  deepseek:   "deepseek-chat",
+  groq:       "llama-3.3-70b-versatile",
+};
+
 router.post("/generate", async (req, res) => {
-  const baseUrl = process.env["AI_INTEGRATIONS_OPENAI_BASE_URL"];
-  const apiKey = process.env["AI_INTEGRATIONS_OPENAI_API_KEY"];
-  if (!baseUrl || !apiKey) {
-    return res.status(503).json({
-      error: "AI generation is not configured on the server. Add a teaching manually instead.",
+  /* ── Resolve AI client from user-supplied headers ── */
+  const provider = ((req.headers["x-ai-provider"] as string | undefined)?.trim() ?? "openai") as AiProvider;
+  const rawKey   = (req.headers["x-ai-key"] ?? req.headers["x-openai-key"]) as string | undefined;
+  const modelHdr = (req.headers["x-ai-model"] as string | undefined)?.trim();
+  const key      = rawKey?.trim();
+
+  if (!key) {
+    return res.status(402).json({
+      error: "No AI provider configured. Choose an AI provider in Settings → AI Features.",
     });
   }
 
+  const model = modelHdr ?? DEFAULT_MODELS[provider] ?? "gpt-4o";
+
+  let client: OpenAI;
+  switch (provider) {
+    case "gemini":
+      client = new OpenAI({ apiKey: key, baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/" });
+      break;
+    case "openrouter":
+      client = new OpenAI({
+        apiKey: key,
+        baseURL: "https://openrouter.ai/api/v1",
+        defaultHeaders: { "HTTP-Referer": "https://phiriworshipflow.replit.app", "X-Title": "Phiri WorshipFlow" },
+      });
+      break;
+    case "deepseek":
+      client = new OpenAI({ apiKey: key, baseURL: "https://api.deepseek.com" });
+      break;
+    case "groq":
+      client = new OpenAI({ apiKey: key, baseURL: "https://api.groq.com/openai/v1" });
+      break;
+    default: // openai
+      client = new OpenAI({ apiKey: key });
+  }
+
+  /* ── Validate request body ── */
   const body = req.body as { topic?: unknown; category?: unknown } | undefined;
   const topic = typeof body?.topic === "string" ? body.topic.trim() : "";
   const category: Category = isCategory(body?.category) ? body.category : "Adults";
@@ -43,8 +82,7 @@ router.post("/generate", async (req, res) => {
     return res.status(400).json({ error: "Topic is too long (max 200 characters)." });
   }
 
-  const client = new OpenAI({ baseURL: baseUrl, apiKey });
-
+  /* ── Prompts ── */
   const systemPrompt = [
     "You are a careful, doctrinally orthodox Protestant Christian Bible teacher writing a complete short lesson for a local church.",
     "You write in plain, warm, pastoral English — no jargon. You quote the King James Version (KJV) for any verse text.",
@@ -81,73 +119,69 @@ router.post("/generate", async (req, res) => {
     "- Healing: dependent on God, honest about suffering, hopeful",
   ].join("\n");
 
-  try {
-    const completion = await client.chat.completions.create({
-      model: "gpt-5.4",
-      max_completion_tokens: 8192,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "Teaching",
-          strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              title: { type: "string" },
-              category: { type: "string", enum: [category] },
-              theme: { type: "string" },
-              keyVerse: {
-                type: "object",
-                additionalProperties: false,
-                properties: {
-                  reference: { type: "string" },
-                  text: { type: "string" },
-                },
-                required: ["reference", "text"],
-              },
-              summary: { type: "string" },
-              points: {
-                type: "array",
-                minItems: 3,
-                maxItems: 5,
-                items: {
+  /* ── JSON schema (OpenAI / Gemini support strict mode; others use json_object) ── */
+  const supportsJsonSchema = provider === "openai" || provider === "gemini";
+
+  const responseFormat: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming["response_format"] =
+    supportsJsonSchema
+      ? {
+          type: "json_schema",
+          json_schema: {
+            name: "Teaching",
+            strict: true,
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                title:               { type: "string" },
+                category:            { type: "string", enum: [category] },
+                theme:               { type: "string" },
+                keyVerse: {
                   type: "object",
                   additionalProperties: false,
-                  properties: {
-                    heading: { type: "string" },
-                    body: { type: "string" },
-                  },
-                  required: ["heading", "body"],
+                  properties: { reference: { type: "string" }, text: { type: "string" } },
+                  required: ["reference", "text"],
                 },
+                summary:             { type: "string" },
+                points: {
+                  type: "array", minItems: 3, maxItems: 5,
+                  items: {
+                    type: "object",
+                    additionalProperties: false,
+                    properties: { heading: { type: "string" }, body: { type: "string" } },
+                    required: ["heading", "body"],
+                  },
+                },
+                discussionQuestions: { type: "array", minItems: 2, maxItems: 5, items: { type: "string" } },
+                activity:            { type: "string" },
+                prayer:              { type: "string" },
+                memoryVerse:         { type: ["string", "null"] },
               },
-              discussionQuestions: {
-                type: "array",
-                minItems: 2,
-                maxItems: 5,
-                items: { type: "string" },
-              },
-              activity: { type: "string" },
-              prayer: { type: "string" },
-              memoryVerse: { type: ["string", "null"] },
+              required: [
+                "title", "category", "theme", "keyVerse",
+                "summary", "points", "discussionQuestions",
+                "activity", "prayer", "memoryVerse",
+              ],
             },
-            required: [
-              "title", "category", "theme", "keyVerse",
-              "summary", "points", "discussionQuestions",
-              "activity", "prayer", "memoryVerse",
-            ],
           },
-        },
-      },
+        }
+      : { type: "json_object" };
+
+  /* ── Generate ── */
+  try {
+    const completion = await client.chat.completions.create({
+      model,
+      max_tokens: 4096,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user",   content: userPrompt },
+      ],
+      response_format: responseFormat,
     });
 
     const raw = completion.choices[0]?.message?.content;
     if (!raw) {
-      req.log.warn({ topic, category }, "OpenAI returned empty content");
+      req.log.warn({ topic, category, provider }, "AI returned empty content");
       return res.status(502).json({ error: "AI returned an empty response. Try again." });
     }
 
@@ -155,7 +189,7 @@ router.post("/generate", async (req, res) => {
     try {
       parsed = JSON.parse(raw);
     } catch (err) {
-      req.log.warn({ err, raw: raw.slice(0, 200) }, "OpenAI returned non-JSON content");
+      req.log.warn({ err, raw: raw.slice(0, 200) }, "AI returned non-JSON content");
       return res.status(502).json({ error: "AI returned malformed content. Try again." });
     }
 
@@ -168,9 +202,7 @@ router.post("/generate", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Teaching generation failed");
     const message = err instanceof Error ? err.message : "Unknown error";
-    return res.status(502).json({
-      error: `AI generation failed: ${message}`,
-    });
+    return res.status(502).json({ error: `AI generation failed: ${message}` });
   }
 });
 

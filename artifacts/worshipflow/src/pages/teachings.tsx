@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { getAiHeaders } from "@/lib/ai-headers";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useUpdateScreenState, useGetScreenState, getGetScreenStateQueryKey,
@@ -122,7 +123,7 @@ export default function TeachingsPage() {
   const generateWithAI = async (topic: string, category: TeachingCategory): Promise<Omit<Teaching, "id">> => {
     const res = await fetch(`${import.meta.env.BASE_URL}api/teachings/generate`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { ...getAiHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify({ topic, category }),
     });
     if (!res.ok) {
