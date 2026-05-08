@@ -29,6 +29,13 @@ type PhotoTextLayer = {
   px: number; py: number; bold: boolean; italic: boolean;
   gradient: boolean; gc1: string; gc2: string; shadow: boolean;
   align: "left" | "center" | "right";
+  fontFamily?: string;
+  letterSpacing?: number;
+  stroke?: boolean;
+  strokeColor?: string;
+  bgHighlight?: boolean;
+  bgHighlightColor?: string;
+  uppercase?: boolean;
 };
 
 const MEDIA_TAB_LABELS: Record<string, string> = {
@@ -192,7 +199,20 @@ export default function MediaPage() {
   const [photoMergeUrl, setPhotoMergeUrl] = useState<string | null>(null);
   const [photoMergeOpacity, setPhotoMergeOpacity] = useState(80);
   const [photoMergeBlend, setPhotoMergeBlend] = useState("screen");
+  const [photoMergeLayout, setPhotoMergeLayout] = useState<"overlay" | "side-by-side">("overlay");
   const photoMergeRef = useRef<HTMLInputElement>(null);
+  // Image drag-to-reposition
+  const [photoImgObjPosX, setPhotoImgObjPosX] = useState(50);
+  const [photoImgObjPosY, setPhotoImgObjPosY] = useState(50);
+  const photoPreviewDragRef = useRef<{ active: boolean; startX: number; startY: number; startPX: number; startPY: number }>({ active: false, startX: 0, startY: 0, startPX: 50, startPY: 50 });
+  // Text layer extra options
+  const [photoTFont, setPhotoTFont] = useState("Default");
+  const [photoTLetterSpacing, setPhotoTLetterSpacing] = useState(0);
+  const [photoTStroke, setPhotoTStroke] = useState(false);
+  const [photoTStrokeColor, setPhotoTStrokeColor] = useState("#000000");
+  const [photoTBgHighlight, setPhotoTBgHighlight] = useState(false);
+  const [photoTBgHighlightColor, setPhotoTBgHighlightColor] = useState("rgba(0,0,0,0.55)");
+  const [photoTUppercase, setPhotoTUppercase] = useState(false);
   const [bgRemoving, setBgRemoving] = useState(false);
   const [removeBgKey, setRemoveBgKey] = useLocalStorage<string>("wf-remove-bg-key", "");
 
@@ -786,12 +806,23 @@ export default function MediaPage() {
   // ── Photo editor helpers ──────────────────────────────────────────────────
   const photoFilterString = `brightness(${photoEditBrightness}%) contrast(${photoEditContrast}%) saturate(${photoEditSaturate}%) hue-rotate(${photoEditHue}deg) sepia(${photoEditSepia}%) grayscale(${photoEditGrayscale}%) blur(${photoEditBlur}px)`;
 
+  const PHOTO_TEXT_FONTS: Record<string, string> = {
+    "Default": "'Arial', sans-serif",
+    "Serif": "'Georgia', 'Times New Roman', serif",
+    "Modern": "'Helvetica Neue', 'Segoe UI', sans-serif",
+    "Elegant": "'Palatino Linotype', 'Book Antiqua', serif",
+    "Bold": "'Impact', 'Arial Black', sans-serif",
+    "Mono": "'Courier New', 'Lucida Console', monospace",
+  };
+
   const drawTextOnCanvas = (ctx: CanvasRenderingContext2D, t: PhotoTextLayer, cW: number, cH: number) => {
     const scale = cW / 1920;
     const scaledSize = Math.max(12, Math.round(t.size * scale));
-    ctx.font = `${t.italic ? "italic " : ""}${t.bold ? "bold " : ""}${scaledSize}px 'Arial', sans-serif`;
+    const fontStack = PHOTO_TEXT_FONTS[t.fontFamily ?? "Default"] ?? PHOTO_TEXT_FONTS["Default"];
+    ctx.font = `${t.italic ? "italic " : ""}${t.bold ? "bold " : ""}${scaledSize}px ${fontStack}`;
     ctx.textAlign = t.align;
     ctx.textBaseline = "middle";
+    const displayText = t.uppercase ? t.text.toUpperCase() : t.text;
     const x = (t.px / 100) * cW;
     const y = (t.py / 100) * cH;
     if (t.shadow) {
@@ -799,15 +830,28 @@ export default function MediaPage() {
       ctx.shadowBlur = Math.max(4, scaledSize * 0.12);
       ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 2;
     }
+    const met = ctx.measureText(displayText);
+    const tw = met.width;
+    const pad = scaledSize * 0.25;
+    if (t.bgHighlight && t.bgHighlightColor) {
+      const bx = t.align === "center" ? x - tw / 2 - pad : t.align === "right" ? x - tw - pad : x - pad;
+      ctx.fillStyle = t.bgHighlightColor;
+      ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+      ctx.fillRect(bx, y - scaledSize * 0.65, tw + pad * 2, scaledSize * 1.3);
+    }
     if (t.gradient) {
-      const met = ctx.measureText(t.text);
-      const tw = met.width;
       const sx = t.align === "center" ? x - tw / 2 : t.align === "right" ? x - tw : x;
       const grad = ctx.createLinearGradient(sx, y, sx + tw, y);
       grad.addColorStop(0, t.gc1); grad.addColorStop(1, t.gc2);
       ctx.fillStyle = grad;
     } else { ctx.fillStyle = t.color; }
-    ctx.fillText(t.text, x, y);
+    ctx.fillText(displayText, x, y);
+    if (t.stroke && t.strokeColor) {
+      ctx.strokeStyle = t.strokeColor;
+      ctx.lineWidth = Math.max(1, scaledSize * 0.04);
+      ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+      ctx.strokeText(displayText, x, y);
+    }
     ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
   };
 
@@ -834,12 +878,20 @@ export default function MediaPage() {
         } else { ctx.fillStyle = hexes[0] ?? "#000"; }
         ctx.fillRect(0, 0, cW, cH);
       }
-      if (baseImg) { ctx.filter = photoFilterString; ctx.drawImage(baseImg, 0, 0, cW, cH); ctx.filter = "none"; }
-      if (mergeImg) {
-        ctx.globalAlpha = photoMergeOpacity / 100;
-        ctx.globalCompositeOperation = photoMergeBlend as GlobalCompositeOperation;
-        ctx.drawImage(mergeImg, 0, 0, cW, cH);
-        ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+      if (photoMergeLayout === "side-by-side" && mergeImg) {
+        if (baseImg) { ctx.filter = photoFilterString; ctx.drawImage(baseImg, 0, 0, cW / 2, cH); ctx.filter = "none"; }
+        ctx.drawImage(mergeImg, cW / 2, 0, cW / 2, cH);
+        const divX = cW / 2;
+        ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(divX, 0); ctx.lineTo(divX, cH); ctx.stroke();
+      } else {
+        if (baseImg) { ctx.filter = photoFilterString; ctx.drawImage(baseImg, 0, 0, cW, cH); ctx.filter = "none"; }
+        if (mergeImg) {
+          ctx.globalAlpha = photoMergeOpacity / 100;
+          ctx.globalCompositeOperation = photoMergeBlend as GlobalCompositeOperation;
+          ctx.drawImage(mergeImg, 0, 0, cW, cH);
+          ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+        }
       }
       photoTexts.forEach(t => drawTextOnCanvas(ctx, t, cW, cH));
       resolve(canvas.toDataURL("image/jpeg", 0.93));
@@ -1118,17 +1170,51 @@ export default function MediaPage() {
               {/* ── Preview area ── */}
               {(() => {
                 const hasContent = !!(photoEditUrl || photoUsePoster);
+                const isSideBySide = photoMergeLayout === "side-by-side" && !!photoMergeUrl;
                 return hasContent ? (
-                  <div className="relative w-full rounded-xl overflow-hidden border border-border"
-                    style={{ aspectRatio: "16/9", background: (photoUsePoster || !photoEditUrl) ? photoPosterBg : "#000" }}>
-                    {photoEditUrl && (
-                      <img src={photoEditUrl} alt="editing preview" className="absolute inset-0 w-full h-full"
-                        style={{ objectFit: "cover", filter: photoFilterString }} />
+                  <div className="relative w-full rounded-xl overflow-hidden border border-border select-none"
+                    style={{ aspectRatio: "16/9", background: (photoUsePoster || !photoEditUrl) ? photoPosterBg : "#000", cursor: isSideBySide ? "default" : "grab" }}
+                    onPointerDown={e => {
+                      if (isSideBySide) return;
+                      photoPreviewDragRef.current = { active: true, startX: e.clientX, startY: e.clientY, startPX: photoImgObjPosX, startPY: photoImgObjPosY };
+                      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                    }}
+                    onPointerMove={e => {
+                      const d = photoPreviewDragRef.current;
+                      if (!d.active) return;
+                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                      const dx = ((e.clientX - d.startX) / rect.width) * 100;
+                      const dy = ((e.clientY - d.startY) / rect.height) * 100;
+                      setPhotoImgObjPosX(Math.max(0, Math.min(100, d.startPX - dx)));
+                      setPhotoImgObjPosY(Math.max(0, Math.min(100, d.startPY - dy)));
+                    }}
+                    onPointerUp={() => { photoPreviewDragRef.current.active = false; }}
+                  >
+                    {isSideBySide ? (
+                      <>
+                        {photoEditUrl && (
+                          <img src={photoEditUrl} alt="left" className="absolute inset-y-0 left-0 h-full"
+                            style={{ width: "50%", objectFit: "cover", filter: photoFilterString }} />
+                        )}
+                        <img src={photoMergeUrl!} alt="right" className="absolute inset-y-0 right-0 h-full"
+                          style={{ width: "50%", objectFit: "cover" }} />
+                        <div className="absolute inset-y-0 left-1/2 w-px bg-white/25" />
+                      </>
+                    ) : (
+                      <>
+                        {photoEditUrl && (
+                          <img src={photoEditUrl} alt="editing preview" className="absolute inset-0 w-full h-full"
+                            style={{ objectFit: "cover", objectPosition: `${photoImgObjPosX}% ${photoImgObjPosY}%`, filter: photoFilterString }} />
+                        )}
+                        {photoMergeUrl && (
+                          <img src={photoMergeUrl} alt="overlay" className="absolute inset-0 w-full h-full"
+                            style={{ objectFit: "cover", opacity: photoMergeOpacity / 100,
+                              mixBlendMode: (photoMergeBlend === "source-over" ? "normal" : photoMergeBlend) as React.CSSProperties["mixBlendMode"] }} />
+                        )}
+                      </>
                     )}
-                    {photoMergeUrl && (
-                      <img src={photoMergeUrl} alt="overlay" className="absolute inset-0 w-full h-full"
-                        style={{ objectFit: "cover", opacity: photoMergeOpacity / 100,
-                          mixBlendMode: (photoMergeBlend === "source-over" ? "normal" : photoMergeBlend) as "normal" | "multiply" | "screen" | "overlay" | "hard-light" | "soft-light" | "difference" | "luminosity" }} />
+                    {!isSideBySide && (
+                      <div className="absolute bottom-2 right-2 text-[9px] text-white/50 bg-black/40 px-1.5 py-0.5 rounded pointer-events-none">drag to reposition</div>
                     )}
                     {photoTexts.map(t => (
                       <div key={t.id} className="absolute pointer-events-none select-none"
@@ -1298,7 +1384,27 @@ export default function MediaPage() {
                 {/* ── TEXT & POSTER ── */}
                 <TabsContent value="text" className="mt-3 space-y-3">
                   <div className="space-y-2">
-                    <Input placeholder="Your text here…" value={photoTInput} onChange={e => setPhotoTInput(e.target.value)} className="h-9" />
+                    <textarea
+                      placeholder="Your text here…"
+                      value={photoTInput}
+                      onChange={e => setPhotoTInput(e.target.value)}
+                      rows={2}
+                      className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+
+                    {/* Font family */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium">Font Family</label>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {Object.keys(PHOTO_TEXT_FONTS).map(f => (
+                          <button key={f} type="button" onClick={() => setPhotoTFont(f)}
+                            className={`px-2.5 py-1 rounded text-xs border transition-colors ${photoTFont === f ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}
+                            style={{ fontFamily: PHOTO_TEXT_FONTS[f] }}>
+                            {f}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
 
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
@@ -1309,24 +1415,35 @@ export default function MediaPage() {
                         <SliderWithButtons min={18} max={300} step={2} value={[photoTSize]} onValueChange={([v]) => setPhotoTSize(v)} />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-xs font-medium">Text Color</label>
-                        <div className="flex gap-1 items-center flex-wrap">
-                          <input type="color" value={photoTColor} onChange={e => setPhotoTColor(e.target.value)}
-                            className="h-7 w-9 rounded border border-input cursor-pointer flex-shrink-0" />
-                          {["#ffffff","#000000","#ffd700","#f97316","#ef4444","#a78bfa"].map(c => (
-                            <button key={c} type="button" onClick={() => setPhotoTColor(c)}
-                              className={`w-5 h-5 rounded border-2 transition-all ${photoTColor === c ? "border-primary scale-110" : "border-transparent"}`}
-                              style={{ background: c }} />
-                          ))}
+                        <div className="flex justify-between">
+                          <label className="text-xs font-medium">Letter Spacing</label>
+                          <span className="text-xs text-muted-foreground">{photoTLetterSpacing}px</span>
                         </div>
+                        <SliderWithButtons min={-5} max={30} step={1} value={[photoTLetterSpacing]} onValueChange={([v]) => setPhotoTLetterSpacing(v)} />
                       </div>
                     </div>
 
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium">Text Color</label>
+                      <div className="flex gap-1 items-center flex-wrap">
+                        <input type="color" value={photoTColor} onChange={e => setPhotoTColor(e.target.value)}
+                          className="h-7 w-9 rounded border border-input cursor-pointer flex-shrink-0" />
+                        {["#ffffff","#000000","#ffd700","#f97316","#ef4444","#a78bfa"].map(c => (
+                          <button key={c} type="button" onClick={() => setPhotoTColor(c)}
+                            className={`w-5 h-5 rounded border-2 transition-all ${photoTColor === c ? "border-primary scale-110" : "border-transparent"}`}
+                            style={{ background: c }} />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Style toggles */}
                     <div className="flex gap-1.5 flex-wrap">
                       <button type="button" onClick={() => setPhotoTBold(!photoTBold)}
                         className={`px-3 py-1.5 rounded text-xs border font-bold transition-colors ${photoTBold ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>B</button>
                       <button type="button" onClick={() => setPhotoTItalic(!photoTItalic)}
                         className={`px-3 py-1.5 rounded text-xs border italic transition-colors ${photoTItalic ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>I</button>
+                      <button type="button" onClick={() => setPhotoTUppercase(!photoTUppercase)}
+                        className={`px-3 py-1.5 rounded text-xs border font-semibold tracking-wider transition-colors ${photoTUppercase ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>AA</button>
                       <button type="button" onClick={() => setPhotoTShadow(!photoTShadow)}
                         className={`px-3 py-1.5 rounded text-xs border transition-colors ${photoTShadow ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>Shadow</button>
                       {(["left","center","right"] as const).map(a => (
@@ -1337,12 +1454,36 @@ export default function MediaPage() {
                       ))}
                     </div>
 
+                    {/* Stroke / Outline */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button type="button" onClick={() => setPhotoTStroke(!photoTStroke)}
+                        className={`px-3 py-1 rounded text-xs border transition-colors ${photoTStroke ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                        Outline
+                      </button>
+                      {photoTStroke && (
+                        <>
+                          <span className="text-xs text-muted-foreground">Color:</span>
+                          <input type="color" value={photoTStrokeColor} onChange={e => setPhotoTStrokeColor(e.target.value)}
+                            className="h-7 w-9 rounded border border-input cursor-pointer" />
+                        </>
+                      )}
+                      <button type="button" onClick={() => setPhotoTBgHighlight(!photoTBgHighlight)}
+                        className={`px-3 py-1 rounded text-xs border transition-colors ${photoTBgHighlight ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                        Highlight
+                      </button>
+                      {photoTBgHighlight && (
+                        <input type="color" value={photoTBgHighlightColor.startsWith("rgba") ? "#000000" : photoTBgHighlightColor}
+                          onChange={e => setPhotoTBgHighlightColor(e.target.value)}
+                          className="h-7 w-9 rounded border border-input cursor-pointer" />
+                      )}
+                    </div>
+
                     {/* Gradient text */}
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
                         <button type="button" onClick={() => setPhotoTGradient(!photoTGradient)}
                           className={`px-3 py-1 rounded text-xs border transition-colors ${photoTGradient ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
-                          ✦ Gradient Text
+                          ✦ Gradient
                         </button>
                         {photoTGradient && <span className="text-xs text-muted-foreground">Pick two colors:</span>}
                       </div>
@@ -1385,6 +1526,10 @@ export default function MediaPage() {
                           id: Date.now().toString(), text: photoTInput, size: photoTSize, color: photoTColor,
                           px: photoTPx, py: photoTPy, bold: photoTBold, italic: photoTItalic,
                           gradient: photoTGradient, gc1: photoTGC1, gc2: photoTGC2, shadow: photoTShadow, align: photoTAlign,
+                          fontFamily: photoTFont, letterSpacing: photoTLetterSpacing,
+                          stroke: photoTStroke, strokeColor: photoTStrokeColor,
+                          bgHighlight: photoTBgHighlight, bgHighlightColor: photoTBgHighlightColor,
+                          uppercase: photoTUppercase,
                         }]);
                       }}>
                         + Add Text Layer
@@ -1422,7 +1567,17 @@ export default function MediaPage() {
 
                 {/* ── MERGE ── */}
                 <TabsContent value="merge" className="mt-3 space-y-3">
-                  <p className="text-xs text-muted-foreground">Blend a second image on top of your base photo with adjustable opacity and blend mode.</p>
+                  {/* Layout toggle */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-medium text-muted-foreground shrink-0">Layout:</label>
+                    {(["overlay","side-by-side"] as const).map(l => (
+                      <button key={l} type="button" onClick={() => setPhotoMergeLayout(l)}
+                        className={`px-3 py-1 rounded text-xs border transition-colors ${photoMergeLayout === l ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                        {l === "overlay" ? "Overlay" : "Side by Side"}
+                      </button>
+                    ))}
+                  </div>
+
                   {!photoMergeUrl ? (
                     <div className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/20 transition-colors"
                       onClick={() => photoMergeRef.current?.click()}
@@ -1436,7 +1591,7 @@ export default function MediaPage() {
                         reader.readAsDataURL(f);
                       }}>
                       <Layers3 className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                      <p className="text-sm font-medium">Drop overlay image or click to browse</p>
+                      <p className="text-sm font-medium">{photoMergeLayout === "side-by-side" ? "Drop second image or click to browse" : "Drop overlay image or click to browse"}</p>
                     </div>
                   ) : (
                     <div className="relative rounded-lg overflow-hidden border border-border h-24">
@@ -1447,33 +1602,46 @@ export default function MediaPage() {
                       </button>
                     </div>
                   )}
-                  <div className="space-y-1">
-                    <div className="flex justify-between">
-                      <label className="text-xs font-medium">Overlay Opacity</label>
-                      <span className="text-xs text-muted-foreground">{photoMergeOpacity}%</span>
-                    </div>
-                    <SliderWithButtons min={0} max={100} step={5} value={[photoMergeOpacity]} onValueChange={([v]) => setPhotoMergeOpacity(v)} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium">Blend Mode</label>
-                    <div className="grid grid-cols-4 gap-1">
-                      {[
-                        { value: "source-over", label: "Normal"      },
-                        { value: "multiply",    label: "Multiply"    },
-                        { value: "screen",      label: "Screen"      },
-                        { value: "overlay",     label: "Overlay"     },
-                        { value: "hard-light",  label: "Hard Light"  },
-                        { value: "soft-light",  label: "Soft Light"  },
-                        { value: "difference",  label: "Difference"  },
-                        { value: "luminosity",  label: "Luminosity"  },
-                      ].map(m => (
-                        <button key={m.value} type="button" onClick={() => setPhotoMergeBlend(m.value)}
-                          className={`py-1 rounded text-[10px] border transition-colors ${photoMergeBlend === m.value ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
-                          {m.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+
+                  {photoMergeLayout === "overlay" && (
+                    <>
+                      <div className="space-y-1">
+                        <div className="flex justify-between">
+                          <label className="text-xs font-medium">Overlay Opacity</label>
+                          <span className="text-xs text-muted-foreground">{photoMergeOpacity}%</span>
+                        </div>
+                        <SliderWithButtons min={0} max={100} step={5} value={[photoMergeOpacity]} onValueChange={([v]) => setPhotoMergeOpacity(v)} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium">Blend Mode</label>
+                        <div className="grid grid-cols-4 gap-1">
+                          {[
+                            { value: "source-over", label: "Normal"     },
+                            { value: "multiply",    label: "Multiply"   },
+                            { value: "screen",      label: "Screen"     },
+                            { value: "overlay",     label: "Overlay"    },
+                            { value: "darken",      label: "Darken"     },
+                            { value: "lighten",     label: "Lighten"    },
+                            { value: "color-dodge", label: "Dodge"      },
+                            { value: "color-burn",  label: "Burn"       },
+                            { value: "hard-light",  label: "Hard Light" },
+                            { value: "soft-light",  label: "Soft Light" },
+                            { value: "difference",  label: "Difference" },
+                            { value: "exclusion",   label: "Exclusion"  },
+                            { value: "hue",         label: "Hue"        },
+                            { value: "saturation",  label: "Saturation" },
+                            { value: "color",       label: "Color"      },
+                            { value: "luminosity",  label: "Luminosity" },
+                          ].map(m => (
+                            <button key={m.value} type="button" onClick={() => setPhotoMergeBlend(m.value)}
+                              className={`py-1 rounded text-[10px] border transition-colors ${photoMergeBlend === m.value ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                              {m.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </TabsContent>
 
                 {/* ── REMOVE BG ── */}
@@ -3802,16 +3970,17 @@ export default function MediaPage() {
                 </div>
               </div>
 
-              {/* Live preview */}
+              {/* Live preview — scrollable, no animation */}
               <div className="rounded-md overflow-hidden border border-border" style={{ background: "#0b0b0b" }}>
-                <div style={{ background: tickerBgColorDraft, padding: "8px 0", overflow: "hidden", whiteSpace: "nowrap" }}>
-                  <div style={{ display: "inline-block", color: tickerColorDraft, fontSize: `${tickerFontSizeDraft}px`, paddingLeft: "100%", animation: `wf-ticker ${tickerSpeedDraft}s linear infinite` }}>
+                <div style={{ background: tickerBgColorDraft, padding: "8px 12px", overflowX: "auto", whiteSpace: "nowrap" }}
+                  className="[&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-black/20 [&::-webkit-scrollbar-thumb]:bg-white/30 [&::-webkit-scrollbar-thumb]:rounded-full">
+                  <span style={{ color: tickerColorDraft, fontSize: `${tickerFontSizeDraft}px` }}>
                     {tickerTextDraft || "Welcome to our service today!"}
                     <span style={{ margin: "0 2em", opacity: 0.6 }}>{tickerDividerDraft}</span>
                     {tickerTextDraft || "Welcome to our service today!"}
                     <span style={{ margin: "0 2em", opacity: 0.6 }}>{tickerDividerDraft}</span>
                     {tickerTextDraft || "Welcome to our service today!"}
-                  </div>
+                  </span>
                 </div>
               </div>
 
