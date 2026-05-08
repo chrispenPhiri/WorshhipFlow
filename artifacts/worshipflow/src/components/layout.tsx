@@ -181,7 +181,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [sessionOpen, setSessionOpen] = useState(false);
   const session = useLiveSession();
-  const inSession = session.state.status === "connected" && !!session.state.code;
+  const inSession = (session.state.status === "connected" || session.state.status === "reconnecting") && !!session.state.code;
 
   const { data: screenState } = useGetScreenState({
     query: { queryKey: getGetScreenStateQueryKey(), refetchInterval: 3000 },

@@ -8,7 +8,7 @@ export interface SessionMember {
 }
 
 export interface LiveSessionState {
-  status: "idle" | "connecting" | "connected" | "error";
+  status: "idle" | "connecting" | "connected" | "reconnecting" | "error";
   code: string | null;
   myId: string | null;
   myRole: MemberRole | null;

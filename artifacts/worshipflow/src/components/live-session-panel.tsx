@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { Users, Crown, Eye, Wrench, Copy, Check, LogOut, Wifi, WifiOff, Loader2, X } from "lucide-react";
+import {
+  Users, Crown, Eye, Wrench, Copy, Check, LogOut, Wifi, WifiOff,
+  Loader2, X, Minus, Plus, MonitorOff, Monitor, RefreshCw,
+} from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { type LiveSessionState, getSessionShareUrl } from "@/lib/live-session";
+import { useGetScreenState, getGetScreenStateQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Props {
   open: boolean;
@@ -33,6 +38,92 @@ function RoleBadge({ role }: { role: string }) {
     <Badge className="gap-1 bg-muted text-muted-foreground border-border text-[10px] px-1.5 py-0.5">
       <Eye className="w-2.5 h-2.5" /> Viewer
     </Badge>
+  );
+}
+
+function RemoteControl() {
+  const queryClient = useQueryClient();
+  const { data: raw } = useGetScreenState({
+    query: { queryKey: getGetScreenStateQueryKey(), refetchInterval: 3000 },
+  });
+  const screen = raw as Record<string, unknown> | undefined;
+
+  const textStyle = (screen?.textStyle ?? {}) as Record<string, unknown>;
+  const fontSize = typeof textStyle.fontSize === "number" ? textStyle.fontSize : 64;
+  const isBlack = !!screen?.isBlack;
+
+  const patch = async (changes: Record<string, unknown>) => {
+    if (!screen) return;
+    const updated = { ...screen, ...changes };
+    await fetch("/api/screen", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updated),
+    });
+    queryClient.invalidateQueries({ queryKey: getGetScreenStateQueryKey() });
+  };
+
+  const changeFontSize = async (delta: number) => {
+    const next = Math.min(200, Math.max(16, fontSize + delta));
+    await patch({ textStyle: { ...textStyle, fontSize: next } });
+  };
+
+  const toggleBlack = async () => {
+    await patch({ isBlack: !isBlack });
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-background/50 p-4 space-y-4">
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Remote Control</p>
+
+      {/* Font size */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">Font size</span>
+          <span className="text-sm font-mono font-bold text-foreground">{fontSize}px</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-12 w-12 shrink-0 text-lg rounded-xl border-border active:scale-95 transition-transform"
+            onClick={() => changeFontSize(-8)}
+            aria-label="Decrease font size"
+          >
+            <Minus className="w-5 h-5" />
+          </Button>
+          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all"
+              style={{ width: `${Math.round(((fontSize - 16) / (200 - 16)) * 100)}%` }}
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-12 w-12 shrink-0 text-lg rounded-xl border-border active:scale-95 transition-transform"
+            onClick={() => changeFontSize(8)}
+            aria-label="Increase font size"
+          >
+            <Plus className="w-5 h-5" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Screen blank toggle */}
+      <Button
+        variant={isBlack ? "default" : "outline"}
+        className={`w-full h-12 rounded-xl text-sm font-medium active:scale-95 transition-transform ${
+          isBlack ? "bg-slate-800 hover:bg-slate-700 text-white border-0" : ""
+        }`}
+        onClick={toggleBlack}
+      >
+        {isBlack
+          ? <><Monitor className="w-4 h-4 mr-2" />Unblank Screen</>
+          : <><MonitorOff className="w-4 h-4 mr-2" />Blank Screen</>
+        }
+      </Button>
+    </div>
   );
 }
 
@@ -78,9 +169,7 @@ export function LiveSessionPanel({
       await navigator.clipboard.writeText(getSessionShareUrl(sessionState.code));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
   };
 
   const handleCopyCode = async () => {
@@ -89,13 +178,13 @@ export function LiveSessionPanel({
       await navigator.clipboard.writeText(sessionState.code);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
   };
 
-  const inSession = sessionState.status === "connected" && sessionState.code;
+  const inSession = (sessionState.status === "connected" || sessionState.status === "reconnecting") && sessionState.code;
   const connecting = sessionState.status === "connecting";
+  const reconnecting = sessionState.status === "reconnecting";
+  const canControl = sessionState.myRole === "master" || sessionState.myRole === "operator";
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -107,7 +196,12 @@ export function LiveSessionPanel({
           <SheetTitle className="flex items-center gap-2">
             <Users className="w-4 h-4 text-primary" />
             Live Session
-            {inSession && (
+            {reconnecting && (
+              <span className="ml-auto flex items-center gap-1.5 text-xs font-normal text-amber-400">
+                <RefreshCw className="w-3 h-3 animate-spin" /> Reconnecting…
+              </span>
+            )}
+            {sessionState.status === "connected" && inSession && (
               <span className="ml-auto flex items-center gap-1.5 text-xs font-normal text-emerald-400">
                 <Wifi className="w-3.5 h-3.5" /> Connected
               </span>
@@ -235,21 +329,18 @@ export function LiveSessionPanel({
                 <span className="text-muted-foreground">Your role:</span>
                 <RoleBadge role={sessionState.myRole ?? "viewer"} />
                 {sessionState.myRole === "master" && (
-                  <span className="text-xs text-muted-foreground ml-auto">
-                    You control the session
-                  </span>
+                  <span className="text-xs text-muted-foreground ml-auto">You control the session</span>
                 )}
                 {sessionState.myRole === "operator" && (
-                  <span className="text-xs text-muted-foreground ml-auto">
-                    You can send to screen
-                  </span>
+                  <span className="text-xs text-muted-foreground ml-auto">You can send to screen</span>
                 )}
                 {sessionState.myRole === "viewer" && (
-                  <span className="text-xs text-muted-foreground ml-auto">
-                    Watch-only
-                  </span>
+                  <span className="text-xs text-muted-foreground ml-auto">Watch-only</span>
                 )}
               </div>
+
+              {/* Remote control — master / operator only */}
+              {canControl && <RemoteControl />}
 
               {/* Members list */}
               <div className="space-y-2">

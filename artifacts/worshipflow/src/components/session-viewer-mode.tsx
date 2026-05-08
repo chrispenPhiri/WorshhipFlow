@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, Users, Wifi, ChevronUp, ChevronDown } from "lucide-react";
+import { Eye, Users, Wifi, WifiOff, ChevronUp, ChevronDown, RefreshCw } from "lucide-react";
 import { LiveSessionPanel } from "./live-session-panel";
 import type { LiveSessionState } from "@/lib/live-session";
 
@@ -67,8 +67,22 @@ export function SessionViewerMode({
           <div className="flex items-center gap-3 px-4 pb-3">
             {/* Connection indicator */}
             <div className="flex items-center gap-1.5">
-              <Wifi className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span className="text-xs text-white/50">Live</span>
+              {sessionState.status === "reconnecting" ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-spin" />
+                  <span className="text-xs text-amber-400/80">Reconnecting…</span>
+                </>
+              ) : sessionState.status === "connected" ? (
+                <>
+                  <Wifi className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="text-xs text-white/50">Live</span>
+                </>
+              ) : (
+                <>
+                  <WifiOff className="w-3.5 h-3.5 text-white/30 shrink-0" />
+                  <span className="text-xs text-white/30">Offline</span>
+                </>
+              )}
             </div>
 
             {/* Room code */}

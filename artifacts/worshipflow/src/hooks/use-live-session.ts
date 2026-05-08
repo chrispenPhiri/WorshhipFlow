@@ -18,8 +18,10 @@ export function useLiveSession() {
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const sessionRef = useRef<LiveSessionState>(INITIAL_SESSION_STATE);
-  // Queue a single pending message (create/join) to send when WS opens
+  // Queued message to send when the WS opens (create / join / rejoin)
   const pendingMsgRef = useRef<ClientMessage | null>(null);
+  // Remember display name so we can auto-rejoin after a disconnect
+  const displayNameRef = useRef<string>("");
 
   const [state, setState] = useState<LiveSessionState>(INITIAL_SESSION_STATE);
 
@@ -41,7 +43,6 @@ export function useLiveSession() {
     }
   }, [queryClient]);
 
-  // Message handler always reads fresh state via functional setState
   const handleMsgRef = useRef<((msg: ServerMessage) => void) | null>(null);
   handleMsgRef.current = (msg: ServerMessage) => {
     switch (msg.type) {
@@ -101,12 +102,16 @@ export function useLiveSession() {
         break;
 
       case "error":
+        // If error arrives while reconnecting/connecting, go back to idle
         setState(prev => ({
           ...prev,
-          status: prev.status === "connecting" ? "idle" : prev.status,
+          status: (prev.status === "connecting" || prev.status === "reconnecting") ? "idle" : prev.status,
+          code: (prev.status === "reconnecting") ? null : prev.code,
+          myId: (prev.status === "reconnecting") ? null : prev.myId,
+          myRole: (prev.status === "reconnecting") ? null : prev.myRole,
+          members: (prev.status === "reconnecting") ? [] : prev.members,
           error: msg.message,
         }));
-        // Clear pending message so we don't resend after reconnect
         pendingMsgRef.current = null;
         break;
 
@@ -115,28 +120,25 @@ export function useLiveSession() {
     }
   };
 
-  // Forward a message — queues it if the connection isn't ready yet
+  // Use a ref so closures always call the latest initWs
+  const initWsRef = useRef<() => void>(() => { /* placeholder */ });
+
+  // Send immediately if open, otherwise queue and ensure we're connecting
   const sendOrQueue = useCallback((msg: ClientMessage) => {
     const ws = wsRef.current;
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(msg));
       return;
     }
-    // Queue and ensure we're connecting
     pendingMsgRef.current = msg;
-    // If closed/missing, initWs will reconnect and flush on open
     if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
       initWsRef.current();
     }
-    // If CONNECTING, onopen will flush pendingMsgRef automatically
+    // If CONNECTING, onopen will flush pendingMsgRef
   }, []);
-
-  // Use a ref so onclose closure always calls the latest initWs
-  const initWsRef = useRef<() => void>(() => { /* placeholder */ });
 
   const initWs = useCallback(() => {
     const existing = wsRef.current;
-    // Don't create a second connection while already connecting or open
     if (existing &&
       (existing.readyState === WebSocket.CONNECTING || existing.readyState === WebSocket.OPEN)) {
       return;
@@ -148,7 +150,6 @@ export function useLiveSession() {
 
       ws.onopen = () => {
         reconnectAttemptsRef.current = 0;
-        // Flush any queued create/join message
         if (pendingMsgRef.current) {
           ws.send(JSON.stringify(pendingMsgRef.current));
           pendingMsgRef.current = null;
@@ -163,8 +164,21 @@ export function useLiveSession() {
       };
 
       ws.onclose = () => {
+        const s = sessionRef.current;
+        const inSession = !!s.code;
         const hasPending = !!pendingMsgRef.current;
-        const inSession = !!sessionRef.current.code;
+
+        if (inSession) {
+          // Show disconnected state while we reconnect, preserving session info
+          setState(prev => ({ ...prev, status: "reconnecting" }));
+          // Queue an auto-rejoin so the server re-associates this WS with the room
+          pendingMsgRef.current = {
+            type: "join_session",
+            code: s.code!,
+            displayName: displayNameRef.current || "Member",
+          };
+        }
+
         if (inSession || hasPending) {
           const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 8000);
           reconnectAttemptsRef.current = Math.min(reconnectAttemptsRef.current + 1, 5);
@@ -172,15 +186,12 @@ export function useLiveSession() {
         }
       };
 
-      ws.onerror = () => {
-        // onclose fires after onerror; error detail is handled there
-      };
+      ws.onerror = () => { /* onclose fires after this */ };
     } catch {
       setState(prev => ({ ...prev, status: "idle", error: "Could not reach session server." }));
     }
   }, []);
 
-  // Keep initWsRef in sync
   useEffect(() => { initWsRef.current = initWs; }, [initWs]);
 
   // Forward local screen-state changes to the session (master / operator only)
@@ -212,17 +223,21 @@ export function useLiveSession() {
   }, [initWs]);
 
   const createSession = useCallback((displayName: string) => {
+    displayNameRef.current = displayName;
     setState(prev => ({ ...prev, status: "connecting", error: null }));
     sendOrQueue({ type: "create_session", displayName });
   }, [sendOrQueue]);
 
   const joinSession = useCallback((code: string, displayName: string) => {
+    displayNameRef.current = displayName;
     setState(prev => ({ ...prev, status: "connecting", error: null }));
     sendOrQueue({ type: "join_session", code, displayName });
   }, [sendOrQueue]);
 
   const leaveSession = useCallback(() => {
     pendingMsgRef.current = null;
+    displayNameRef.current = "";
+    if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
     const ws = wsRef.current;
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: "leave_session" }));
