@@ -200,11 +200,17 @@ export default function MediaPage() {
   const [photoMergeOpacity, setPhotoMergeOpacity] = useState(80);
   const [photoMergeBlend, setPhotoMergeBlend] = useState("screen");
   const [photoMergeLayout, setPhotoMergeLayout] = useState<"overlay" | "side-by-side">("overlay");
+  const [photoSplitRatio, setPhotoSplitRatio] = useState(50);
+  const [photoLeftFit, setPhotoLeftFit] = useState<"cover" | "contain" | "fill">("cover");
+  const [photoRightFit, setPhotoRightFit] = useState<"cover" | "contain" | "fill">("cover");
+  const [photoSideBySideGap, setPhotoSideBySideGap] = useState(0);
   const photoMergeRef = useRef<HTMLInputElement>(null);
   // Image drag-to-reposition
   const [photoImgObjPosX, setPhotoImgObjPosX] = useState(50);
   const [photoImgObjPosY, setPhotoImgObjPosY] = useState(50);
   const photoPreviewDragRef = useRef<{ active: boolean; startX: number; startY: number; startPX: number; startPY: number }>({ active: false, startX: 0, startY: 0, startPX: 50, startPY: 50 });
+  // Text include toggle
+  const [photoIncludeText, setPhotoIncludeText] = useState(true);
   // Text layer extra options
   const [photoTFont, setPhotoTFont] = useState("Default");
   const [photoTLetterSpacing, setPhotoTLetterSpacing] = useState(0);
@@ -855,7 +861,28 @@ export default function MediaPage() {
     ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
   };
 
-  const renderPhotoCanvas = (): Promise<string> => new Promise((resolve, reject) => {
+  const drawImgWithFit = (ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number, fit: "cover" | "contain" | "fill") => {
+    if (fit === "fill") {
+      ctx.drawImage(img, x, y, w, h);
+    } else if (fit === "contain") {
+      const imgAR = img.naturalWidth / img.naturalHeight;
+      const containerAR = w / h;
+      let dw: number, dh: number;
+      if (imgAR > containerAR) { dw = w; dh = w / imgAR; }
+      else { dh = h; dw = h * imgAR; }
+      ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+    } else {
+      const imgAR = img.naturalWidth / img.naturalHeight;
+      const containerAR = w / h;
+      let sw: number, sh: number, sx: number, sy: number;
+      if (imgAR > containerAR) { sh = img.naturalHeight; sw = sh * containerAR; sx = (img.naturalWidth - sw) / 2; sy = 0; }
+      else { sw = img.naturalWidth; sh = sw / containerAR; sx = 0; sy = (img.naturalHeight - sh) / 2; }
+      ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+    }
+  };
+
+  const renderPhotoCanvas = (overrideIncludeText?: boolean): Promise<string> => new Promise((resolve, reject) => {
+    const includeText = overrideIncludeText !== undefined ? overrideIncludeText : photoIncludeText;
     const loadImg = (url: string): Promise<HTMLImageElement> => new Promise((res, rej) => {
       const img = new Image(); img.crossOrigin = "anonymous";
       img.onload = () => res(img); img.onerror = rej; img.src = url;
@@ -879,11 +906,16 @@ export default function MediaPage() {
         ctx.fillRect(0, 0, cW, cH);
       }
       if (photoMergeLayout === "side-by-side" && mergeImg) {
-        if (baseImg) { ctx.filter = photoFilterString; ctx.drawImage(baseImg, 0, 0, cW / 2, cH); ctx.filter = "none"; }
-        ctx.drawImage(mergeImg, cW / 2, 0, cW / 2, cH);
-        const divX = cW / 2;
-        ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(divX, 0); ctx.lineTo(divX, cH); ctx.stroke();
+        const gapPx = Math.round((photoSideBySideGap / 100) * cW);
+        const leftW = Math.round((photoSplitRatio / 100) * (cW - gapPx));
+        const rightW = cW - gapPx - leftW;
+        if (baseImg) { ctx.filter = photoFilterString; drawImgWithFit(ctx, baseImg, 0, 0, leftW, cH, photoLeftFit); ctx.filter = "none"; }
+        if (gapPx > 0) { ctx.fillStyle = "#000"; ctx.fillRect(leftW, 0, gapPx, cH); }
+        drawImgWithFit(ctx, mergeImg, leftW + gapPx, 0, rightW, cH, photoRightFit);
+        if (photoSideBySideGap === 0) {
+          ctx.strokeStyle = "rgba(255,255,255,0.15)"; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(leftW, 0); ctx.lineTo(leftW, cH); ctx.stroke();
+        }
       } else {
         if (baseImg) { ctx.filter = photoFilterString; ctx.drawImage(baseImg, 0, 0, cW, cH); ctx.filter = "none"; }
         if (mergeImg) {
@@ -893,7 +925,7 @@ export default function MediaPage() {
           ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
         }
       }
-      photoTexts.forEach(t => drawTextOnCanvas(ctx, t, cW, cH));
+      if (includeText) photoTexts.forEach(t => drawTextOnCanvas(ctx, t, cW, cH));
       resolve(canvas.toDataURL("image/jpeg", 0.93));
     }).catch(reject);
   });
@@ -1194,11 +1226,13 @@ export default function MediaPage() {
                       <>
                         {photoEditUrl && (
                           <img src={photoEditUrl} alt="left" className="absolute inset-y-0 left-0 h-full"
-                            style={{ width: "50%", objectFit: "cover", filter: photoFilterString }} />
+                            style={{ width: `${photoSplitRatio}%`, objectFit: photoLeftFit, filter: photoFilterString }} />
                         )}
                         <img src={photoMergeUrl!} alt="right" className="absolute inset-y-0 right-0 h-full"
-                          style={{ width: "50%", objectFit: "cover" }} />
-                        <div className="absolute inset-y-0 left-1/2 w-px bg-white/25" />
+                          style={{ width: `${100 - photoSplitRatio}%`, objectFit: photoRightFit, marginLeft: `${photoSideBySideGap}%` }} />
+                        {photoSideBySideGap === 0
+                          ? <div className="absolute inset-y-0 bg-white/15" style={{ left: `${photoSplitRatio}%`, width: "1px" }} />
+                          : <div className="absolute inset-y-0 bg-black" style={{ left: `${photoSplitRatio}%`, width: `${photoSideBySideGap}%` }} />}
                       </>
                     ) : (
                       <>
@@ -1603,6 +1637,52 @@ export default function MediaPage() {
                     </div>
                   )}
 
+                  {photoMergeLayout === "side-by-side" && (
+                    <div className="space-y-3">
+                      {/* Split ratio */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between">
+                          <label className="text-xs font-medium">Split</label>
+                          <span className="text-xs text-muted-foreground">{photoSplitRatio}% / {100 - photoSplitRatio}%</span>
+                        </div>
+                        <SliderWithButtons min={10} max={90} step={5} value={[photoSplitRatio]} onValueChange={([v]) => setPhotoSplitRatio(v)} />
+                      </div>
+                      {/* Gap */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between">
+                          <label className="text-xs font-medium">Gap</label>
+                          <span className="text-xs text-muted-foreground">{photoSideBySideGap}%</span>
+                        </div>
+                        <SliderWithButtons min={0} max={10} step={1} value={[photoSideBySideGap]} onValueChange={([v]) => setPhotoSideBySideGap(v)} />
+                      </div>
+                      {/* Fit options */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-muted-foreground">Left Fit</label>
+                          <div className="flex gap-1">
+                            {(["cover","contain","fill"] as const).map(f => (
+                              <button key={f} type="button" onClick={() => setPhotoLeftFit(f)}
+                                className={`flex-1 py-1 rounded text-[10px] border transition-colors ${photoLeftFit === f ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                                {f.charAt(0).toUpperCase() + f.slice(1)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-muted-foreground">Right Fit</label>
+                          <div className="flex gap-1">
+                            {(["cover","contain","fill"] as const).map(f => (
+                              <button key={f} type="button" onClick={() => setPhotoRightFit(f)}
+                                className={`flex-1 py-1 rounded text-[10px] border transition-colors ${photoRightFit === f ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                                {f.charAt(0).toUpperCase() + f.slice(1)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {photoMergeLayout === "overlay" && (
                     <>
                       <div className="space-y-1">
@@ -1674,7 +1754,23 @@ export default function MediaPage() {
               </Tabs>
 
               {/* ── Action buttons (always visible) ── */}
-              <div className="flex gap-2 pt-2 border-t border-border/40">
+              <div className="space-y-2 pt-2 border-t border-border/40">
+                {/* Text visibility row */}
+                {photoTexts.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <button type="button"
+                      onClick={() => setPhotoIncludeText(!photoIncludeText)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs border transition-colors ${photoIncludeText ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground"}`}>
+                      {photoIncludeText ? "✓ Text included" : "✗ Text hidden"}
+                    </button>
+                    <button type="button" onClick={() => setPhotoTexts([])}
+                      className="px-3 py-1.5 rounded text-xs border border-border text-muted-foreground hover:text-destructive hover:border-destructive/50 transition-colors">
+                      Clear all text
+                    </button>
+                    <span className="text-[10px] text-muted-foreground">{photoTexts.length} layer{photoTexts.length !== 1 ? "s" : ""}</span>
+                  </div>
+                )}
+                <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={resetPhotoFilters} className="gap-1.5 shrink-0">
                   <RotateCcw className="w-3.5 h-3.5" /> Reset
                 </Button>
@@ -1686,6 +1782,7 @@ export default function MediaPage() {
                   disabled={!photoEditUrl && !photoUsePoster} className="flex-1 gap-1.5">
                   <Cast className="w-4 h-4" /> Send to Screen
                 </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
