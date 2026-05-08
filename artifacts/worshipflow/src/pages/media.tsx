@@ -446,16 +446,18 @@ export default function MediaPage() {
     // If camera is currently live on the presentation screen, revert to previous background
     if (screenState?.background?.type === "camera") {
       const prevBg = prevBackgroundRef.current;
+      const defaultWpId = localStorage.getItem("wf-default-wallpaper") ?? "bokeh";
+      const fallbackBg = { type: "live_wallpaper" as const, value: defaultWpId, overlay: 0 };
       updateScreen({
         data: {
           ...safeFullState(),
           isBlack: false,
-          isClear: !prevBg,
-          background: (prevBg ?? { type: "color", value: "#000000" }) as Background,
+          isClear: false,
+          background: (prevBg ?? fallbackBg) as Background,
         }
       });
       prevBackgroundRef.current = null;
-      toast({ title: "Camera stopped", description: "Presentation screen reverted to previous background." });
+      toast({ title: "Camera stopped", description: prevBg ? "Presentation reverted to previous background." : "Presentation restored to default wallpaper." });
     }
   };
 
@@ -910,14 +912,11 @@ export default function MediaPage() {
       return;
     }
     const prevBg = prevBackgroundRef.current;
-    if (prevBg) {
-      updateScreen({ data: { ...safeFullState(), isBlack: false, isClear: false, background: prevBg as Background } });
-      prevBackgroundRef.current = null;
-      toast({ title: "Media cut", description: "Presentation restored to the previous theme." });
-    } else {
-      updateScreen({ data: { ...safeFullState(), isBlack: true, isClear: false } });
-      toast({ title: "Media cut", description: "No previous theme to restore — screen blacked out." });
-    }
+    const defaultWpId = localStorage.getItem("wf-default-wallpaper") ?? "bokeh";
+    const fallbackBg: Background = { type: "live_wallpaper", value: defaultWpId, overlay: 0 };
+    updateScreen({ data: { ...safeFullState(), isBlack: false, isClear: false, background: (prevBg ?? fallbackBg) as Background } });
+    prevBackgroundRef.current = null;
+    toast({ title: "Media cut", description: prevBg ? "Presentation restored to the previous theme." : "Presentation restored to default wallpaper." });
   };
 
   const handleFileUpload = useCallback((files: FileList | null) => {

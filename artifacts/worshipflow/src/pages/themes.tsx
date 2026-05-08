@@ -14,7 +14,7 @@ const THEMES_TAB_LABELS: Record<string, string> = {
   themes: "Themes", wallpapers: "Live Wallpapers", typography: "Fonts & Colours",
 };
 import { Badge } from "@/components/ui/badge";
-import { Cast, Palette, Sparkles, Type, CheckCircle2 } from "lucide-react";
+import { Cast, Palette, Sparkles, Type, CheckCircle2, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { THEME_PRESETS, LIVE_WALLPAPERS, COLOR_PALETTES, FONT_COLLECTION, type ThemePreset } from "@/lib/themes";
 import { LiveWallpaperLayer } from "@/components/live-wallpaper";
@@ -90,10 +90,12 @@ function ThemePreview({ theme, isActive, onApply }: {
   );
 }
 
-function WallpaperCard({ wallpaper, isActive, onApply }: {
+function WallpaperCard({ wallpaper, isActive, isDefault, onApply, onSetDefault }: {
   wallpaper: { id: string; name: string; description: string };
   isActive: boolean;
+  isDefault: boolean;
   onApply: (id: string) => void;
+  onSetDefault: (id: string) => void;
 }) {
   return (
     <Card
@@ -102,6 +104,11 @@ function WallpaperCard({ wallpaper, isActive, onApply }: {
     >
       <div className="relative h-24 rounded-t-lg overflow-hidden">
         <LiveWallpaperLayer wallpaperId={wallpaper.id} />
+        {isDefault && (
+          <div className="absolute top-2 left-2">
+            <span className="bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full tracking-wide">DEFAULT</span>
+          </div>
+        )}
         {isActive && (
           <div className="absolute top-2 right-2">
             <CheckCircle2 className="w-5 h-5 text-primary fill-primary/20" />
@@ -113,14 +120,24 @@ function WallpaperCard({ wallpaper, isActive, onApply }: {
           <p className="font-medium text-sm">{wallpaper.name}</p>
           <p className="text-xs text-muted-foreground truncate">{wallpaper.description}</p>
         </div>
-        <Button
-          size="sm"
-          variant={isActive ? "default" : "outline"}
-          className="shrink-0 h-7 px-2 text-xs"
-          onClick={(e) => { e.stopPropagation(); onApply(wallpaper.id); }}
-        >
-          Set
-        </Button>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            title={isDefault ? "This is your default (shown when Clear is pressed)" : "Set as default — shown when Clear is pressed"}
+            onClick={(e) => { e.stopPropagation(); onSetDefault(wallpaper.id); }}
+            className={`p-1.5 rounded-md transition-colors ${isDefault ? "text-amber-500 hover:text-amber-400" : "text-muted-foreground hover:text-amber-400 hover:bg-amber-400/10"}`}
+          >
+            <Star className={`w-3.5 h-3.5 ${isDefault ? "fill-current" : ""}`} />
+          </button>
+          <Button
+            size="sm"
+            variant={isActive ? "default" : "outline"}
+            className="h-7 px-2 text-xs"
+            onClick={(e) => { e.stopPropagation(); onApply(wallpaper.id); }}
+          >
+            Set
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
@@ -145,6 +162,15 @@ export default function ThemesPage() {
       },
     },
   });
+
+  const [defaultWallpaper, setDefaultWallpaper] = useState(() => localStorage.getItem("wf-default-wallpaper") ?? "bokeh");
+
+  const handleSetDefault = (id: string) => {
+    localStorage.setItem("wf-default-wallpaper", id);
+    setDefaultWallpaper(id);
+    const name = LIVE_WALLPAPERS.find(w => w.id === id)?.name ?? id;
+    toast({ title: "Default wallpaper set", description: `"${name}" will now show when Clear is pressed.` });
+  };
 
   const [overlayPct, setOverlayPct] = useState([30]);
   const [customFont, setCustomFont] = useState("Inter");
@@ -283,6 +309,20 @@ export default function ThemesPage() {
 
         {/* ── LIVE WALLPAPERS ── */}
         <TabsContent value="wallpapers" className="mt-6 space-y-6">
+
+          {/* Default wallpaper info bar */}
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-amber-500/30 bg-amber-500/8">
+            <Star className="w-4 h-4 text-amber-500 fill-current shrink-0" />
+            <p className="text-xs text-muted-foreground leading-snug">
+              <span className="font-semibold text-foreground">
+                {LIVE_WALLPAPERS.find(w => w.id === defaultWallpaper)?.name ?? defaultWallpaper}
+              </span>
+              {" "}is your default wallpaper — shown automatically when{" "}
+              <span className="font-medium text-foreground">Clear</span> is pressed and when media is cut.
+              Click <Star className="inline w-3 h-3 text-amber-500 fill-current" /> to change it.
+            </p>
+          </div>
+
           <div className="flex items-center gap-4">
             <label className="text-sm font-medium whitespace-nowrap w-32">Dark Overlay: {overlayPct[0]}%</label>
             <SliderWithButtons value={overlayPct} onValueChange={setOverlayPct} min={0} max={80} step={5} className="flex-1 max-w-xs" />
@@ -294,7 +334,9 @@ export default function ThemesPage() {
                 key={wp.id}
                 wallpaper={wp}
                 isActive={activeWallpaper === wp.id}
+                isDefault={defaultWallpaper === wp.id}
                 onApply={applyWallpaper}
+                onSetDefault={handleSetDefault}
               />
             ))}
           </div>

@@ -114,9 +114,18 @@ export function LivePreview() {
     updateScreen({ data: { ...safeState, layout: { ...layout, ...patch } } });
   };
 
-  const handleClear = () => updateScreen({
-    data: { isBlack: screenState.isBlack ?? false, isClear: true, contentType: screenState.contentType ?? "none", tickerEnabled: screenState.tickerEnabled ?? false }
-  });
+  const handleClear = () => {
+    const defaultWpId = localStorage.getItem("wf-default-wallpaper") ?? "bokeh";
+    updateScreen({
+      data: {
+        isBlack: screenState.isBlack ?? false,
+        isClear: true,
+        contentType: "none",
+        background: { type: "live_wallpaper", value: defaultWpId, overlay: 0 },
+        tickerEnabled: screenState.tickerEnabled ?? false,
+      }
+    });
+  };
   const handleBlackScreen = () => updateScreen({
     data: { isBlack: !(screenState.isBlack ?? false), isClear: screenState.isClear ?? false, contentType: screenState.contentType ?? "none", tickerEnabled: screenState.tickerEnabled ?? false }
   });
