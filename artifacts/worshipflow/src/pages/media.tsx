@@ -25,7 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CollapsibleTabsBar } from "@/components/ui/collapsible-tabs";
 
 const MEDIA_TAB_LABELS: Record<string, string> = {
-  upload: "Upload", "camera-broadcast": "Camera & Broadcast",
+  upload: "Upload", "photo-edit": "Photo Edit", "camera-broadcast": "Camera & Broadcast",
   url: "URL", icons: "Icons", overlays: "Overlays",
 };
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -153,6 +153,17 @@ export default function MediaPage() {
   const [iconSearch, setIconSearch] = useState("");
   // How clicking an icon/flag sends it to the presentation screen
   const [iconSendMode, setIconSendMode] = useState<"logo" | "background">("logo");
+
+  // ── Photo Editor ─────────────────────────────────────────────────────────
+  const [photoEditUrl, setPhotoEditUrl] = useState<string | null>(null);
+  const [photoEditBrightness, setPhotoEditBrightness] = useState(100);
+  const [photoEditContrast, setPhotoEditContrast] = useState(100);
+  const [photoEditSaturate, setPhotoEditSaturate] = useState(100);
+  const [photoEditHue, setPhotoEditHue] = useState(0);
+  const [photoEditSepia, setPhotoEditSepia] = useState(0);
+  const [photoEditGrayscale, setPhotoEditGrayscale] = useState(0);
+  const [photoEditBlur, setPhotoEditBlur] = useState(0);
+  const photoEditInputRef = useRef<HTMLInputElement>(null);
 
   // Previous background — saved before camera goes live so Cut/Stop can roll back
   const prevBackgroundRef = useRef<{ type: string; value: string; overlay?: number; fit?: "cover" | "contain" | "fill"; loop?: boolean; cameraLayout?: string; cameraShape?: string; cameraPipSize?: number } | null>(null);
@@ -739,6 +750,46 @@ export default function MediaPage() {
     updateScreen({ data: { ...safeFullState(), isBlack: false, isClear: false, contentType: "image" as const, background: { type: "image", value: resolved, overlay: overlay[0], fit } } });
   };
 
+  // ── Photo editor helpers ──────────────────────────────────────────────────
+  const photoFilterString = `brightness(${photoEditBrightness}%) contrast(${photoEditContrast}%) saturate(${photoEditSaturate}%) hue-rotate(${photoEditHue}deg) sepia(${photoEditSepia}%) grayscale(${photoEditGrayscale}%) blur(${photoEditBlur}px)`;
+
+  const applyPhotoFiltersToCanvas = (img: HTMLImageElement): string => {
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext("2d")!;
+    ctx.filter = photoFilterString;
+    ctx.drawImage(img, 0, 0);
+    return canvas.toDataURL("image/jpeg", 0.92);
+  };
+
+  const downloadEditedPhoto = () => {
+    if (!photoEditUrl) return;
+    const img = new Image();
+    img.onload = () => {
+      const dataUrl = applyPhotoFiltersToCanvas(img);
+      const a = document.createElement("a");
+      a.href = dataUrl; a.download = "wf-photo-edit.jpg"; a.click();
+    };
+    img.src = photoEditUrl;
+  };
+
+  const sendEditedPhotoToScreen = () => {
+    if (!photoEditUrl) return;
+    const img = new Image();
+    img.onload = () => {
+      const dataUrl = applyPhotoFiltersToCanvas(img);
+      sendImageToScreen(dataUrl, "cover");
+      toast({ title: "Photo sent to screen", description: "Edited photo is now on the presentation screen." });
+    };
+    img.src = photoEditUrl;
+  };
+
+  const resetPhotoFilters = () => {
+    setPhotoEditBrightness(100); setPhotoEditContrast(100); setPhotoEditSaturate(100);
+    setPhotoEditHue(0); setPhotoEditSepia(0); setPhotoEditGrayscale(0); setPhotoEditBlur(0);
+  };
+
   const sendVideoToScreen = (url: string, fit: "cover" | "contain" | "fill" = "cover", loop = true) => {
     if (!url) return;
     captureBackgroundForRollback();
@@ -831,6 +882,7 @@ export default function MediaPage() {
         >
           <TabsList className="w-full flex-wrap h-auto gap-0.5">
             <TabsTrigger value="upload"           className="flex-1 gap-1.5 min-w-0"><Upload    className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Upload</span></TabsTrigger>
+            <TabsTrigger value="photo-edit"       className="flex-1 gap-1.5 min-w-0"><SlidersHorizontal className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Photo Edit</span></TabsTrigger>
             <TabsTrigger value="camera-broadcast" className="flex-1 gap-1.5 min-w-0"><Tv        className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Camera & Broadcast</span></TabsTrigger>
             <TabsTrigger value="url"              className="flex-1 gap-1.5 min-w-0"><Video     className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">URL</span></TabsTrigger>
             <TabsTrigger value="icons"            className="flex-1 gap-1.5 min-w-0"><Sparkles  className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">Icons</span></TabsTrigger>
@@ -935,6 +987,140 @@ export default function MediaPage() {
             </div>
           )}
           {uploadedFiles.length === 0 && <div className="text-center py-4 text-muted-foreground text-sm">No files uploaded yet</div>}
+        </TabsContent>
+
+        {/* ── PHOTO EDIT ── */}
+        <TabsContent value="photo-edit" className="mt-4 space-y-4">
+          <input ref={photoEditInputRef} type="file" accept="image/*" hidden onChange={e => {
+            const f = e.target.files?.[0];
+            if (!f) return;
+            const reader = new FileReader();
+            reader.onload = ev => setPhotoEditUrl(ev.target?.result as string);
+            reader.readAsDataURL(f);
+            e.target.value = "";
+          }} />
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <SlidersHorizontal className="w-4 h-4" /> Photo Editor
+              </CardTitle>
+              <CardDescription>
+                Load an image, adjust filters with the sliders below, then send the result to the presentation screen or download it.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {/* Image picker / preview */}
+              {!photoEditUrl ? (
+                <div
+                  className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/20 transition-colors"
+                  onClick={() => photoEditInputRef.current?.click()}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={e => {
+                    e.preventDefault();
+                    const f = e.dataTransfer.files[0];
+                    if (!f || !f.type.startsWith("image/")) return;
+                    const reader = new FileReader();
+                    reader.onload = ev => setPhotoEditUrl(ev.target?.result as string);
+                    reader.readAsDataURL(f);
+                  }}
+                >
+                  <ImageIcon className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
+                  <p className="font-medium">Drop an image here or click to browse</p>
+                  <p className="text-sm text-muted-foreground mt-1">Supports JPG, PNG, WebP, GIF</p>
+                  {uploadedFiles.filter(f => f.type === "image").length > 0 && (
+                    <div className="mt-4 space-y-1.5">
+                      <p className="text-xs text-muted-foreground">Or pick from your uploads:</p>
+                      <div className="flex gap-2 flex-wrap justify-center">
+                        {uploadedFiles.filter(f => f.type === "image").slice(0, 8).map(f => (
+                          <button key={f.id} type="button" onClick={e => { e.stopPropagation(); setPhotoEditUrl(f.url); }}
+                            className="w-12 h-12 rounded border border-border overflow-hidden hover:border-primary transition-colors shrink-0">
+                            <img src={f.url} alt={f.name} className="w-full h-full object-cover" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="relative rounded-xl overflow-hidden bg-black/40 border border-border">
+                  <img
+                    src={photoEditUrl}
+                    alt="editing preview"
+                    className="w-full object-contain max-h-64"
+                    style={{ filter: photoFilterString }}
+                  />
+                  <button type="button" onClick={() => { setPhotoEditUrl(null); resetPhotoFilters(); }}
+                    className="absolute top-2 right-2 rounded-full bg-black/60 text-white p-1 hover:bg-black/80 transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* Quick presets */}
+              {(() => {
+                const PHOTO_PRESETS = [
+                  { label: "Original", b: 100, c: 100, s: 100, h: 0,   sep: 0,  g: 0,   bl: 0 },
+                  { label: "Warm",     b: 108, c: 105, s: 115, h: 12,  sep: 20, g: 0,   bl: 0 },
+                  { label: "Cool",     b: 100, c: 105, s: 85,  h: 200, sep: 0,  g: 0,   bl: 0 },
+                  { label: "Vintage",  b: 95,  c: 88,  s: 78,  h: 0,   sep: 45, g: 0,   bl: 0 },
+                  { label: "B & W",    b: 100, c: 115, s: 0,   h: 0,   sep: 0,  g: 100, bl: 0 },
+                  { label: "Vivid",    b: 108, c: 130, s: 160, h: 0,   sep: 0,  g: 0,   bl: 0 },
+                  { label: "Faded",    b: 115, c: 82,  s: 75,  h: 0,   sep: 12, g: 20,  bl: 0 },
+                  { label: "Dramatic", b: 100, c: 155, s: 120, h: 0,   sep: 0,  g: 0,   bl: 0 },
+                  { label: "Soft",     b: 115, c: 82,  s: 90,  h: 0,   sep: 0,  g: 0,   bl: 1 },
+                  { label: "Sunset",   b: 108, c: 110, s: 130, h: 20,  sep: 15, g: 0,   bl: 0 },
+                ];
+                return (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Quick Presets</label>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {PHOTO_PRESETS.map(p => (
+                        <button key={p.label} type="button"
+                          onClick={() => { setPhotoEditBrightness(p.b); setPhotoEditContrast(p.c); setPhotoEditSaturate(p.s); setPhotoEditHue(p.h); setPhotoEditSepia(p.sep); setPhotoEditGrayscale(p.g); setPhotoEditBlur(p.bl); }}
+                          className="px-2.5 py-1 rounded text-xs border border-border bg-muted/30 hover:bg-muted/60 hover:border-primary/50 transition-colors">
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Filter sliders */}
+              <div className="space-y-3 pt-1 border-t border-border/40">
+                {[
+                  { label: "Brightness", value: photoEditBrightness, set: (v: number) => setPhotoEditBrightness(v), min: 0, max: 200, suffix: "%" },
+                  { label: "Contrast",   value: photoEditContrast,   set: (v: number) => setPhotoEditContrast(v),   min: 0, max: 200, suffix: "%" },
+                  { label: "Saturation", value: photoEditSaturate,   set: (v: number) => setPhotoEditSaturate(v),   min: 0, max: 200, suffix: "%" },
+                  { label: "Hue Rotate", value: photoEditHue,        set: (v: number) => setPhotoEditHue(v),        min: 0, max: 360, suffix: "°" },
+                  { label: "Sepia",      value: photoEditSepia,      set: (v: number) => setPhotoEditSepia(v),      min: 0, max: 100, suffix: "%" },
+                  { label: "Grayscale",  value: photoEditGrayscale,  set: (v: number) => setPhotoEditGrayscale(v),  min: 0, max: 100, suffix: "%" },
+                  { label: "Blur",       value: photoEditBlur,       set: (v: number) => setPhotoEditBlur(v),       min: 0, max: 20,  suffix: "px" },
+                ].map(ctrl => (
+                  <div key={ctrl.label} className="space-y-1">
+                    <div className="flex justify-between">
+                      <label className="text-xs font-medium">{ctrl.label}</label>
+                      <span className="text-xs text-muted-foreground">{ctrl.value}{ctrl.suffix}</span>
+                    </div>
+                    <SliderWithButtons min={ctrl.min} max={ctrl.max} step={1} value={[ctrl.value]} onValueChange={([v]) => ctrl.set(v)} />
+                  </div>
+                ))}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-1">
+                <Button variant="outline" size="sm" onClick={resetPhotoFilters} className="gap-1.5">
+                  <RotateCcw className="w-3.5 h-3.5" /> Reset
+                </Button>
+                <Button variant="outline" size="sm" onClick={downloadEditedPhoto} disabled={!photoEditUrl} className="gap-1.5">
+                  <Download className="w-3.5 h-3.5" /> Download
+                </Button>
+                <Button onClick={sendEditedPhotoToScreen} disabled={!photoEditUrl} className="flex-1 gap-1.5">
+                  <Cast className="w-4 h-4" /> Send to Screen
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ── CAMERA & BROADCAST ── */}
@@ -1224,6 +1410,18 @@ export default function MediaPage() {
                                   <option key={d.deviceId} value={d.deviceId}>{d.label || `Camera ${d.deviceId.slice(0, 6)}`}</option>
                                 ))}
                               </select>
+                              {quadSlots[i] === "__screen__" && (
+                                <Button size="sm" variant="outline" className="shrink-0 h-8 px-2 gap-1 text-xs"
+                                  title="Request screen capture for this slot on the broadcast window"
+                                  onClick={() => {
+                                    const ch = new BroadcastChannel("wf-broadcast-cmd");
+                                    ch.postMessage({ type: "req-screen-capture", slot: i });
+                                    ch.close();
+                                    toast({ title: `Capture requested — Slot ${i + 1}`, description: "Click the prompt on the broadcast window to pick a screen." });
+                                  }}>
+                                  <MonitorPlay className="w-3.5 h-3.5" /> Capture
+                                </Button>
+                              )}
                             </div>
                           ))}
                           {cameras.length === 0 && (
@@ -1571,6 +1769,29 @@ export default function MediaPage() {
               { label: "Hand of God",  url: "https://api.iconify.design/game-icons/hand.svg?color=%23ffffff",  tags: ["hand","god"] },
               { label: "Trumpet",      url: "https://api.iconify.design/mdi/bugle.svg?color=%23ffd700",        tags: ["trumpet","horn","sound"] },
               { label: "Candle",       url: "https://api.iconify.design/mdi/candle.svg?color=%23facc15",       tags: ["candle","light"] },
+              { label: "Fish (Ichthys)",url: "https://api.iconify.design/mdi/fish.svg?color=%23ffffff",          tags: ["fish","ichthys","christian","symbol"] },
+              { label: "Keys",          url: "https://api.iconify.design/mdi/key-variant.svg?color=%23ffd700",  tags: ["keys","kingdom","authority","peter"] },
+              { label: "Shield",        url: "https://api.iconify.design/mdi/shield.svg?color=%234f86f7",       tags: ["shield","armor","faith","protection"] },
+              { label: "Scroll",        url: "https://api.iconify.design/mdi/scroll-text.svg?color=%23ffd700",  tags: ["scroll","scripture","word","Torah"] },
+              { label: "Water",         url: "https://api.iconify.design/mdi/water.svg?color=%2338bdf8",        tags: ["water","baptism","river","holy"] },
+              { label: "Rainbow",       url: "https://api.iconify.design/mdi/rainbow.svg?color=%23ffffff",      tags: ["rainbow","promise","covenant","noah"] },
+              { label: "Mountain",      url: "https://api.iconify.design/mdi/mountain-outline.svg?color=%23ffffff", tags: ["mountain","high","holy","transfiguration"] },
+              { label: "Tree of Life",  url: "https://api.iconify.design/mdi/tree.svg?color=%2386efac",         tags: ["tree","life","garden","eden"] },
+              { label: "Bell",          url: "https://api.iconify.design/mdi/bell.svg?color=%23ffd700",         tags: ["bell","call","summon","church"] },
+              { label: "Book Open",     url: "https://api.iconify.design/mdi/book-open-variant.svg?color=%23ffffff", tags: ["book","bible","open","read","scripture"] },
+              { label: "Door",          url: "https://api.iconify.design/mdi/door-open.svg?color=%23fbbf24",    tags: ["door","enter","salvation","way"] },
+              { label: "Cloud",         url: "https://api.iconify.design/mdi/cloud.svg?color=%23e2e8f0",        tags: ["cloud","heaven","sky","rapture"] },
+              { label: "Butterfly",     url: "https://api.iconify.design/mdi/butterfly-outline.svg?color=%23a78bfa", tags: ["butterfly","resurrection","new life","transformation"] },
+              { label: "Flower",        url: "https://api.iconify.design/mdi/flower.svg?color=%23f9a8d4",       tags: ["flower","rose","beauty","creation"] },
+              { label: "Gift",          url: "https://api.iconify.design/mdi/gift-outline.svg?color=%23f97316", tags: ["gift","talents","grace","giving"] },
+              { label: "Healing Cross", url: "https://api.iconify.design/mdi/hospital-box.svg?color=%23ef4444", tags: ["healing","cross","health","miracle"] },
+              { label: "Map Marker",    url: "https://api.iconify.design/mdi/map-marker.svg?color=%23ef4444",   tags: ["map","missions","place","location"] },
+              { label: "Baby",          url: "https://api.iconify.design/mdi/baby.svg?color=%23ffffff",         tags: ["baby","birth","infant","dedication","child"] },
+              { label: "Ring",          url: "https://api.iconify.design/mdi/ring.svg?color=%23ffd700",         tags: ["ring","wedding","marriage","covenant"] },
+              { label: "Calendar",      url: "https://api.iconify.design/mdi/calendar.svg?color=%23ffffff",     tags: ["calendar","sabbath","date","schedule"] },
+              { label: "Hourglass",     url: "https://api.iconify.design/mdi/timer-sand.svg?color=%23facc15",   tags: ["hourglass","time","eternity","wait"] },
+              { label: "Lighthouse",    url: "https://api.iconify.design/mdi/lighthouse.svg?color=%23ffffff",   tags: ["lighthouse","light","guide","beacon"] },
+              { label: "Alpha-Omega",   url: "https://api.iconify.design/mdi/infinity.svg?color=%23a78bfa",     tags: ["alpha","omega","eternal","infinite","god"] },
             ];
 
             const FLAG_PRESETS: { label: string; code: string }[] = [
@@ -1614,9 +1835,39 @@ export default function MediaPage() {
               { label: "Israel",          code: "il" },
               { label: "Egypt",           code: "eg" },
               { label: "United Arab Emirates", code: "ae" },
+              { label: "DR Congo",           code: "cd" },
+              { label: "Republic of Congo",  code: "cg" },
+              { label: "Angola",             code: "ao" },
+              { label: "Cameroon",           code: "cm" },
+              { label: "Ivory Coast",        code: "ci" },
+              { label: "Senegal",            code: "sn" },
+              { label: "Morocco",            code: "ma" },
+              { label: "Algeria",            code: "dz" },
+              { label: "Tunisia",            code: "tn" },
+              { label: "Somalia",            code: "so" },
+              { label: "South Sudan",        code: "ss" },
+              { label: "Lesotho",            code: "ls" },
+              { label: "Eswatini",           code: "sz" },
+              { label: "Madagascar",         code: "mg" },
+              { label: "Mauritius",          code: "mu" },
+              { label: "Sierra Leone",       code: "sl" },
+              { label: "Liberia",            code: "lr" },
+              { label: "Pakistan",           code: "pk" },
+              { label: "Malaysia",           code: "my" },
+              { label: "Singapore",          code: "sg" },
+              { label: "Sri Lanka",          code: "lk" },
+              { label: "Portugal",           code: "pt" },
+              { label: "Greece",             code: "gr" },
+              { label: "Poland",             code: "pl" },
+              { label: "Ukraine",            code: "ua" },
+              { label: "Jamaica",            code: "jm" },
+              { label: "Haiti",              code: "ht" },
+              { label: "Papua New Guinea",   code: "pg" },
+              { label: "Fiji",               code: "fj" },
             ];
 
-            const flagUrl = (code: string) => `https://flagcdn.com/w160/${code}.png`;
+            const flagUrl     = (code: string) => `https://flagcdn.com/w320/${code}.png`;
+            const flagHiResUrl = (code: string) => `https://flagcdn.com/w1280/${code}.png`;
 
             const q = iconSearch.trim().toLowerCase();
             const filteredIcons = q
@@ -1633,7 +1884,9 @@ export default function MediaPage() {
               toast({ title: "Sent to presentation screen", description: "Showing as logo overlay. Tweak position/size in Overlays → Logo Overlay." });
             };
             const sendAsBackground = (url: string) => {
-              sendImageToScreen(url, "contain");
+              // Upgrade flagcdn URLs to high-resolution for fullscreen background use
+              const hiRes = url.includes("flagcdn.com") ? url.replace(/\/w\d+\//, "/w1280/") : url;
+              sendImageToScreen(hiRes, "contain");
               toast({ title: "Sent to presentation screen", description: "Showing as fullscreen background." });
             };
             const apply = (url: string) => {
@@ -1730,13 +1983,14 @@ export default function MediaPage() {
                         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
                           {filteredFlags.map(p => {
                             const url = flagUrl(p.code);
+                            const logoUrl = flagHiResUrl(p.code);
                             return (
                               <button
                                 key={p.code}
                                 type="button"
                                 data-testid={`button-flag-${p.code}`}
                                 title={p.label}
-                                onClick={() => apply(url)}
+                                onClick={() => iconSendMode === "logo" ? sendAsLogo(logoUrl) : sendAsBackground(url)}
                                 className={`group rounded-lg border overflow-hidden transition-all flex flex-col items-center justify-center gap-1 p-2 bg-muted/30 hover:bg-muted/60 hover:scale-[1.02] ${screenState?.logoUrl === url ? "border-primary ring-2 ring-primary/40" : "border-border"}`}
                               >
                                 <img src={url} alt={p.label} className="h-7 w-auto object-contain rounded shadow-sm" loading="lazy" />

@@ -545,6 +545,8 @@ function QuadCameraLayer({ deviceIds, maxSlots = 4, brightness = 100, contrast =
 }) {
   const [streams, setStreams] = useState<(MediaStream | null)[]>([null, null, null, null]);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([null, null, null, null]);
+  // pendingCapture: slot index awaiting operator click to start getDisplayMedia()
+  const [pendingCapture, setPendingCapture] = useState<number | null>(null);
 
   useEffect(() => {
     const active: MediaStream[] = [];
@@ -575,6 +577,17 @@ function QuadCameraLayer({ deviceIds, maxSlots = 4, brightness = 100, contrast =
     });
   }, [streams]);
 
+  // Listen for "Capture" button clicks from the control screen
+  useEffect(() => {
+    const ch = new BroadcastChannel(CHANNEL_NAME);
+    ch.onmessage = (e) => {
+      if (e.data?.type === "req-screen-capture" && typeof e.data.slot === "number") {
+        setPendingCapture(e.data.slot);
+      }
+    };
+    return () => ch.close();
+  }, []);
+
   const captureScreen = async (i: number) => {
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
@@ -594,6 +607,33 @@ function QuadCameraLayer({ deviceIds, maxSlots = 4, brightness = 100, contrast =
 
   return (
     <div style={{ position: "absolute", inset: 0, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: gridRows, gap: borderWidth > 0 ? 2 : 0, background: "#000", zIndex: 5 }}>
+      {/* Fullscreen click-overlay shown when control screen requests a screen capture.
+          The browser requires a direct user gesture in this window for getDisplayMedia(). */}
+      {pendingCapture !== null && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.92)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, cursor: "pointer" }}
+          onClick={async (e) => {
+            e.stopPropagation();
+            const slot = pendingCapture;
+            setPendingCapture(null);
+            await captureScreen(slot);
+          }}
+        >
+          <span style={{ fontSize: 52 }}>🖥️</span>
+          <span style={{ color: "#fff", fontSize: 20, fontWeight: 700 }}>Click to share screen — Slot {pendingCapture + 1}</span>
+          <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, textAlign: "center", maxWidth: 380 }}>
+            Browser requires one click here to open the screen picker. Tap anywhere to continue.
+          </span>
+          <button
+            type="button"
+            style={{ marginTop: 8, padding: "8px 24px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.08)", color: "#fff", fontSize: 13, cursor: "pointer" }}
+            onClick={e => { e.stopPropagation(); setPendingCapture(null); }}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
       {Array.from({ length: maxSlots }).map((_, i) => {
         const isScreenSlot = deviceIds[i] === "__screen__";
         return (
@@ -602,10 +642,9 @@ function QuadCameraLayer({ deviceIds, maxSlots = 4, brightness = 100, contrast =
               ? <video ref={el => { videoRefs.current[i] = el; }} autoPlay muted playsInline
                   style={{ width: "100%", height: "100%", objectFit: "cover", filter: filterStyle, transform: transformStyle }} />
               : isScreenSlot
-              ? <div style={{ width: "100%", height: "100%", background: "#0a0a1a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", gap: 8 }}
-                  onClick={() => captureScreen(i)}>
-                  <span style={{ fontSize: 28 }}>🖥️</span>
-                  <span style={{ color: "#aaa", fontSize: 11, textAlign: "center" }}>Click to capture screen</span>
+              ? <div style={{ width: "100%", height: "100%", background: "#0a0a1a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <span style={{ fontSize: 22, opacity: 0.5 }}>🖥️</span>
+                  <span style={{ color: "#555", fontSize: 10, textAlign: "center" }}>Awaiting capture…</span>
                 </div>
               : <div style={{ width: "100%", height: "100%", background: "#111", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <span style={{ color: "#555", fontSize: 12 }}>Slot {i + 1}</span>
