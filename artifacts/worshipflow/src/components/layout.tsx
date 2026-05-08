@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ChevronsLeft, ChevronsRight, LayoutGrid, LogOut, Pencil, Tv, User as UserIcon, BookOpen, Radio } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, LayoutGrid, LogOut, Pencil, Tv, User as UserIcon, BookOpen, Radio, Users } from "lucide-react";
 import { LivePreview } from "./live-preview";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -21,6 +21,8 @@ import { useGetScreenState, getGetScreenStateQueryKey } from "@workspace/api-cli
 import { ProfileDialog } from "./profile-dialog";
 import { AiQuickPanel } from "./ai-quick-panel";
 import { YoutubePlayerPanel } from "./youtube-player-panel";
+import { LiveSessionPanel } from "./live-session-panel";
+import { useLiveSession } from "@/hooks/use-live-session";
 
 /** Bottom tab bar — the 4 pages accessible directly from mobile nav */
 const BOTTOM_NAV_HREFS = ["/", "/songs", "/custom", "/media"] as const;
@@ -176,6 +178,9 @@ export function Layout({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [sessionOpen, setSessionOpen] = useState(false);
+  const session = useLiveSession();
+  const inSession = session.state.status === "connected" && !!session.state.code;
 
   const { data: screenState } = useGetScreenState({
     query: { queryKey: getGetScreenStateQueryKey(), refetchInterval: 3000 },
@@ -305,15 +310,29 @@ export function Layout({ children }: { children: ReactNode }) {
               </Link>
             )}
           </h1>
-          <button
-            type="button"
-            onClick={() => setPreviewOpen(true)}
-            className="px-2.5 h-8 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 flex items-center gap-1.5 shrink-0"
-            aria-label="Open live preview"
-            data-testid="button-mobile-preview"
-          >
-            <Tv className="w-4 h-4" /> Preview
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setSessionOpen(true)}
+              className="relative flex items-center justify-center w-8 h-8 rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent/60 transition-colors"
+              aria-label="Live session"
+              data-testid="button-mobile-session"
+            >
+              <Users className="w-4 h-4" />
+              {inSession && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full border border-sidebar" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreviewOpen(true)}
+              className="px-2.5 h-8 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 flex items-center gap-1.5"
+              aria-label="Open live preview"
+              data-testid="button-mobile-preview"
+            >
+              <Tv className="w-4 h-4" /> Preview
+            </button>
+          </div>
         </header>
       )}
 
@@ -389,6 +408,55 @@ export function Layout({ children }: { children: ReactNode }) {
               </Link>
             </div>
           )}
+
+          {/* ── Live Session button ───────────────────────────── */}
+          <div className={`${sidebarCollapsed ? "px-2 flex justify-center" : "px-3"} pb-2`}>
+            {sidebarCollapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setSessionOpen(true)}
+                    className="relative flex items-center justify-center w-10 h-10 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent/60 transition-colors"
+                    aria-label="Live session"
+                    data-testid="button-session-collapsed"
+                  >
+                    <Users className="w-4 h-4" />
+                    {inSession && (
+                      <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full border border-sidebar" />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Live Session{inSession ? ` · ${session.state.code}` : ""}</TooltipContent>
+              </Tooltip>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setSessionOpen(true)}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  inSession
+                    ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/25"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60"
+                }`}
+                data-testid="button-session"
+              >
+                <div className="relative shrink-0">
+                  <Users className="w-4 h-4" />
+                  {inSession && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-500 rounded-full" />
+                  )}
+                </div>
+                <span className="truncate">
+                  {inSession ? `Session · ${session.state.code}` : "Live Session"}
+                </span>
+                {inSession && (
+                  <span className="text-xs text-emerald-500 shrink-0">
+                    {session.state.members.length} online
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
 
           <div className={`border-t border-border ${sidebarCollapsed ? "px-2" : "px-3"} py-3`}>
             <UserMenu collapsed={sidebarCollapsed} onOpenProfile={() => setProfileOpen(true)} />
@@ -535,6 +603,18 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {/* ── Profile dialog ────────────────────────────────────────────── */}
       <ProfileDialog open={profileOpen} onOpenChange={setProfileOpen} />
+
+      {/* ── Live session panel ────────────────────────────────────────── */}
+      <LiveSessionPanel
+        open={sessionOpen}
+        onOpenChange={setSessionOpen}
+        sessionState={session.state}
+        createSession={session.createSession}
+        joinSession={session.joinSession}
+        leaveSession={session.leaveSession}
+        changeRole={session.changeRole}
+        clearError={session.clearError}
+      />
 
       {/* ── YouTube player panel (floating) ──────────────────────────── */}
       <YoutubePlayerPanel />

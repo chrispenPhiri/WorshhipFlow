@@ -8,7 +8,7 @@ import {
   INITIAL_SESSION_STATE,
   getSessionWsUrl,
 } from "@/lib/live-session";
-import { getGetScreenStateQueryKey } from "@/api/generated/worshipflow";
+import { getGetScreenStateQueryKey } from "@workspace/api-client-react";
 import { subscribeScreenChanges } from "@/lib/local-api";
 
 export function useLiveSession() {
