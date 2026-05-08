@@ -4,7 +4,7 @@ import OpenAI from "openai";
 const router = Router();
 
 /* ── Types ──────────────────────────────────────────────────────── */
-type AiProvider = "openai" | "replit" | "gemini" | "openrouter" | "deepseek" | "groq";
+type AiProvider = "openai" | "gemini" | "openrouter" | "deepseek" | "groq";
 
 interface AiSetup {
   client: OpenAI;
@@ -15,27 +15,17 @@ interface AiSetup {
 /* ── Default models per provider ────────────────────────────────── */
 const DEFAULT_MODELS: Record<AiProvider, string> = {
   openai:     "gpt-4o",
-  replit:     "gpt-4o",
   gemini:     "gemini-2.0-flash",
   openrouter: "openai/gpt-4o",
   deepseek:   "deepseek-chat",
   groq:       "llama-3.3-70b-versatile",
 };
 
-/* ── Replit-managed client (app-owner's integration credits) ────── */
-const managedClient = process.env.AI_INTEGRATIONS_OPENAI_API_KEY
-  ? new OpenAI({
-      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-    })
-  : null;
-
-/* ── Client + model resolver ────────────────────────────────────── */
+/* ── Client + model resolver — user's own key only ──────────────── */
 function getAiSetup(
   req: import("express").Request,
   res: import("express").Response,
 ): AiSetup | null {
-  const aiSource   = (req.headers["x-ai-source"]   as string | undefined)?.trim();
   const provider   = ((req.headers["x-ai-provider"] as string | undefined)?.trim() ?? "openai") as AiProvider;
   // X-AI-Key is the generic key header; X-OpenAI-Key is legacy compat
   const rawKey     = (req.headers["x-ai-key"] ?? req.headers["x-openai-key"]) as string | undefined;
@@ -43,19 +33,7 @@ function getAiSetup(
 
   const model = modelHdr ?? DEFAULT_MODELS[provider] ?? "gpt-4o";
 
-  /* Priority 1: Replit managed credits */
-  if (aiSource === "replit") {
-    if (!managedClient) {
-      res.status(402).json({
-        error: "replit_not_configured",
-        message: "Replit AI integration is not available on this server.",
-      });
-      return null;
-    }
-    return { client: managedClient, model, provider: "replit" };
-  }
-
-  /* Priority 2: User's own key (provider-specific) */
+  /* User's own API key (provider-specific) — only option */
   const key = rawKey?.trim();
   if (!key) {
     res.status(402).json({
@@ -98,7 +76,7 @@ function getAiSetup(
 
 /* ── AI availability status ──────────────────────────────────────── */
 router.get("/status", (_req, res) => {
-  res.json({ replitAvailable: managedClient !== null });
+  res.json({ replitAvailable: false });
 });
 
 /* ── SSE helpers ─────────────────────────────────────────────────── */

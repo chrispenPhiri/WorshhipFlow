@@ -25,12 +25,10 @@ const DEFAULT_MODEL_MAP: Record<string, string> = {
 };
 
 export function getAiHeaders(): Record<string, string> {
-  const source = (localStorage.getItem(AI_SOURCE_STORAGE) ?? "openai") as string;
+  // "replit" was a legacy option that billed the app-owner — treat it as openai fallback
+  const rawSource = localStorage.getItem(AI_SOURCE_STORAGE) ?? "openai";
+  const source = rawSource === "replit" ? "openai" : rawSource;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (source === "replit") {
-    headers["X-AI-Source"] = "replit";
-    return headers;
-  }
   const key = localStorage.getItem(KEY_STORAGE_MAP[source] ?? "wf-openai-key")?.trim();
   if (key) {
     headers["X-AI-Key"] = key;

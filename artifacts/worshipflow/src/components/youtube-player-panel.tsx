@@ -413,7 +413,7 @@ export function YoutubePlayerPanel() {
         style={ytBtn.style}
         onPointerDown={ytBtn.onPointerDown}
         onClick={() => ytBtn.wasClick() && setOpen(true)}
-        className="flex items-center justify-center w-11 h-11 rounded-full bg-red-600 text-white shadow-lg hover:bg-red-700 active:scale-95 transition-transform duration-100 select-none"
+        className="flex items-center justify-center w-11 h-11 rounded-full bg-black/30 text-white shadow-lg border border-white/15 backdrop-blur-sm hover:bg-black/50 active:scale-95 transition-transform duration-100 select-none"
         aria-label="Open YouTube player"
         data-testid="button-youtube-panel"
         title="YouTube Player — drag to move"

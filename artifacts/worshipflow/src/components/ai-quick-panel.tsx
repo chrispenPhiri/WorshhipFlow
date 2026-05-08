@@ -254,7 +254,7 @@ export function AiQuickPanel() {
         style={aiBtn.style}
         onPointerDown={aiBtn.onPointerDown}
         onClick={() => aiBtn.wasClick() && setOpen(true)}
-        className="flex items-center gap-2 h-11 px-4 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-95 transition-transform duration-100 text-sm font-semibold select-none"
+        className="flex items-center gap-2 h-11 px-4 rounded-full bg-black/30 text-white shadow-lg border border-white/15 backdrop-blur-sm hover:bg-black/50 active:scale-95 transition-transform duration-100 text-sm font-semibold select-none"
         aria-label="Open AI assistant"
         data-testid="button-ai-quick-panel"
         title="Ask AI — drag to move"
