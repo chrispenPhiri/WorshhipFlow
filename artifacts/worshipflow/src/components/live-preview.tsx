@@ -121,8 +121,8 @@ export function LivePreview() {
         isBlack: screenState.isBlack ?? false,
         isClear: true,
         contentType: "none",
-        title: undefined,
-        content: undefined,
+        title: null as unknown as string,
+        content: null as unknown as string,
         background: { type: "live_wallpaper", value: defaultWpId, overlay: 0 },
         tickerEnabled: screenState.tickerEnabled ?? false,
       }
