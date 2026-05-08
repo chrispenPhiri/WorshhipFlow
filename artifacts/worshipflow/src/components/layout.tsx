@@ -22,6 +22,7 @@ import { ProfileDialog } from "./profile-dialog";
 import { AiQuickPanel } from "./ai-quick-panel";
 import { YoutubePlayerPanel } from "./youtube-player-panel";
 import { LiveSessionPanel } from "./live-session-panel";
+import { SessionViewerMode } from "./session-viewer-mode";
 import { useLiveSession } from "@/hooks/use-live-session";
 
 /** Bottom tab bar — the 4 pages accessible directly from mobile nav */
@@ -203,6 +204,22 @@ export function Layout({ children }: { children: ReactNode }) {
       setPreviewOpen(false);
     }
   }, [isDesktop]);
+
+  // ── Viewer mode: when in a session as a viewer, show clean presentation screen ──
+  if (inSession && session.state.myRole === "viewer") {
+    return (
+      <SessionViewerMode
+        sessionState={session.state}
+        sessionOpen={sessionOpen}
+        onSessionOpenChange={setSessionOpen}
+        createSession={session.createSession}
+        joinSession={session.joinSession}
+        leaveSession={session.leaveSession}
+        changeRole={session.changeRole}
+        clearError={session.clearError}
+      />
+    );
+  }
 
   // Desktop respects the user's collapse pref; on tablet/mobile we only show
   // the sidebar inside a sheet so collapsed state is irrelevant there.
