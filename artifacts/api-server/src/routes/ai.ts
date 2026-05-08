@@ -673,4 +673,38 @@ router.post("/chat", async (req, res) => {
   }
 });
 
+/* ── Remove Background (remove.bg proxy) ─────────────────────── */
+router.post("/remove-bg", async (req, res) => {
+  const apiKey = (req.headers["x-remove-bg-key"] as string) || "";
+  if (!apiKey) {
+    res.status(400).json({ message: "Missing X-Remove-BG-Key header. Get a free API key at remove.bg" });
+    return;
+  }
+  const { imageBase64 } = req.body as { imageBase64?: string };
+  if (!imageBase64) { res.status(400).json({ message: "Missing imageBase64" }); return; }
+  try {
+    const base64Data = imageBase64.replace(/^data:[^;]+;base64,/, "");
+    const imageBuffer = Buffer.from(base64Data, "base64");
+    const formData = new FormData();
+    const blob = new Blob([imageBuffer], { type: "image/jpeg" });
+    formData.append("image_file", blob, "image.jpg");
+    formData.append("size", "auto");
+    const response = await fetch("https://api.remove.bg/v1.0/removebg", {
+      method: "POST",
+      headers: { "X-Api-Key": apiKey },
+      body: formData as never,
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      res.status(response.status).json({ message: errorText || `remove.bg returned ${response.status}` });
+      return;
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    const resultBase64 = `data:image/png;base64,${Buffer.from(arrayBuffer).toString("base64")}`;
+    res.json({ resultBase64 });
+  } catch (err) {
+    res.status(500).json({ message: err instanceof Error ? err.message : "Background removal failed" });
+  }
+});
+
 export default router;

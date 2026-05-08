@@ -270,7 +270,7 @@ export function AiQuickPanel() {
           data-testid="sheet-ai-quick-panel"
         >
           <SheetHeader className="p-4 border-b border-border shrink-0">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pr-8">
               <SheetTitle className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-primary" />
                 AI Assistant

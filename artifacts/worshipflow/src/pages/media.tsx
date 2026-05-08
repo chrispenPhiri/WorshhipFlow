@@ -24,6 +24,13 @@ import { StreamDestinationsCard } from "@/components/stream-destinations-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CollapsibleTabsBar } from "@/components/ui/collapsible-tabs";
 
+type PhotoTextLayer = {
+  id: string; text: string; size: number; color: string;
+  px: number; py: number; bold: boolean; italic: boolean;
+  gradient: boolean; gc1: string; gc2: string; shadow: boolean;
+  align: "left" | "center" | "right";
+};
+
 const MEDIA_TAB_LABELS: Record<string, string> = {
   upload: "Upload", "photo-edit": "Photo Edit", "camera-broadcast": "Camera & Broadcast",
   url: "URL", icons: "Icons", overlays: "Overlays",
@@ -164,6 +171,30 @@ export default function MediaPage() {
   const [photoEditGrayscale, setPhotoEditGrayscale] = useState(0);
   const [photoEditBlur, setPhotoEditBlur] = useState(0);
   const photoEditInputRef = useRef<HTMLInputElement>(null);
+
+  // Photo editor – sub-tabs & advanced features
+  const [photoSubTab, setPhotoSubTab] = useState<"filters" | "text" | "merge" | "bg">("filters");
+  const [photoTexts, setPhotoTexts] = useState<PhotoTextLayer[]>([]);
+  const [photoTInput, setPhotoTInput] = useState("Add Your Text Here");
+  const [photoTSize, setPhotoTSize] = useState(72);
+  const [photoTColor, setPhotoTColor] = useState("#ffffff");
+  const [photoTBold, setPhotoTBold] = useState(true);
+  const [photoTItalic, setPhotoTItalic] = useState(false);
+  const [photoTGradient, setPhotoTGradient] = useState(false);
+  const [photoTGC1, setPhotoTGC1] = useState("#ffffff");
+  const [photoTGC2, setPhotoTGC2] = useState("#f97316");
+  const [photoTShadow, setPhotoTShadow] = useState(true);
+  const [photoTPx, setPhotoTPx] = useState(50);
+  const [photoTPy, setPhotoTPy] = useState(50);
+  const [photoTAlign, setPhotoTAlign] = useState<"left" | "center" | "right">("center");
+  const [photoPosterBg, setPhotoPosterBg] = useState("linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#0f0a2e 100%)");
+  const [photoUsePoster, setPhotoUsePoster] = useState(false);
+  const [photoMergeUrl, setPhotoMergeUrl] = useState<string | null>(null);
+  const [photoMergeOpacity, setPhotoMergeOpacity] = useState(80);
+  const [photoMergeBlend, setPhotoMergeBlend] = useState("screen");
+  const photoMergeRef = useRef<HTMLInputElement>(null);
+  const [bgRemoving, setBgRemoving] = useState(false);
+  const [removeBgKey, setRemoveBgKey] = useLocalStorage<string>("wf-remove-bg-key", "");
 
   // Previous background — saved before camera goes live so Cut/Stop can roll back
   const prevBackgroundRef = useRef<{ type: string; value: string; overlay?: number; fit?: "cover" | "contain" | "fill"; loop?: boolean; cameraLayout?: string; cameraShape?: string; cameraPipSize?: number } | null>(null);
@@ -753,41 +784,110 @@ export default function MediaPage() {
   // ── Photo editor helpers ──────────────────────────────────────────────────
   const photoFilterString = `brightness(${photoEditBrightness}%) contrast(${photoEditContrast}%) saturate(${photoEditSaturate}%) hue-rotate(${photoEditHue}deg) sepia(${photoEditSepia}%) grayscale(${photoEditGrayscale}%) blur(${photoEditBlur}px)`;
 
-  const applyPhotoFiltersToCanvas = (img: HTMLImageElement): string => {
-    const canvas = document.createElement("canvas");
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    const ctx = canvas.getContext("2d")!;
-    ctx.filter = photoFilterString;
-    ctx.drawImage(img, 0, 0);
-    return canvas.toDataURL("image/jpeg", 0.92);
+  const drawTextOnCanvas = (ctx: CanvasRenderingContext2D, t: PhotoTextLayer, cW: number, cH: number) => {
+    const scale = cW / 1920;
+    const scaledSize = Math.max(12, Math.round(t.size * scale));
+    ctx.font = `${t.italic ? "italic " : ""}${t.bold ? "bold " : ""}${scaledSize}px 'Arial', sans-serif`;
+    ctx.textAlign = t.align;
+    ctx.textBaseline = "middle";
+    const x = (t.px / 100) * cW;
+    const y = (t.py / 100) * cH;
+    if (t.shadow) {
+      ctx.shadowColor = "rgba(0,0,0,0.85)";
+      ctx.shadowBlur = Math.max(4, scaledSize * 0.12);
+      ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 2;
+    }
+    if (t.gradient) {
+      const met = ctx.measureText(t.text);
+      const tw = met.width;
+      const sx = t.align === "center" ? x - tw / 2 : t.align === "right" ? x - tw : x;
+      const grad = ctx.createLinearGradient(sx, y, sx + tw, y);
+      grad.addColorStop(0, t.gc1); grad.addColorStop(1, t.gc2);
+      ctx.fillStyle = grad;
+    } else { ctx.fillStyle = t.color; }
+    ctx.fillText(t.text, x, y);
+    ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
   };
 
+  const renderPhotoCanvas = (): Promise<string> => new Promise((resolve, reject) => {
+    const loadImg = (url: string): Promise<HTMLImageElement> => new Promise((res, rej) => {
+      const img = new Image(); img.crossOrigin = "anonymous";
+      img.onload = () => res(img); img.onerror = rej; img.src = url;
+    });
+    Promise.all([
+      photoEditUrl ? loadImg(photoEditUrl) : Promise.resolve(null),
+      photoMergeUrl ? loadImg(photoMergeUrl) : Promise.resolve(null),
+    ]).then(([baseImg, mergeImg]) => {
+      const cW = baseImg ? baseImg.naturalWidth : 1920;
+      const cH = baseImg ? baseImg.naturalHeight : 1080;
+      const canvas = document.createElement("canvas");
+      canvas.width = cW; canvas.height = cH;
+      const ctx = canvas.getContext("2d")!;
+      if (!baseImg || photoUsePoster) {
+        const hexes = photoPosterBg.match(/#[0-9a-fA-F]{6}/g) ?? ["#1e1b4b", "#0f0a2e"];
+        if (hexes.length >= 2) {
+          const grad = ctx.createLinearGradient(0, 0, cW, cH);
+          hexes.forEach((h, i) => grad.addColorStop(i / Math.max(1, hexes.length - 1), h));
+          ctx.fillStyle = grad;
+        } else { ctx.fillStyle = hexes[0] ?? "#000"; }
+        ctx.fillRect(0, 0, cW, cH);
+      }
+      if (baseImg) { ctx.filter = photoFilterString; ctx.drawImage(baseImg, 0, 0, cW, cH); ctx.filter = "none"; }
+      if (mergeImg) {
+        ctx.globalAlpha = photoMergeOpacity / 100;
+        ctx.globalCompositeOperation = photoMergeBlend as GlobalCompositeOperation;
+        ctx.drawImage(mergeImg, 0, 0, cW, cH);
+        ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+      }
+      photoTexts.forEach(t => drawTextOnCanvas(ctx, t, cW, cH));
+      resolve(canvas.toDataURL("image/jpeg", 0.93));
+    }).catch(reject);
+  });
+
   const downloadEditedPhoto = () => {
-    if (!photoEditUrl) return;
-    const img = new Image();
-    img.onload = () => {
-      const dataUrl = applyPhotoFiltersToCanvas(img);
+    renderPhotoCanvas().then(dataUrl => {
       const a = document.createElement("a");
-      a.href = dataUrl; a.download = "wf-photo-edit.jpg"; a.click();
-    };
-    img.src = photoEditUrl;
+      a.href = dataUrl; a.download = "wf-photo-studio.jpg"; a.click();
+    }).catch(() => toast({ title: "Export failed", variant: "destructive" }));
   };
 
   const sendEditedPhotoToScreen = () => {
-    if (!photoEditUrl) return;
-    const img = new Image();
-    img.onload = () => {
-      const dataUrl = applyPhotoFiltersToCanvas(img);
+    renderPhotoCanvas().then(dataUrl => {
       sendImageToScreen(dataUrl, "cover");
       toast({ title: "Photo sent to screen", description: "Edited photo is now on the presentation screen." });
-    };
-    img.src = photoEditUrl;
+    }).catch(() => toast({ title: "Export failed", variant: "destructive" }));
   };
 
   const resetPhotoFilters = () => {
     setPhotoEditBrightness(100); setPhotoEditContrast(100); setPhotoEditSaturate(100);
     setPhotoEditHue(0); setPhotoEditSepia(0); setPhotoEditGrayscale(0); setPhotoEditBlur(0);
+  };
+
+  const removeBackground = async () => {
+    if (!photoEditUrl || !removeBgKey) {
+      toast({ title: "API key required", description: "Enter your remove.bg API key in the Remove BG tab.", variant: "destructive" });
+      return;
+    }
+    setBgRemoving(true);
+    try {
+      const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const res = await fetch(`${BASE_PATH}/api/ai/remove-bg`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Remove-BG-Key": removeBgKey },
+        body: JSON.stringify({ imageBase64: photoEditUrl }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: "Unknown error" })) as { message?: string };
+        throw new Error(err.message ?? "Failed");
+      }
+      const { resultBase64 } = await res.json() as { resultBase64: string };
+      setPhotoEditUrl(resultBase64);
+      toast({ title: "Background removed!", description: "The background has been stripped from your photo." });
+    } catch (err) {
+      toast({ title: "Background removal failed", description: err instanceof Error ? err.message : "Check your API key and try again.", variant: "destructive" });
+    } finally {
+      setBgRemoving(false);
+    }
   };
 
   const sendVideoToScreen = (url: string, fit: "cover" | "contain" | "fill" = "cover", loop = true) => {
@@ -991,131 +1091,432 @@ export default function MediaPage() {
 
         {/* ── PHOTO EDIT ── */}
         <TabsContent value="photo-edit" className="mt-4 space-y-4">
+          {/* Hidden file inputs */}
           <input ref={photoEditInputRef} type="file" accept="image/*" hidden onChange={e => {
-            const f = e.target.files?.[0];
-            if (!f) return;
+            const f = e.target.files?.[0]; if (!f) return;
             const reader = new FileReader();
             reader.onload = ev => setPhotoEditUrl(ev.target?.result as string);
-            reader.readAsDataURL(f);
-            e.target.value = "";
+            reader.readAsDataURL(f); e.target.value = "";
           }} />
+          <input ref={photoMergeRef} type="file" accept="image/*" hidden onChange={e => {
+            const f = e.target.files?.[0]; if (!f) return;
+            const reader = new FileReader();
+            reader.onload = ev => setPhotoMergeUrl(ev.target?.result as string);
+            reader.readAsDataURL(f); e.target.value = "";
+          }} />
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <SlidersHorizontal className="w-4 h-4" /> Photo Editor
+                <SlidersHorizontal className="w-4 h-4" /> Photo Studio
               </CardTitle>
               <CardDescription>
-                Load an image, adjust filters with the sliders below, then send the result to the presentation screen or download it.
+                Filters, text overlays, poster backgrounds, image merging, and background removal — all in one place.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-5">
-              {/* Image picker / preview */}
-              {!photoEditUrl ? (
-                <div
-                  className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/20 transition-colors"
-                  onClick={() => photoEditInputRef.current?.click()}
-                  onDragOver={e => e.preventDefault()}
-                  onDrop={e => {
-                    e.preventDefault();
-                    const f = e.dataTransfer.files[0];
-                    if (!f || !f.type.startsWith("image/")) return;
-                    const reader = new FileReader();
-                    reader.onload = ev => setPhotoEditUrl(ev.target?.result as string);
-                    reader.readAsDataURL(f);
-                  }}
-                >
-                  <ImageIcon className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
-                  <p className="font-medium">Drop an image here or click to browse</p>
-                  <p className="text-sm text-muted-foreground mt-1">Supports JPG, PNG, WebP, GIF</p>
-                  {uploadedFiles.filter(f => f.type === "image").length > 0 && (
-                    <div className="mt-4 space-y-1.5">
-                      <p className="text-xs text-muted-foreground">Or pick from your uploads:</p>
-                      <div className="flex gap-2 flex-wrap justify-center">
-                        {uploadedFiles.filter(f => f.type === "image").slice(0, 8).map(f => (
-                          <button key={f.id} type="button" onClick={e => { e.stopPropagation(); setPhotoEditUrl(f.url); }}
-                            className="w-12 h-12 rounded border border-border overflow-hidden hover:border-primary transition-colors shrink-0">
-                            <img src={f.url} alt={f.name} className="w-full h-full object-cover" />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="relative rounded-xl overflow-hidden bg-black/40 border border-border">
-                  <img
-                    src={photoEditUrl}
-                    alt="editing preview"
-                    className="w-full object-contain max-h-64"
-                    style={{ filter: photoFilterString }}
-                  />
-                  <button type="button" onClick={() => { setPhotoEditUrl(null); resetPhotoFilters(); }}
-                    className="absolute top-2 right-2 rounded-full bg-black/60 text-white p-1 hover:bg-black/80 transition-colors">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
+            <CardContent className="space-y-4">
 
-              {/* Quick presets */}
+              {/* ── Preview area ── */}
               {(() => {
-                const PHOTO_PRESETS = [
-                  { label: "Original", b: 100, c: 100, s: 100, h: 0,   sep: 0,  g: 0,   bl: 0 },
-                  { label: "Warm",     b: 108, c: 105, s: 115, h: 12,  sep: 20, g: 0,   bl: 0 },
-                  { label: "Cool",     b: 100, c: 105, s: 85,  h: 200, sep: 0,  g: 0,   bl: 0 },
-                  { label: "Vintage",  b: 95,  c: 88,  s: 78,  h: 0,   sep: 45, g: 0,   bl: 0 },
-                  { label: "B & W",    b: 100, c: 115, s: 0,   h: 0,   sep: 0,  g: 100, bl: 0 },
-                  { label: "Vivid",    b: 108, c: 130, s: 160, h: 0,   sep: 0,  g: 0,   bl: 0 },
-                  { label: "Faded",    b: 115, c: 82,  s: 75,  h: 0,   sep: 12, g: 20,  bl: 0 },
-                  { label: "Dramatic", b: 100, c: 155, s: 120, h: 0,   sep: 0,  g: 0,   bl: 0 },
-                  { label: "Soft",     b: 115, c: 82,  s: 90,  h: 0,   sep: 0,  g: 0,   bl: 1 },
-                  { label: "Sunset",   b: 108, c: 110, s: 130, h: 20,  sep: 15, g: 0,   bl: 0 },
-                ];
-                return (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Quick Presets</label>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {PHOTO_PRESETS.map(p => (
-                        <button key={p.label} type="button"
-                          onClick={() => { setPhotoEditBrightness(p.b); setPhotoEditContrast(p.c); setPhotoEditSaturate(p.s); setPhotoEditHue(p.h); setPhotoEditSepia(p.sep); setPhotoEditGrayscale(p.g); setPhotoEditBlur(p.bl); }}
-                          className="px-2.5 py-1 rounded text-xs border border-border bg-muted/30 hover:bg-muted/60 hover:border-primary/50 transition-colors">
-                          {p.label}
-                        </button>
-                      ))}
+                const hasContent = !!(photoEditUrl || photoUsePoster);
+                return hasContent ? (
+                  <div className="relative w-full rounded-xl overflow-hidden border border-border"
+                    style={{ aspectRatio: "16/9", background: (photoUsePoster || !photoEditUrl) ? photoPosterBg : "#000" }}>
+                    {photoEditUrl && (
+                      <img src={photoEditUrl} alt="editing preview" className="absolute inset-0 w-full h-full"
+                        style={{ objectFit: "cover", filter: photoFilterString }} />
+                    )}
+                    {photoMergeUrl && (
+                      <img src={photoMergeUrl} alt="overlay" className="absolute inset-0 w-full h-full"
+                        style={{ objectFit: "cover", opacity: photoMergeOpacity / 100,
+                          mixBlendMode: (photoMergeBlend === "source-over" ? "normal" : photoMergeBlend) as "normal" | "multiply" | "screen" | "overlay" | "hard-light" | "soft-light" | "difference" | "luminosity" }} />
+                    )}
+                    {photoTexts.map(t => (
+                      <div key={t.id} className="absolute pointer-events-none select-none"
+                        style={{
+                          left: `${t.px}%`, top: `${t.py}%`,
+                          transform: `translate(${t.align === "center" ? "-50%" : t.align === "right" ? "-100%" : "0"}, -50%)`,
+                          fontSize: `${Math.max(10, Math.round(t.size / 25))}px`,
+                          fontWeight: t.bold ? "bold" : "normal",
+                          fontStyle: t.italic ? "italic" : "normal",
+                          textShadow: t.shadow ? "0 2px 8px rgba(0,0,0,0.85),2px 2px 3px rgba(0,0,0,0.6)" : undefined,
+                          whiteSpace: "nowrap",
+                          ...(t.gradient
+                            ? { background: `linear-gradient(to right,${t.gc1},${t.gc2})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }
+                            : { color: t.color }),
+                        }}>
+                        {t.text}
+                      </div>
+                    ))}
+                    <button type="button"
+                      onClick={() => { setPhotoEditUrl(null); setPhotoUsePoster(false); setPhotoTexts([]); setPhotoMergeUrl(null); resetPhotoFilters(); }}
+                      className="absolute top-2 right-2 rounded-full bg-black/60 text-white p-1 hover:bg-black/80 transition-colors z-10">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/20 transition-colors"
+                    onClick={() => photoEditInputRef.current?.click()}
+                    onDragOver={e => e.preventDefault()}
+                    onDrop={e => {
+                      e.preventDefault();
+                      const f = e.dataTransfer.files[0];
+                      if (!f || !f.type.startsWith("image/")) return;
+                      const reader = new FileReader();
+                      reader.onload = ev => setPhotoEditUrl(ev.target?.result as string);
+                      reader.readAsDataURL(f);
+                    }}>
+                    <ImageIcon className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
+                    <p className="font-medium">Drop an image here or click to browse</p>
+                    <p className="text-sm text-muted-foreground mt-1">JPG, PNG, WebP, GIF</p>
+                    <div className="flex gap-2 items-center justify-center mt-3">
+                      <span className="text-xs text-muted-foreground">or</span>
+                      <button type="button" onClick={e => { e.stopPropagation(); setPhotoUsePoster(true); }}
+                        className="text-xs px-3 py-1.5 rounded border border-border hover:bg-muted/40 transition-colors">
+                        Start with poster background
+                      </button>
                     </div>
+                    {uploadedFiles.filter(f => f.type === "image").length > 0 && (
+                      <div className="mt-4 space-y-1.5">
+                        <p className="text-xs text-muted-foreground">Or pick from your uploads:</p>
+                        <div className="flex gap-2 flex-wrap justify-center">
+                          {uploadedFiles.filter(f => f.type === "image").slice(0, 8).map(f => (
+                            <button key={f.id} type="button" onClick={e => { e.stopPropagation(); setPhotoEditUrl(f.url); }}
+                              className="w-12 h-12 rounded border border-border overflow-hidden hover:border-primary transition-colors shrink-0">
+                              <img src={f.url} alt={f.name} className="w-full h-full object-cover" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })()}
 
-              {/* Filter sliders */}
-              <div className="space-y-3 pt-1 border-t border-border/40">
-                {[
-                  { label: "Brightness", value: photoEditBrightness, set: (v: number) => setPhotoEditBrightness(v), min: 0, max: 200, suffix: "%" },
-                  { label: "Contrast",   value: photoEditContrast,   set: (v: number) => setPhotoEditContrast(v),   min: 0, max: 200, suffix: "%" },
-                  { label: "Saturation", value: photoEditSaturate,   set: (v: number) => setPhotoEditSaturate(v),   min: 0, max: 200, suffix: "%" },
-                  { label: "Hue Rotate", value: photoEditHue,        set: (v: number) => setPhotoEditHue(v),        min: 0, max: 360, suffix: "°" },
-                  { label: "Sepia",      value: photoEditSepia,      set: (v: number) => setPhotoEditSepia(v),      min: 0, max: 100, suffix: "%" },
-                  { label: "Grayscale",  value: photoEditGrayscale,  set: (v: number) => setPhotoEditGrayscale(v),  min: 0, max: 100, suffix: "%" },
-                  { label: "Blur",       value: photoEditBlur,       set: (v: number) => setPhotoEditBlur(v),       min: 0, max: 20,  suffix: "px" },
-                ].map(ctrl => (
-                  <div key={ctrl.label} className="space-y-1">
-                    <div className="flex justify-between">
-                      <label className="text-xs font-medium">{ctrl.label}</label>
-                      <span className="text-xs text-muted-foreground">{ctrl.value}{ctrl.suffix}</span>
-                    </div>
-                    <SliderWithButtons min={ctrl.min} max={ctrl.max} step={1} value={[ctrl.value]} onValueChange={([v]) => ctrl.set(v)} />
-                  </div>
-                ))}
-              </div>
+              {/* ── Sub-tabs ── */}
+              <Tabs value={photoSubTab} onValueChange={v => setPhotoSubTab(v as "filters" | "text" | "merge" | "bg")}>
+                <TabsList className="grid grid-cols-4 w-full h-auto">
+                  <TabsTrigger value="filters" className="text-xs gap-1 py-1.5"><SlidersHorizontal className="w-3 h-3" />Filters</TabsTrigger>
+                  <TabsTrigger value="text"    className="text-xs gap-1 py-1.5"><Type className="w-3 h-3" />Text</TabsTrigger>
+                  <TabsTrigger value="merge"   className="text-xs gap-1 py-1.5"><Layers3 className="w-3 h-3" />Merge</TabsTrigger>
+                  <TabsTrigger value="bg"      className="text-xs gap-1 py-1.5"><EyeOff className="w-3 h-3" />Remove BG</TabsTrigger>
+                </TabsList>
 
-              {/* Actions */}
-              <div className="flex gap-2 pt-1">
-                <Button variant="outline" size="sm" onClick={resetPhotoFilters} className="gap-1.5">
+                {/* ── FILTERS ── */}
+                <TabsContent value="filters" className="mt-3 space-y-4">
+                  {/* Poster background swatches */}
+                  {(() => {
+                    const POSTER_PRESETS = [
+                      { label: "Deep Purple", value: "linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#0f0a2e 100%)" },
+                      { label: "Royal Blue",  value: "linear-gradient(135deg,#1e3a8a 0%,#1d4ed8 50%,#0c1f57 100%)" },
+                      { label: "Forest",      value: "linear-gradient(135deg,#064e3b 0%,#065f46 50%,#022c22 100%)" },
+                      { label: "Crimson",     value: "linear-gradient(135deg,#7f1d1d 0%,#991b1b 50%,#3b0a0a 100%)" },
+                      { label: "Sunset",      value: "linear-gradient(135deg,#7c2d12 0%,#c2410c 50%,#78350f 100%)" },
+                      { label: "Gold",        value: "linear-gradient(135deg,#78350f 0%,#b45309 50%,#451a03 100%)" },
+                      { label: "Plum",        value: "linear-gradient(135deg,#3b0764 0%,#6b21a8 50%,#1e0533 100%)" },
+                      { label: "Midnight",    value: "linear-gradient(135deg,#030712 0%,#111827 50%,#000 100%)" },
+                      { label: "Teal",        value: "linear-gradient(135deg,#134e4a 0%,#0d9488 50%,#042f2e 100%)" },
+                      { label: "Slate",       value: "linear-gradient(135deg,#1e293b 0%,#334155 50%,#0f172a 100%)" },
+                    ];
+                    return (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-medium">Poster Background</label>
+                          {photoEditUrl && (
+                            <button type="button" onClick={() => setPhotoUsePoster(!photoUsePoster)}
+                              className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${photoUsePoster ? "border-primary text-primary bg-primary/10" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                              {photoUsePoster ? "BG On" : "BG Off"}
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex gap-1.5 flex-wrap">
+                          {POSTER_PRESETS.map(p => (
+                            <button key={p.label} type="button" title={p.label}
+                              onClick={() => { setPhotoPosterBg(p.value); setPhotoUsePoster(true); }}
+                              className={`w-7 h-7 rounded-md border-2 transition-all hover:scale-110 ${photoPosterBg === p.value ? "border-primary ring-2 ring-primary/40" : "border-transparent"}`}
+                              style={{ background: p.value }} />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Quick filter presets */}
+                  {(() => {
+                    const PHOTO_PRESETS = [
+                      { label: "Original", b: 100, c: 100, s: 100, h: 0,   sep: 0,  g: 0,   bl: 0 },
+                      { label: "Warm",     b: 108, c: 105, s: 115, h: 12,  sep: 20, g: 0,   bl: 0 },
+                      { label: "Cool",     b: 100, c: 105, s: 85,  h: 200, sep: 0,  g: 0,   bl: 0 },
+                      { label: "Vintage",  b: 95,  c: 88,  s: 78,  h: 0,   sep: 45, g: 0,   bl: 0 },
+                      { label: "B & W",    b: 100, c: 115, s: 0,   h: 0,   sep: 0,  g: 100, bl: 0 },
+                      { label: "Vivid",    b: 108, c: 130, s: 160, h: 0,   sep: 0,  g: 0,   bl: 0 },
+                      { label: "Faded",    b: 115, c: 82,  s: 75,  h: 0,   sep: 12, g: 20,  bl: 0 },
+                      { label: "Dramatic", b: 100, c: 155, s: 120, h: 0,   sep: 0,  g: 0,   bl: 0 },
+                      { label: "Soft",     b: 115, c: 82,  s: 90,  h: 0,   sep: 0,  g: 0,   bl: 1 },
+                      { label: "Sunset",   b: 108, c: 110, s: 130, h: 20,  sep: 15, g: 0,   bl: 0 },
+                    ];
+                    return (
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-muted-foreground">Quick Presets</label>
+                        <div className="flex gap-1.5 flex-wrap">
+                          {PHOTO_PRESETS.map(p => (
+                            <button key={p.label} type="button"
+                              onClick={() => { setPhotoEditBrightness(p.b); setPhotoEditContrast(p.c); setPhotoEditSaturate(p.s); setPhotoEditHue(p.h); setPhotoEditSepia(p.sep); setPhotoEditGrayscale(p.g); setPhotoEditBlur(p.bl); }}
+                              className="px-2.5 py-1 rounded text-xs border border-border bg-muted/30 hover:bg-muted/60 hover:border-primary/50 transition-colors">
+                              {p.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Filter sliders */}
+                  <div className="space-y-3">
+                    {[
+                      { label: "Brightness", value: photoEditBrightness, set: (v: number) => setPhotoEditBrightness(v), min: 0, max: 200, suffix: "%" },
+                      { label: "Contrast",   value: photoEditContrast,   set: (v: number) => setPhotoEditContrast(v),   min: 0, max: 200, suffix: "%" },
+                      { label: "Saturation", value: photoEditSaturate,   set: (v: number) => setPhotoEditSaturate(v),   min: 0, max: 200, suffix: "%" },
+                      { label: "Hue Rotate", value: photoEditHue,        set: (v: number) => setPhotoEditHue(v),        min: 0, max: 360, suffix: "°" },
+                      { label: "Sepia",      value: photoEditSepia,      set: (v: number) => setPhotoEditSepia(v),      min: 0, max: 100, suffix: "%" },
+                      { label: "Grayscale",  value: photoEditGrayscale,  set: (v: number) => setPhotoEditGrayscale(v),  min: 0, max: 100, suffix: "%" },
+                      { label: "Blur",       value: photoEditBlur,       set: (v: number) => setPhotoEditBlur(v),       min: 0, max: 20,  suffix: "px" },
+                    ].map(ctrl => (
+                      <div key={ctrl.label} className="space-y-1">
+                        <div className="flex justify-between">
+                          <label className="text-xs font-medium">{ctrl.label}</label>
+                          <span className="text-xs text-muted-foreground">{ctrl.value}{ctrl.suffix}</span>
+                        </div>
+                        <SliderWithButtons min={ctrl.min} max={ctrl.max} step={1} value={[ctrl.value]} onValueChange={([v]) => ctrl.set(v)} />
+                      </div>
+                    ))}
+                  </div>
+                  <Button variant="outline" size="sm" onClick={resetPhotoFilters} className="gap-1.5 w-full">
+                    <RotateCcw className="w-3.5 h-3.5" /> Reset Filters
+                  </Button>
+                </TabsContent>
+
+                {/* ── TEXT & POSTER ── */}
+                <TabsContent value="text" className="mt-3 space-y-3">
+                  <div className="space-y-2">
+                    <Input placeholder="Your text here…" value={photoTInput} onChange={e => setPhotoTInput(e.target.value)} className="h-9" />
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <div className="flex justify-between">
+                          <label className="text-xs font-medium">Font Size</label>
+                          <span className="text-xs text-muted-foreground">{photoTSize}px</span>
+                        </div>
+                        <SliderWithButtons min={18} max={300} step={2} value={[photoTSize]} onValueChange={([v]) => setPhotoTSize(v)} />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium">Text Color</label>
+                        <div className="flex gap-1 items-center flex-wrap">
+                          <input type="color" value={photoTColor} onChange={e => setPhotoTColor(e.target.value)}
+                            className="h-7 w-9 rounded border border-input cursor-pointer flex-shrink-0" />
+                          {["#ffffff","#000000","#ffd700","#f97316","#ef4444","#a78bfa"].map(c => (
+                            <button key={c} type="button" onClick={() => setPhotoTColor(c)}
+                              className={`w-5 h-5 rounded border-2 transition-all ${photoTColor === c ? "border-primary scale-110" : "border-transparent"}`}
+                              style={{ background: c }} />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-1.5 flex-wrap">
+                      <button type="button" onClick={() => setPhotoTBold(!photoTBold)}
+                        className={`px-3 py-1.5 rounded text-xs border font-bold transition-colors ${photoTBold ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>B</button>
+                      <button type="button" onClick={() => setPhotoTItalic(!photoTItalic)}
+                        className={`px-3 py-1.5 rounded text-xs border italic transition-colors ${photoTItalic ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>I</button>
+                      <button type="button" onClick={() => setPhotoTShadow(!photoTShadow)}
+                        className={`px-3 py-1.5 rounded text-xs border transition-colors ${photoTShadow ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>Shadow</button>
+                      {(["left","center","right"] as const).map(a => (
+                        <button key={a} type="button" onClick={() => setPhotoTAlign(a)}
+                          className={`px-3 py-1.5 rounded text-xs border transition-colors ${photoTAlign === a ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                          {a === "left" ? "←" : a === "right" ? "→" : "≡"}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Gradient text */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={() => setPhotoTGradient(!photoTGradient)}
+                          className={`px-3 py-1 rounded text-xs border transition-colors ${photoTGradient ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                          ✦ Gradient Text
+                        </button>
+                        {photoTGradient && <span className="text-xs text-muted-foreground">Pick two colors:</span>}
+                      </div>
+                      {photoTGradient && (
+                        <div className="flex gap-2 items-center flex-wrap pl-1">
+                          <input type="color" value={photoTGC1} onChange={e => setPhotoTGC1(e.target.value)} className="h-7 w-9 rounded border border-input cursor-pointer" />
+                          <span className="text-muted-foreground text-xs">→</span>
+                          <input type="color" value={photoTGC2} onChange={e => setPhotoTGC2(e.target.value)} className="h-7 w-9 rounded border border-input cursor-pointer" />
+                          <div className="flex-1 h-5 rounded min-w-[40px]" style={{ background: `linear-gradient(to right,${photoTGC1},${photoTGC2})` }} />
+                          {[["#fff","#f97316"],["#ffd700","#f97316"],["#a78bfa","#7c3aed"],["#38bdf8","#2563eb"],["#f9a8d4","#ec4899"],["#4ade80","#22c55e"]].map(([c1,c2]) => (
+                            <button key={c1} type="button" onClick={() => { setPhotoTGC1(c1!); setPhotoTGC2(c2!); }}
+                              className="w-7 h-5 rounded border border-transparent hover:border-primary transition-all"
+                              style={{ background: `linear-gradient(to right,${c1},${c2})` }} />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Position picker */}
+                    <div className="flex items-start gap-4">
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-muted-foreground">Position</label>
+                        <div className="grid grid-cols-3 gap-1 w-24">
+                          {[
+                            { label: "↖", px: 15, py: 22 }, { label: "↑", px: 50, py: 22 }, { label: "↗", px: 85, py: 22 },
+                            { label: "←", px: 15, py: 50 }, { label: "●", px: 50, py: 50 }, { label: "→", px: 85, py: 50 },
+                            { label: "↙", px: 15, py: 78 }, { label: "↓", px: 50, py: 78 }, { label: "↘", px: 85, py: 78 },
+                          ].map(pos => (
+                            <button key={pos.label} type="button"
+                              onClick={() => { setPhotoTPx(pos.px); setPhotoTPy(pos.py); }}
+                              className={`h-7 rounded text-xs border transition-colors ${photoTPx === pos.px && photoTPy === pos.py ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                              {pos.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <Button size="sm" className="mt-5 flex-1 gap-1.5" onClick={() => {
+                        if (!photoTInput.trim()) return;
+                        setPhotoTexts(prev => [...prev, {
+                          id: Date.now().toString(), text: photoTInput, size: photoTSize, color: photoTColor,
+                          px: photoTPx, py: photoTPy, bold: photoTBold, italic: photoTItalic,
+                          gradient: photoTGradient, gc1: photoTGC1, gc2: photoTGC2, shadow: photoTShadow, align: photoTAlign,
+                        }]);
+                      }}>
+                        + Add Text Layer
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Text layer list */}
+                  {photoTexts.length > 0 && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-medium text-muted-foreground">Text Layers ({photoTexts.length})</label>
+                        <button type="button" onClick={() => setPhotoTexts([])} className="text-[10px] text-muted-foreground hover:text-destructive transition-colors">Clear all</button>
+                      </div>
+                      {photoTexts.map(t => (
+                        <div key={t.id} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-muted/20">
+                          <span className="flex-1 text-xs truncate"
+                            style={{
+                              fontWeight: t.bold ? "bold" : "normal", fontStyle: t.italic ? "italic" : "normal",
+                              ...(t.gradient
+                                ? { background: `linear-gradient(to right,${t.gc1},${t.gc2})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }
+                                : { color: t.color }),
+                            }}>
+                            {t.text}
+                          </span>
+                          <button type="button" onClick={() => setPhotoTexts(prev => prev.filter(x => x.id !== t.id))}
+                            className="text-muted-foreground hover:text-destructive transition-colors shrink-0">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* ── MERGE ── */}
+                <TabsContent value="merge" className="mt-3 space-y-3">
+                  <p className="text-xs text-muted-foreground">Blend a second image on top of your base photo with adjustable opacity and blend mode.</p>
+                  {!photoMergeUrl ? (
+                    <div className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/20 transition-colors"
+                      onClick={() => photoMergeRef.current?.click()}
+                      onDragOver={e => e.preventDefault()}
+                      onDrop={e => {
+                        e.preventDefault();
+                        const f = e.dataTransfer.files[0];
+                        if (!f || !f.type.startsWith("image/")) return;
+                        const reader = new FileReader();
+                        reader.onload = ev => setPhotoMergeUrl(ev.target?.result as string);
+                        reader.readAsDataURL(f);
+                      }}>
+                      <Layers3 className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                      <p className="text-sm font-medium">Drop overlay image or click to browse</p>
+                    </div>
+                  ) : (
+                    <div className="relative rounded-lg overflow-hidden border border-border h-24">
+                      <img src={photoMergeUrl} alt="merge overlay" className="w-full h-full object-cover" />
+                      <button type="button" onClick={() => setPhotoMergeUrl(null)}
+                        className="absolute top-1 right-1 rounded-full bg-black/60 text-white p-1 hover:bg-black/80">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    <div className="flex justify-between">
+                      <label className="text-xs font-medium">Overlay Opacity</label>
+                      <span className="text-xs text-muted-foreground">{photoMergeOpacity}%</span>
+                    </div>
+                    <SliderWithButtons min={0} max={100} step={5} value={[photoMergeOpacity]} onValueChange={([v]) => setPhotoMergeOpacity(v)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium">Blend Mode</label>
+                    <div className="grid grid-cols-4 gap-1">
+                      {[
+                        { value: "source-over", label: "Normal"      },
+                        { value: "multiply",    label: "Multiply"    },
+                        { value: "screen",      label: "Screen"      },
+                        { value: "overlay",     label: "Overlay"     },
+                        { value: "hard-light",  label: "Hard Light"  },
+                        { value: "soft-light",  label: "Soft Light"  },
+                        { value: "difference",  label: "Difference"  },
+                        { value: "luminosity",  label: "Luminosity"  },
+                      ].map(m => (
+                        <button key={m.value} type="button" onClick={() => setPhotoMergeBlend(m.value)}
+                          className={`py-1 rounded text-[10px] border transition-colors ${photoMergeBlend === m.value ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* ── REMOVE BG ── */}
+                <TabsContent value="bg" className="mt-3 space-y-3">
+                  <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 space-y-1.5">
+                    <p className="text-sm font-medium">Background Removal</p>
+                    <p className="text-xs text-muted-foreground">
+                      Powered by <span className="font-medium">remove.bg</span> — get a free API key (50 images/month) at{" "}
+                      <a href="https://www.remove.bg/api" target="_blank" rel="noopener noreferrer"
+                        className="text-primary underline-offset-2 hover:underline">remove.bg/api</a>.
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium">Your remove.bg API Key</label>
+                    <Input type="password" placeholder="e.g. abc123xyz…"
+                      value={removeBgKey} onChange={e => setRemoveBgKey(e.target.value)}
+                      className="h-9 font-mono text-sm" />
+                    <p className="text-[10px] text-muted-foreground">Stored locally on this device — only sent to remove.bg.</p>
+                  </div>
+                  <Button className="w-full gap-2"
+                    disabled={!photoEditUrl || bgRemoving || !removeBgKey}
+                    onClick={removeBackground}>
+                    {bgRemoving
+                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Removing background…</>
+                      : <><EyeOff className="w-4 h-4" /> Remove Background</>}
+                  </Button>
+                  {!photoEditUrl && <p className="text-xs text-muted-foreground text-center">Load a photo first to remove its background.</p>}
+                  {!removeBgKey && !!photoEditUrl && <p className="text-xs text-amber-500 text-center">Enter your API key above to enable this feature.</p>}
+                </TabsContent>
+              </Tabs>
+
+              {/* ── Action buttons (always visible) ── */}
+              <div className="flex gap-2 pt-2 border-t border-border/40">
+                <Button variant="outline" size="sm" onClick={resetPhotoFilters} className="gap-1.5 shrink-0">
                   <RotateCcw className="w-3.5 h-3.5" /> Reset
                 </Button>
-                <Button variant="outline" size="sm" onClick={downloadEditedPhoto} disabled={!photoEditUrl} className="gap-1.5">
+                <Button variant="outline" size="sm" onClick={downloadEditedPhoto}
+                  disabled={!photoEditUrl && !photoUsePoster} className="gap-1.5 shrink-0">
                   <Download className="w-3.5 h-3.5" /> Download
                 </Button>
-                <Button onClick={sendEditedPhotoToScreen} disabled={!photoEditUrl} className="flex-1 gap-1.5">
+                <Button onClick={sendEditedPhotoToScreen}
+                  disabled={!photoEditUrl && !photoUsePoster} className="flex-1 gap-1.5">
                   <Cast className="w-4 h-4" /> Send to Screen
                 </Button>
               </div>
