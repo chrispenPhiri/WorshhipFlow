@@ -1147,7 +1147,7 @@ export default function AIPage() {
           <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center">
             <Sparkles className="w-5 h-5 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold">AI-Powered Features</h1>
+          <h1 className="text-lg sm:text-2xl font-bold">AI-Powered Features</h1>
           <Badge variant="secondary" className="text-[10px]">Online</Badge>
           <Badge variant="outline" className="text-[10px] gap-1">
             <Sparkles className="w-2.5 h-2.5" /> {TABS.length} tools · all free

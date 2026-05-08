@@ -287,7 +287,7 @@ export default function BiblePage() {
       <div className="flex items-center gap-3">
         <div className="p-2 bg-primary/20 rounded-lg text-primary"><Book className="w-6 h-6" /></div>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Bible Passage</h1>
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Bible Passage</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Look up, highlight, and send scripture to the screen</p>
         </div>
       </div>

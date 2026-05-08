@@ -64,7 +64,7 @@ export default function HymnNumberPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-lg sm:text-2xl font-bold flex items-center gap-2">
           <Music2 className="w-6 h-6 text-primary" /> Hymn Number
         </h1>
         <p className="text-sm text-muted-foreground mt-1">

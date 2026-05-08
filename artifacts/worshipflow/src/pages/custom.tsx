@@ -187,7 +187,7 @@ export default function CustomTextPage() {
           <Type className="w-6 h-6" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Custom Text</h1>
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Custom Text</h1>
           <p className="text-muted-foreground text-sm mt-0.5">All settings are saved automatically</p>
         </div>
       </div>

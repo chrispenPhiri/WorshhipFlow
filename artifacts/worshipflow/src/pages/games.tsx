@@ -197,7 +197,7 @@ export default function GamesPage() {
           <Gamepad2 className="w-6 h-6" />
         </div>
         <div className="flex-1">
-          <h1 className="text-3xl font-bold tracking-tight">Bible Games</h1>
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Bible Games</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
             Fun, scripture-rooted games for youth nights, fellowship meetings, family time, or as a service warm-up.
           </p>

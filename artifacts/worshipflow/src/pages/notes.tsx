@@ -228,7 +228,7 @@ export default function NotesPage() {
         <div className="flex items-center gap-3">
           <div className="p-2 bg-primary/20 rounded-lg text-primary"><BookOpen className="w-6 h-6" /></div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Sermon Notes</h1>
+            <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Sermon Notes</h1>
             <p className="text-muted-foreground text-sm mt-0.5">Write notes and present them to the screen</p>
           </div>
         </div>

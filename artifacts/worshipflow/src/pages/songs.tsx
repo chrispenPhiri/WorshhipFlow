@@ -287,7 +287,7 @@ export default function SongsPage() {
             <Music className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Songs Library</h1>
+            <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Songs Library</h1>
             <p className="text-muted-foreground text-sm mt-0.5">{stats?.total ?? 0} songs</p>
           </div>
         </div>
@@ -479,7 +479,7 @@ export default function SongsPage() {
       </div>
 
       {/* Search */}
-      <div className="relative max-w-sm">
+      <div className="relative w-full sm:max-w-sm">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input placeholder="Search songs…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
       </div>

@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ChevronsLeft, ChevronsRight, LogOut, Menu, Tv, User as UserIcon, BookOpen, Radio, Pencil } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, LayoutGrid, LogOut, Pencil, Tv, User as UserIcon, BookOpen, Radio } from "lucide-react";
 import { LivePreview } from "./live-preview";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -21,6 +21,15 @@ import { useGetScreenState, getGetScreenStateQueryKey } from "@workspace/api-cli
 import { ProfileDialog } from "./profile-dialog";
 import { AiQuickPanel } from "./ai-quick-panel";
 import { YoutubePlayerPanel } from "./youtube-player-panel";
+
+/** Bottom tab bar — the 4 pages accessible directly from mobile nav */
+const BOTTOM_NAV_HREFS = ["/", "/songs", "/custom", "/media"] as const;
+const BOTTOM_NAV_SHORT_LABELS: Record<string, string> = {
+  "/":       "Bible",
+  "/songs":  "Songs",
+  "/custom": "Custom",
+  "/media":  "Media",
+};
 
 /**
  * Three viewport modes drive the layout shape:
@@ -205,6 +214,10 @@ export function Layout({ children }: { children: ReactNode }) {
     emoji: effectiveEmoji(item, overrides),
   }));
 
+  /** Which tab is active in the bottom bar? "More" is active when on a page not in the bar */
+  const isInBottomNav = (BOTTOM_NAV_HREFS as readonly string[]).includes(location);
+  const bottomNavItems = navItems.filter(item => (BOTTOM_NAV_HREFS as readonly string[]).includes(item.href));
+
   /** Render the nav links.  When `showLabels` is false (collapsed desktop
    *  sidebar) we wrap each link in a Tooltip so the label stays discoverable. */
   const renderNav = (showLabels: boolean, onNavigate?: () => void) => (
@@ -273,19 +286,15 @@ export function Layout({ children }: { children: ReactNode }) {
       {/* ── Mobile / tablet top bar ───────────────────────────────────── */}
       {!isDesktop && (
         <header
-          className="flex items-center justify-between gap-3 px-3 h-14 border-b border-border bg-sidebar flex-shrink-0"
+          className="flex items-center justify-between gap-2 px-4 border-b border-border bg-sidebar flex-shrink-0"
           data-testid="mobile-top-bar"
+          style={{
+            paddingTop: "max(0.625rem, env(safe-area-inset-top))",
+            paddingBottom: "0.625rem",
+            minHeight: "calc(2.75rem + env(safe-area-inset-top, 0px))",
+          }}
         >
-          <button
-            type="button"
-            onClick={() => setMenuOpen(true)}
-            className="p-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent"
-            aria-label="Open menu"
-            data-testid="button-mobile-menu"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          <h1 className="text-base font-bold text-primary flex items-center gap-2 truncate min-w-0">
+          <h1 className="text-sm font-bold text-primary flex items-center gap-2 truncate min-w-0 flex-1">
             <span className="bg-primary text-primary-foreground p-1 rounded text-xs shrink-0">PW</span>
             <span className="truncate">Phiri WorshipFlow</span>
             {isLive && (
@@ -422,7 +431,10 @@ export function Layout({ children }: { children: ReactNode }) {
             Bible-only mode is on. Open Settings to turn it off.
           </div>
         )}
-        <div className="p-4 sm:p-6 lg:p-8 h-full min-h-full">
+        <div
+          className="p-4 sm:p-6 lg:p-8 h-full min-h-full"
+          style={!isDesktop ? { paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom, 0px))" } : undefined}
+        >
           {children}
         </div>
       </main>
@@ -455,6 +467,70 @@ export function Layout({ children }: { children: ReactNode }) {
             </div>
           </SheetContent>
         </Sheet>
+      )}
+
+      {/* ── Mobile bottom tab bar ─────────────────────────────────────── */}
+      {!isDesktop && (
+        <nav
+          className="flex items-stretch border-t border-border bg-sidebar shrink-0 z-20"
+          style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+          data-testid="mobile-bottom-nav"
+        >
+          {bottomNavItems.map((item) => {
+            const isActive = location === item.href;
+            const shortLabel = BOTTOM_NAV_SHORT_LABELS[item.href] ?? item.label;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 select-none transition-opacity"
+                style={{ minHeight: "3.25rem" }}
+                aria-label={item.label}
+                aria-current={isActive ? "page" : undefined}
+              >
+                <span
+                  className="flex items-center justify-center w-8 h-7 rounded-xl transition-all duration-150"
+                  style={isActive
+                    ? { background: `${item.color}28`, color: item.color }
+                    : { color: "var(--muted-foreground)" }
+                  }
+                >
+                  {emojiMode
+                    ? <span style={{ fontSize: 16, lineHeight: 1, userSelect: "none" }}>{item.emoji}</span>
+                    : <item.Icon style={{ width: 18, height: 18 }} />
+                  }
+                </span>
+                <span
+                  className="text-[10px] font-medium leading-none"
+                  style={isActive ? { color: item.color } : { color: "var(--muted-foreground)" }}
+                >
+                  {shortLabel}
+                </span>
+              </Link>
+            );
+          })}
+
+          {/* ── More — opens the full nav sheet ── */}
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 select-none"
+            style={{ minHeight: "3.25rem" }}
+            aria-label="Open navigation menu"
+            data-testid="button-mobile-more"
+          >
+            <span
+              className={`flex items-center justify-center w-8 h-7 rounded-xl transition-all duration-150 ${
+                !isInBottomNav ? "bg-primary/15 text-primary" : "text-muted-foreground"
+              }`}
+            >
+              <LayoutGrid style={{ width: 18, height: 18 }} />
+            </span>
+            <span className={`text-[10px] font-medium leading-none ${!isInBottomNav ? "text-primary" : "text-muted-foreground"}`}>
+              More
+            </span>
+          </button>
+        </nav>
       )}
 
       {/* ── Profile dialog ────────────────────────────────────────────── */}

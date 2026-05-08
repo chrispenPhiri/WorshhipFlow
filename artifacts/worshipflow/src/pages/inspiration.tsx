@@ -98,7 +98,7 @@ export default function InspirationPage() {
       <div className="flex items-center gap-3">
         <div className="p-2 bg-primary/20 rounded-lg text-primary"><Sparkles className="w-6 h-6" /></div>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Daily Inspiration</h1>
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Daily Inspiration</h1>
           <p className="text-muted-foreground text-sm mt-0.5">A verse for today, interesting facts about the Bible, and the Christian calendar.</p>
         </div>
       </div>

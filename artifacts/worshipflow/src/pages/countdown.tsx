@@ -103,7 +103,7 @@ export default function CountdownPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-lg sm:text-2xl font-bold flex items-center gap-2">
           <Clock className="w-6 h-6 text-primary" /> Service Countdown
         </h1>
         <p className="text-sm text-muted-foreground mt-1">

@@ -603,7 +603,7 @@ export default function HowToPage() {
         <div className="flex items-center gap-3">
           <div className="p-2 bg-primary/20 rounded-lg text-primary"><HelpCircle className="w-6 h-6" /></div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">How To</h1>
+            <h1 className="text-xl sm:text-3xl font-bold tracking-tight">How To</h1>
             <p className="text-muted-foreground text-sm mt-0.5">Quick guide to every feature in Phiri WorshipFlow.</p>
           </div>
         </div>

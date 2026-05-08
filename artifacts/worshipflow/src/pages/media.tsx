@@ -1043,7 +1043,7 @@ export default function MediaPage() {
       <div className="flex items-center gap-3">
         <div className="p-2 bg-primary/20 rounded-lg text-primary"><Video className="w-6 h-6" /></div>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Media & Broadcasting</h1>
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Media & Broadcasting</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Camera, video, image backgrounds and broadcast output settings</p>
         </div>
       </div>

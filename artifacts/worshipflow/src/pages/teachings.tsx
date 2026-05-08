@@ -223,7 +223,7 @@ export default function TeachingsPage() {
           <GraduationCap className="w-6 h-6" />
         </div>
         <div className="flex-1">
-          <h1 className="text-3xl font-bold tracking-tight">Teachings</h1>
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Teachings</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
             Ready-to-use lessons for every audience and occasion — pick a category, open a lesson, and send each section to the screen.
           </p>

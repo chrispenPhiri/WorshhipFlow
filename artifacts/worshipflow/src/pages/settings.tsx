@@ -177,7 +177,7 @@ export default function SettingsPage() {
         <div className="p-2 bg-primary/20 rounded-lg text-primary">
           <SettingsIcon className="w-6 h-6" />
         </div>
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+        <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Settings</h1>
       </div>
 
       <SettingsGroup
