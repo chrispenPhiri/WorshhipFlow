@@ -769,9 +769,11 @@ export default function HowToPage() {
   const [openItems, setOpenItems] = useLocalStorage<string[]>("wf-howto-open", []);
 
   const printPdf = useCallback(() => {
-    // Expand all sections before printing
+    // Clear search so all sections are in the DOM, then expand all, then print
+    setSearch("");
     setOpenItems(SECTIONS.map(s => s.id));
-    setTimeout(() => window.print(), 300);
+    // Give React time to re-render fully open before the browser captures the page
+    setTimeout(() => window.print(), 600);
   }, [setOpenItems]);
 
   const q = search.trim().toLowerCase();
@@ -943,8 +945,25 @@ export default function HowToPage() {
       <style>{`
         @media print {
           body { background: white !important; color: black !important; }
-          .sidebar, nav, [data-sidebar], .live-preview { display: none !important; }
-          [data-radix-collection-item] { display: block !important; }
+          /* Hide app chrome */
+          aside, nav, header, footer,
+          [data-sidebar], [data-sidebar-wrapper],
+          .live-preview, [data-sonner-toaster] { display: none !important; }
+          /* Force the main content area to take full width */
+          main, [data-main-content] { width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+          /* Force Radix accordion/collapsible content visible regardless of open/closed state */
+          [data-radix-accordion-content],
+          [data-radix-collapsible-content] {
+            display: block !important;
+            overflow: visible !important;
+            height: auto !important;
+            animation: none !important;
+            opacity: 1 !important;
+          }
+          /* Ensure accordion trigger chevrons don't show */
+          [data-radix-accordion-trigger] svg { display: none !important; }
+          /* Page breaks between major sections */
+          [data-testid^="section-"] { page-break-inside: avoid; margin-bottom: 12pt; }
         }
       `}</style>
     </div>
