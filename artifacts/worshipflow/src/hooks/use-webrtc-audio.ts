@@ -12,6 +12,8 @@ interface SignalPayload {
   candidate?: RTCIceCandidateInit;
 }
 
+export type PeerState = "connecting" | "connected" | "failed";
+
 export function useWebRtcAudio(
   myId: string | null,
   members: SessionMember[],
@@ -19,11 +21,22 @@ export function useWebRtcAudio(
   setSignalHandler: (handler: (fromId: string, payload: unknown) => void) => void,
 ) {
   const [micEnabled, setMicEnabled] = useState(false);
+  const [micError, setMicError] = useState<string | null>(null);
   const [remoteMicIds, setRemoteMicIds] = useState<Set<string>>(new Set());
+  const [peerStates, setPeerStates] = useState<Map<string, PeerState>>(new Map());
 
   const localStreamRef = useRef<MediaStream | null>(null);
   const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const audioElemsRef = useRef<Map<string, HTMLAudioElement>>(new Map());
+
+  const updatePeerState = useCallback((id: string, state: PeerState | null) => {
+    setPeerStates(prev => {
+      const next = new Map(prev);
+      if (state === null) next.delete(id);
+      else next.set(id, state);
+      return next;
+    });
+  }, []);
 
   const closePeer = useCallback((memberId: string) => {
     peersRef.current.get(memberId)?.close();
@@ -33,14 +46,15 @@ export function useWebRtcAudio(
       audio.srcObject = null;
       audioElemsRef.current.delete(memberId);
     }
-  }, []);
+    updatePeerState(memberId, null);
+  }, [updatePeerState]);
 
   const createPeer = useCallback((targetId: string, isInitiator: boolean): RTCPeerConnection => {
     closePeer(targetId);
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
     peersRef.current.set(targetId, pc);
+    updatePeerState(targetId, "connecting");
 
-    // Add local mic tracks if we have them
     if (localStreamRef.current) {
       for (const track of localStreamRef.current.getTracks()) {
         pc.addTrack(track, localStreamRef.current);
@@ -64,8 +78,13 @@ export function useWebRtcAudio(
     };
 
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === "failed" || pc.connectionState === "closed") {
+      const s = pc.connectionState;
+      if (s === "connected") updatePeerState(targetId, "connected");
+      else if (s === "failed" || s === "closed") {
         peersRef.current.delete(targetId);
+        updatePeerState(targetId, s === "failed" ? "failed" : null);
+      } else if (s === "connecting") {
+        updatePeerState(targetId, "connecting");
       }
     };
 
@@ -77,7 +96,7 @@ export function useWebRtcAudio(
     }
 
     return pc;
-  }, [closePeer, sendSignal]);
+  }, [closePeer, sendSignal, updatePeerState]);
 
   const handleSignal = useCallback(async (fromId: string, payload: unknown) => {
     const p = payload as SignalPayload;
@@ -85,7 +104,6 @@ export function useWebRtcAudio(
 
     if (p.type === "mic-enabled") {
       setRemoteMicIds(prev => new Set([...prev, fromId]));
-      // If we also have mic, we initiate the connection (receiver initiates)
       if (localStreamRef.current && myId && fromId !== myId) {
         createPeer(fromId, true);
       }
@@ -128,17 +146,16 @@ export function useWebRtcAudio(
     }
   }, [closePeer, createPeer, myId, sendSignal]);
 
-  // Register signal handler whenever handleSignal changes
   useEffect(() => {
     setSignalHandler(handleSignal);
   }, [setSignalHandler, handleSignal]);
 
   const enableMic = useCallback(async () => {
+    setMicError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       localStreamRef.current = stream;
       setMicEnabled(true);
-      // Tell all current members mic is on; they will initiate connections to us
       if (myId) {
         for (const member of members) {
           if (member.id !== myId) {
@@ -146,8 +163,15 @@ export function useWebRtcAudio(
           }
         }
       }
-    } catch {
-      // Permission denied or no mic available — silent fail
+    } catch (err) {
+      const msg = err instanceof Error ? err.name : "unknown";
+      if (msg === "NotAllowedError" || msg === "PermissionDeniedError") {
+        setMicError("Microphone access was denied. Please allow it in your browser settings and try again.");
+      } else if (msg === "NotFoundError") {
+        setMicError("No microphone found. Plug in a mic or headset and try again.");
+      } else {
+        setMicError("Could not start microphone. Check your browser permissions.");
+      }
     }
   }, [members, myId, sendSignal]);
 
@@ -158,6 +182,7 @@ export function useWebRtcAudio(
     }
     for (const id of [...peersRef.current.keys()]) closePeer(id);
     setMicEnabled(false);
+    setMicError(null);
 
     if (myId) {
       for (const member of members) {
@@ -173,7 +198,6 @@ export function useWebRtcAudio(
     else void enableMic();
   }, [micEnabled, disableMic, enableMic]);
 
-  // Clean up on unmount
   useEffect(() => {
     return () => {
       if (localStreamRef.current) {
@@ -186,5 +210,5 @@ export function useWebRtcAudio(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { micEnabled, remoteMicIds, toggleMic };
+  return { micEnabled, micError, remoteMicIds, peerStates, toggleMic };
 }

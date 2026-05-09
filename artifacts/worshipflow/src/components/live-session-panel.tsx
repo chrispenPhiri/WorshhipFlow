@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   Users, Crown, Eye, Wrench, Copy, Check, LogOut, Wifi, WifiOff,
   Loader2, X, Minus, Plus, MonitorOff, Monitor, RefreshCw,
-  MessageSquare, Mic, MicOff, Send,
+  MessageSquare, Mic, MicOff, Send, AlertCircle, CheckCircle2, Radio,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -210,52 +210,127 @@ function ChatPanel({ messages, sendMessage, myId }: {
   );
 }
 
-function VoicePanel({ micEnabled, remoteMicIds, toggleMic, members, myId }: {
+function VoicePanel({ micEnabled, micError, remoteMicIds, peerStates, toggleMic, members, myId }: {
   micEnabled: boolean;
+  micError: string | null;
   remoteMicIds: Set<string>;
+  peerStates: Map<string, string>;
   toggleMic: () => void;
   members: LiveSessionState["members"];
   myId: string | null;
 }) {
-  const voiceMembers = members.filter(m => m.id === myId ? micEnabled : remoteMicIds.has(m.id));
+  const othersWithMic = members.filter(m => m.id !== myId && remoteMicIds.has(m.id));
+  const totalOnVoice = (micEnabled ? 1 : 0) + othersWithMic.length;
 
   return (
-    <div className="rounded-xl border border-border bg-background/50 p-4 space-y-3">
+    <div className="rounded-xl border border-border bg-background/50 p-4 space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Voice</p>
-        <span className="text-[10px] text-muted-foreground">Browser WebRTC · free</span>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Voice Chat</p>
+        <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">WebRTC · free</span>
       </div>
 
+      {/* How it works — shown when mic is off */}
+      {!micEnabled && (
+        <div className="space-y-2">
+          {[
+            "Click Enable Microphone below",
+            "Allow mic access when your browser asks",
+            "Everyone else on the Voice tab does the same",
+            "You'll hear each other automatically",
+          ].map((step, i) => (
+            <div key={i} className="flex items-start gap-2.5">
+              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/15 text-primary text-[11px] font-bold shrink-0 mt-0.5">
+                {i + 1}
+              </span>
+              <p className="text-xs text-muted-foreground leading-relaxed">{step}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Error banner */}
+      {micError && (
+        <div className="flex items-start gap-2 rounded-lg bg-destructive/15 border border-destructive/30 p-3 text-xs text-destructive">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          <span>{micError}</span>
+        </div>
+      )}
+
+      {/* Main mic toggle button */}
       <Button
         variant={micEnabled ? "default" : "outline"}
-        className={`w-full h-11 rounded-xl text-sm font-medium active:scale-95 transition-transform ${
+        className={`w-full h-12 rounded-xl text-sm font-medium active:scale-95 transition-transform ${
           micEnabled ? "bg-emerald-600 hover:bg-emerald-700 text-white border-0" : ""
         }`}
         onClick={toggleMic}
       >
-        {micEnabled
-          ? <><Mic className="w-4 h-4 mr-2" />Mic On — Click to Mute</>
-          : <><MicOff className="w-4 h-4 mr-2" />Enable Microphone</>
-        }
+        {micEnabled ? (
+          <>
+            <span className="relative mr-2">
+              <Mic className="w-4 h-4" />
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-white rounded-full animate-pulse" />
+            </span>
+            Mic On — Tap to Mute
+          </>
+        ) : (
+          <><MicOff className="w-4 h-4 mr-2" />Enable Microphone</>
+        )}
       </Button>
 
-      {voiceMembers.length > 0 && (
-        <div className="space-y-1">
-          <p className="text-[10px] text-muted-foreground">On voice:</p>
-          <div className="flex flex-wrap gap-1.5">
-            {voiceMembers.map(m => (
-              <span key={m.id} className="flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
-                <Mic className="w-3 h-3" />
-                {m.id === myId ? "You" : m.displayName}
-              </span>
-            ))}
+      {/* Live participants */}
+      {micEnabled && (
+        <div className="space-y-2">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+            {totalOnVoice === 1 ? "Just you — waiting for others" : `${totalOnVoice} on voice`}
+          </p>
+
+          {/* Me */}
+          <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2">
+            <span className="relative">
+              <Mic className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+            </span>
+            <span className="text-xs font-medium text-emerald-300">You (live)</span>
           </div>
+
+          {/* Others */}
+          {othersWithMic.map(m => {
+            const ps = peerStates.get(m.id);
+            return (
+              <div key={m.id} className="flex items-center gap-2 rounded-lg bg-muted/50 border border-border px-3 py-2">
+                {ps === "connected" ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                ) : ps === "failed" ? (
+                  <AlertCircle className="w-3.5 h-3.5 text-destructive shrink-0" />
+                ) : (
+                  <Radio className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
+                )}
+                <span className="text-xs text-foreground flex-1">{m.displayName}</span>
+                <span className={`text-[10px] ${
+                  ps === "connected" ? "text-emerald-400"
+                  : ps === "failed" ? "text-destructive"
+                  : "text-amber-400"
+                }`}>
+                  {ps === "connected" ? "connected" : ps === "failed" ? "failed" : "connecting…"}
+                </span>
+              </div>
+            );
+          })}
+
+          {othersWithMic.length === 0 && (
+            <p className="text-[10px] text-muted-foreground text-center py-2">
+              Share the room code so others can join and enable their mic.
+            </p>
+          )}
         </div>
       )}
 
-      <p className="text-[10px] text-muted-foreground leading-relaxed">
-        Voice uses your browser's built-in WebRTC — peer-to-peer, no server cost. Works best on the same network. Allow microphone access when prompted.
-      </p>
+      {!micEnabled && (
+        <p className="text-[10px] text-muted-foreground leading-relaxed border-t border-border pt-3">
+          Peer-to-peer — no server cost. Works in any modern browser. Microphone stays off until you explicitly enable it.
+        </p>
+      )}
     </div>
   );
 }
@@ -272,7 +347,7 @@ export function LiveSessionPanel({
   const [sessionTab, setSessionTab] = useState<"control" | "chat" | "voice">("control");
   const nameRef = useRef<HTMLInputElement>(null);
 
-  const { micEnabled, remoteMicIds, toggleMic } = useWebRtcAudio(
+  const { micEnabled, micError, remoteMicIds, peerStates, toggleMic } = useWebRtcAudio(
     sessionState.myId,
     sessionState.members,
     sendSignal,
@@ -494,7 +569,9 @@ export function LiveSessionPanel({
                 <TabsContent value="voice" className="mt-3">
                   <VoicePanel
                     micEnabled={micEnabled}
+                    micError={micError}
                     remoteMicIds={remoteMicIds}
+                    peerStates={peerStates}
                     toggleMic={toggleMic}
                     members={sessionState.members}
                     myId={sessionState.myId}

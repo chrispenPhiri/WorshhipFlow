@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { ChevronsLeft, ChevronsRight, LayoutGrid, LogOut, Pencil, Tv, User as UserIcon, BookOpen, Radio, Users } from "lucide-react";
 import { LivePreview } from "./live-preview";
@@ -18,6 +18,7 @@ import {
 import { useAuth } from "@/lib/auth/context";
 import { useBibleOnlyMode, isPathAllowedInBibleOnly } from "@/lib/bible-only-mode";
 import { useGetScreenState, getGetScreenStateQueryKey } from "@workspace/api-client-react";
+import { toast } from "sonner";
 import { ProfileDialog } from "./profile-dialog";
 import { AiQuickPanel } from "./ai-quick-panel";
 import { YoutubePlayerPanel } from "./youtube-player-panel";
@@ -183,6 +184,58 @@ export function Layout({ children }: { children: ReactNode }) {
   const session = useLiveSession();
   const inSession = (session.state.status === "connected" || session.state.status === "reconnecting") && !!session.state.code;
 
+  // ── Chat message notifications ─────────────────────────────────────────
+  const seenMsgCountRef = useRef(session.chatMessages.length);
+  const [chatUnread, setChatUnread] = useState(0);
+
+  // Play a soft beep when a new message arrives
+  const playBeep = () => {
+    try {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.18);
+    } catch { /* AudioContext may be blocked — ignore */ }
+  };
+
+  useEffect(() => {
+    const prev = seenMsgCountRef.current;
+    const curr = session.chatMessages.length;
+    if (curr > prev && inSession) {
+      const newMsgs = session.chatMessages.slice(prev);
+      if (!sessionOpen) {
+        // Show a toast for each new message when the panel is closed
+        for (const msg of newMsgs) {
+          toast(msg.displayName, {
+            description: msg.text.length > 80 ? msg.text.slice(0, 80) + "…" : msg.text,
+            duration: 5000,
+            action: { label: "Open", onClick: () => setSessionOpen(true) },
+          });
+        }
+        playBeep();
+        setChatUnread(u => u + newMsgs.length);
+      }
+    }
+    seenMsgCountRef.current = curr;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.chatMessages.length]);
+
+  // Reset unread count when the panel is opened
+  useEffect(() => {
+    if (sessionOpen) {
+      setChatUnread(0);
+      seenMsgCountRef.current = session.chatMessages.length;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionOpen]);
+
   const { data: screenState } = useGetScreenState({
     query: { queryKey: getGetScreenStateQueryKey(), refetchInterval: 3000 },
   });
@@ -336,8 +389,13 @@ export function Layout({ children }: { children: ReactNode }) {
               data-testid="button-mobile-session"
             >
               <Users className="w-4 h-4" />
-              {inSession && (
+              {inSession && !chatUnread && (
                 <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full border border-sidebar" />
+              )}
+              {chatUnread > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-0.5 bg-red-500 text-white text-[9px] font-bold rounded-full border border-sidebar flex items-center justify-center">
+                  {chatUnread > 9 ? "9+" : chatUnread}
+                </span>
               )}
             </button>
             <button
@@ -439,8 +497,13 @@ export function Layout({ children }: { children: ReactNode }) {
                     data-testid="button-session-collapsed"
                   >
                     <Users className="w-4 h-4" />
-                    {inSession && (
+                    {inSession && !chatUnread && (
                       <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full border border-sidebar" />
+                    )}
+                    {chatUnread > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 bg-red-500 text-white text-[9px] font-bold rounded-full border border-sidebar flex items-center justify-center">
+                        {chatUnread > 9 ? "9+" : chatUnread}
+                      </span>
                     )}
                   </button>
                 </TooltipTrigger>
@@ -459,16 +522,26 @@ export function Layout({ children }: { children: ReactNode }) {
               >
                 <div className="relative shrink-0">
                   <Users className="w-4 h-4" />
-                  {inSession && (
+                  {inSession && !chatUnread && (
                     <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-500 rounded-full" />
+                  )}
+                  {chatUnread > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-0.5 bg-red-500 text-white text-[9px] font-bold rounded-full border border-sidebar flex items-center justify-center">
+                      {chatUnread > 9 ? "9+" : chatUnread}
+                    </span>
                   )}
                 </div>
                 <span className="truncate">
                   {inSession ? `Session · ${session.state.code}` : "Live Session"}
                 </span>
-                {inSession && (
+                {inSession && !chatUnread && (
                   <span className="text-xs text-emerald-500 shrink-0">
                     {session.state.members.length} online
+                  </span>
+                )}
+                {chatUnread > 0 && (
+                  <span className="text-xs text-red-400 shrink-0 font-semibold">
+                    {chatUnread} new
                   </span>
                 )}
               </button>
