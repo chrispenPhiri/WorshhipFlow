@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Eye, Users, Wifi, WifiOff, ChevronUp, ChevronDown, RefreshCw } from "lucide-react";
 import { LiveSessionPanel } from "./live-session-panel";
-import type { LiveSessionState } from "@/lib/live-session";
+import type { LiveSessionState, ChatMessage } from "@/lib/live-session";
 
 interface Props {
   sessionState: LiveSessionState;
@@ -12,6 +12,11 @@ interface Props {
   leaveSession: () => void;
   changeRole: (memberId: string, role: "operator" | "viewer") => void;
   clearError: () => void;
+  chatMessages?: ChatMessage[];
+  sendChatMessage?: (text: string) => void;
+  sendSignal?: (targetId: string, payload: unknown) => void;
+  setSignalHandler?: (handler: (fromId: string, payload: unknown) => void) => void;
+  chatUnread?: number;
 }
 
 export function SessionViewerMode({
@@ -23,6 +28,11 @@ export function SessionViewerMode({
   leaveSession,
   changeRole,
   clearError,
+  chatMessages = [],
+  sendChatMessage = () => {},
+  sendSignal = () => {},
+  setSignalHandler = () => {},
+  chatUnread = 0,
 }: Props) {
   const [barVisible, setBarVisible] = useState(true);
 
@@ -112,11 +122,16 @@ export function SessionViewerMode({
             <button
               type="button"
               onClick={() => onSessionOpenChange(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              className="relative flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
               aria-label="Open session panel"
             >
               <Users className="w-3.5 h-3.5 text-white/70" />
               <span className="text-xs text-white/70 font-medium">{onlineCount}</span>
+              {chatUnread > 0 && (
+                <span className="absolute -top-1.5 -right-1 min-w-[16px] h-4 px-0.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                  {chatUnread > 9 ? "9+" : chatUnread}
+                </span>
+              )}
             </button>
           </div>
         )}
@@ -132,6 +147,10 @@ export function SessionViewerMode({
         leaveSession={leaveSession}
         changeRole={changeRole}
         clearError={clearError}
+        chatMessages={chatMessages}
+        sendChatMessage={sendChatMessage}
+        sendSignal={sendSignal}
+        setSignalHandler={setSignalHandler}
       />
     </div>
   );

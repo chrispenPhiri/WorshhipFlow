@@ -24,6 +24,7 @@ import { AiQuickPanel } from "./ai-quick-panel";
 import { YoutubePlayerPanel } from "./youtube-player-panel";
 import { LiveSessionPanel } from "./live-session-panel";
 import { SessionViewerMode } from "./session-viewer-mode";
+import { isChatSoundMuted } from "./live-session-panel";
 import { useLiveSession } from "@/hooks/use-live-session";
 
 /** Bottom tab bar — the 4 pages accessible directly from mobile nav */
@@ -219,7 +220,7 @@ export function Layout({ children }: { children: ReactNode }) {
             action: { label: "Open", onClick: () => setSessionOpen(true) },
           });
         }
-        playBeep();
+        if (!isChatSoundMuted()) playBeep();
         setChatUnread(u => u + newMsgs.length);
       }
     }
@@ -270,6 +271,11 @@ export function Layout({ children }: { children: ReactNode }) {
         leaveSession={session.leaveSession}
         changeRole={session.changeRole}
         clearError={session.clearError}
+        chatMessages={session.chatMessages}
+        sendChatMessage={session.sendChatMessage}
+        sendSignal={session.sendSignal}
+        setSignalHandler={session.setSignalHandler}
+        chatUnread={chatUnread}
       />
     );
   }

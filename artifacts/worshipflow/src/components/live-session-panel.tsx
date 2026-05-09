@@ -3,6 +3,7 @@ import {
   Users, Crown, Eye, Wrench, Copy, Check, LogOut, Wifi, WifiOff,
   Loader2, X, Minus, Plus, MonitorOff, Monitor, RefreshCw,
   MessageSquare, Mic, MicOff, Send, AlertCircle, CheckCircle2, Radio,
+  Bell, BellOff,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -135,17 +136,29 @@ function RemoteControl({ myRole }: { myRole: string | null }) {
   );
 }
 
+const CHAT_MUTE_KEY = "wf-chat-sound-muted";
+export function isChatSoundMuted() {
+  try { return localStorage.getItem(CHAT_MUTE_KEY) === "true"; } catch { return false; }
+}
+
 function ChatPanel({ messages, sendMessage, myId }: {
   messages: ChatMessage[];
   sendMessage: (text: string) => void;
   myId: string | null;
 }) {
   const [input, setInput] = useState("");
+  const [muted, setMuted] = useState(() => isChatSoundMuted());
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const toggleMute = () => {
+    const next = !muted;
+    setMuted(next);
+    try { localStorage.setItem(CHAT_MUTE_KEY, String(next)); } catch { /* ignore */ }
+  };
 
   const send = () => {
     if (!input.trim()) return;
@@ -160,11 +173,15 @@ function ChatPanel({ messages, sendMessage, myId }: {
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border shrink-0">
         <MessageSquare className="w-3.5 h-3.5 text-primary" />
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Team Chat</span>
-        {messages.length > 0 && (
-          <Badge className="ml-auto text-[9px] py-0 h-4 bg-primary/15 text-primary border-primary/25">
-            {messages.length}
-          </Badge>
-        )}
+        <button
+          type="button"
+          onClick={toggleMute}
+          title={muted ? "Unmute chat sounds" : "Mute chat sounds"}
+          className="ml-auto p-1 rounded hover:bg-muted/60 transition-colors text-muted-foreground hover:text-foreground"
+          aria-label={muted ? "Unmute chat sounds" : "Mute chat sounds"}
+        >
+          {muted ? <BellOff className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">

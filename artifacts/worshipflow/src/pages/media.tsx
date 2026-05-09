@@ -16,7 +16,8 @@ import {
   Bold, Italic, AlignLeft, AlignCenter, AlignRight,
   Circle, StopCircle, Download, Radio,
   Timer as TimerIcon, Pause, RotateCw, Hexagon, Shield, Type, Sparkles,
-  Wifi, FlipHorizontal, SlidersHorizontal, MonitorPlay, Tv
+  Wifi, FlipHorizontal, SlidersHorizontal, MonitorPlay, Tv,
+  Smartphone, ExternalLink
 } from "lucide-react";
 import { LiveStudioPanel } from "@/components/live-studio";
 import { LiveCaptionsCard } from "@/components/live-captions-card";
@@ -63,6 +64,133 @@ interface UploadedFile {
   size: string;
   fit: "cover" | "contain" | "fill";
   loop: boolean;
+}
+
+function CastToDisplayCard() {
+  const [casting, setCasting] = useState(false);
+  const [castError, setCastError] = useState<string | null>(null);
+  const [castConnected, setCastConnected] = useState(false);
+  const broadcastUrl = `${window.location.protocol}//${window.location.host}/broadcast`;
+  const supportsPresentationApi = typeof window !== "undefined" && "PresentationRequest" in window;
+
+  const castChromecast = async () => {
+    setCastError(null);
+    setCasting(true);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const req = new (window as any).PresentationRequest([broadcastUrl]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const conn: any = await req.start();
+      setCastConnected(true);
+      conn.addEventListener("terminate", () => setCastConnected(false));
+    } catch (err) {
+      const e = err as Error;
+      if (e.name !== "NotAllowedError" && e.name !== "AbortError") {
+        setCastError("No Chromecast found nearby. Make sure it's on the same Wi-Fi network.");
+      }
+    } finally {
+      setCasting(false);
+    }
+  };
+
+  const openBroadcastWindow = () =>
+    window.open(broadcastUrl, "_blank", "noopener,noreferrer");
+
+  const steps = {
+    airplay: [
+      "Open the Broadcast view (button below) on this device",
+      "Swipe to open Control Centre on iPhone/iPad",
+      "Tap Screen Mirroring → select your Apple TV or AirPlay display",
+      "Your screen mirrors to the TV instantly",
+    ],
+    android: [
+      "Open the Broadcast view (button below) in Chrome",
+      "Pull down the notification shade twice",
+      "Tap the Cast / Smart View tile",
+      "Select your TV, Chromecast, or Fire Stick",
+    ],
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-0 pt-3 px-4">
+        <div className="flex items-center gap-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Cast className="w-4 h-4" /> Cast to TV / Display
+          </CardTitle>
+          <span className="text-[10px] text-emerald-400 font-medium bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-full ml-auto">Free</span>
+        </div>
+        <CardDescription className="text-xs mt-1">Send the broadcast view to any TV, monitor, or projector</CardDescription>
+      </CardHeader>
+      <CardContent className="pt-4 space-y-3">
+
+        {/* Chromecast */}
+        <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2.5">
+          <div className="flex items-center gap-2">
+            <Cast className="w-4 h-4 text-blue-400 shrink-0" />
+            <span className="text-sm font-medium">Chromecast / Google TV</span>
+            <span className="ml-auto text-[10px] text-muted-foreground">Chrome browser</span>
+          </div>
+          {castError && <p className="text-xs text-destructive">{castError}</p>}
+          {castConnected && <p className="text-xs text-emerald-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Casting — broadcast view is live on Chromecast.</p>}
+          {supportsPresentationApi ? (
+            <Button size="sm" className="w-full gap-2" onClick={castChromecast} disabled={casting || castConnected}>
+              {casting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Cast className="w-3.5 h-3.5" />}
+              {castConnected ? "Casting…" : casting ? "Connecting…" : "Cast Broadcast View"}
+            </Button>
+          ) : (
+            <p className="text-xs text-muted-foreground rounded bg-muted px-3 py-2">
+              Open Phiri WorshipFlow in <strong className="text-foreground/70">Google Chrome</strong> to cast to Chromecast — the Cast API is Chrome‑only.
+            </p>
+          )}
+        </div>
+
+        {/* AirPlay — iOS */}
+        <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2.5">
+          <div className="flex items-center gap-2">
+            <Smartphone className="w-4 h-4 text-white/70 shrink-0" />
+            <span className="text-sm font-medium">AirPlay · iPhone / iPad</span>
+            <span className="ml-auto text-[10px] text-muted-foreground">Built-in · free</span>
+          </div>
+          <ol className="space-y-1.5">
+            {steps.airplay.map((s, i) => (
+              <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                <span className="flex items-center justify-center w-4 h-4 shrink-0 rounded-full bg-primary/15 text-primary text-[10px] font-bold mt-0.5">{i + 1}</span>
+                {s}
+              </li>
+            ))}
+          </ol>
+          <Button size="sm" variant="outline" className="w-full gap-2" onClick={openBroadcastWindow}>
+            <ExternalLink className="w-3.5 h-3.5" /> Open Broadcast View
+          </Button>
+        </div>
+
+        {/* Android Cast */}
+        <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2.5">
+          <div className="flex items-center gap-2">
+            <Monitor className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span className="text-sm font-medium">Android Cast / Smart View</span>
+            <span className="ml-auto text-[10px] text-muted-foreground">Built-in · free</span>
+          </div>
+          <ol className="space-y-1.5">
+            {steps.android.map((s, i) => (
+              <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                <span className="flex items-center justify-center w-4 h-4 shrink-0 rounded-full bg-primary/15 text-primary text-[10px] font-bold mt-0.5">{i + 1}</span>
+                {s}
+              </li>
+            ))}
+          </ol>
+          <Button size="sm" variant="outline" className="w-full gap-2" onClick={openBroadcastWindow}>
+            <ExternalLink className="w-3.5 h-3.5" /> Open Broadcast View
+          </Button>
+        </div>
+
+        <p className="text-[10px] text-muted-foreground leading-relaxed border-t border-border pt-3">
+          The Broadcast view is a full-screen, chrome-free page designed specifically for projection. For the best result on AirPlay or Android Cast, open it in a dedicated tab before mirroring your screen.
+        </p>
+      </CardContent>
+    </Card>
+  );
 }
 
 function formatBytes(bytes: number) {
@@ -2283,6 +2411,9 @@ export default function MediaPage() {
               </div>
             </div>
           )}
+
+          {/* ── Cast to Display ── */}
+          <CastToDisplayCard />
 
           {/* ── Live Captions (AI / Web Speech) ── */}
           <LiveCaptionsCard />
