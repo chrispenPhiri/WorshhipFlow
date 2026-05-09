@@ -7,6 +7,14 @@ export interface SessionMember {
   connectedAt: number;
 }
 
+export interface ChatMessage {
+  id: string;
+  memberId: string;
+  displayName: string;
+  text: string;
+  timestamp: number;
+}
+
 export interface LiveSessionState {
   status: "idle" | "connecting" | "connected" | "reconnecting" | "error";
   code: string | null;
@@ -31,6 +39,8 @@ export type ClientMessage =
   | { type: "leave_session" }
   | { type: "screen_update"; state: Record<string, unknown> }
   | { type: "change_role"; memberId: string; role: "operator" | "viewer" }
+  | { type: "chat_message"; text: string }
+  | { type: "signal"; targetId: string; payload: unknown }
   | { type: "ping" };
 
 export type ServerMessage =
@@ -41,6 +51,8 @@ export type ServerMessage =
   | { type: "member_left"; memberId: string }
   | { type: "screen_update"; state: Record<string, unknown>; senderId: string }
   | { type: "role_changed"; memberId: string; role: MemberRole }
+  | { type: "chat_message"; message: ChatMessage }
+  | { type: "signal"; fromId: string; payload: unknown }
   | { type: "error"; message: string }
   | { type: "pong" };
 

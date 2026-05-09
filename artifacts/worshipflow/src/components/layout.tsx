@@ -631,6 +631,10 @@ export function Layout({ children }: { children: ReactNode }) {
         leaveSession={session.leaveSession}
         changeRole={session.changeRole}
         clearError={session.clearError}
+        chatMessages={session.chatMessages}
+        sendChatMessage={session.sendChatMessage}
+        sendSignal={session.sendSignal}
+        setSignalHandler={session.setSignalHandler}
       />
 
       {/* ── YouTube player panel (floating) ──────────────────────────── */}

@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useCallback } from "react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,8 @@ import {
   HelpCircle, Search, Rocket, Book, Music, Type, Palette, Video, Calendar,
   BookOpen, Sparkles, Settings, Monitor, Keyboard, Lightbulb, ChevronRight, GraduationCap,
   Gamepad2, Plus, Download, Bot, Image as ImageIcon, TextCursorInput, Smile,
+  Users, MessageSquare, Mic, SlidersHorizontal, FileText, Star, Zap, Globe, Shield,
+  Printer,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -106,6 +108,46 @@ const SECTIONS: Section[] = [
     ],
   },
   {
+    id: "bible-search",
+    icon: Search,
+    title: "Bible Reference & Phrase Search",
+    to: "/",
+    summary: "Jump directly to any passage by typing a reference, or search the entire Bible for a phrase — all from one input.",
+    steps: [
+      {
+        heading: "Open Bible Search",
+        body: <p>Scroll down on the Bible page to find the <strong>Bible Search</strong> panel (below the verse results). Click it to expand.</p>,
+      },
+      {
+        heading: "Jump to a reference",
+        body: (
+          <>
+            <p>Type a Bible reference and press Enter or click <strong>Go to</strong>:</p>
+            <ul className="list-disc pl-5 mt-1 space-y-0.5 text-sm">
+              <li><code>John 3:16</code> — jump to a specific verse</li>
+              <li><code>John 1:1-5</code> — jump to a verse range</li>
+              <li><code>John 1 V1-5</code> — alternative "V" notation</li>
+              <li><code>1 Cor 13</code> — jump to an entire chapter</li>
+              <li><code>jn 3:16</code>, <code>gen 1</code>, <code>ps 23</code> — abbreviations work too</li>
+            </ul>
+            <p className="mt-1">A blue preview card confirms what will load before you press Go to.</p>
+          </>
+        ),
+      },
+      {
+        heading: "Search for a phrase",
+        body: <p>Type any word or phrase (e.g. <em>love</em>, <em>fear not</em>) and press <strong>Search</strong>. Results show matching verses with the phrase highlighted. Choose scope: <strong>Chapter</strong> (instant, current verses only), <strong>Book</strong>, or <strong>Whole Bible</strong>.</p>,
+      },
+      {
+        heading: "Use a result",
+        body: <p>Hover any result to reveal the <strong>→ Go to</strong> and <strong>Cast</strong> buttons — navigate to that passage or send that verse directly to screen without navigating away.</p>,
+      },
+    ],
+    tips: [
+      <>The search panel automatically detects whether you typed a reference or a phrase — no separate inputs needed.</>,
+    ],
+  },
+  {
     id: "songs",
     icon: Music,
     title: "Songs",
@@ -172,7 +214,7 @@ const SECTIONS: Section[] = [
     icon: Video,
     title: "Media & Broadcast",
     to: "/media",
-    summary: "Upload images and videos, use a live camera feed, or fullscreen the projection on a second display.",
+    summary: "Upload images and videos, use a live camera feed, edit photos, or fullscreen the projection on a second display.",
     steps: [
       {
         heading: "Upload images and videos",
@@ -193,6 +235,47 @@ const SECTIONS: Section[] = [
     ],
     tips: [
       <>If your browser does not support display picking, just open <code>/broadcast</code> in a new tab and drag it to the second screen, then press F11 to fullscreen.</>,
+    ],
+  },
+  {
+    id: "photo-studio",
+    icon: SlidersHorizontal,
+    title: "Photo Studio",
+    to: "/media",
+    summary: "Edit photos with filters, add text overlays, merge images, remove backgrounds — all without leaving the app.",
+    steps: [
+      {
+        heading: "Open Photo Studio",
+        body: <p>Go to <strong>Media → Photo Studio</strong> tab. Drop an image, pick a file, or start with a <strong>poster background</strong> (for text-only graphics).</p>,
+      },
+      {
+        heading: "Apply filters",
+        body: <p>Use the <strong>Filters</strong> sub-tab to adjust Brightness, Contrast, Saturation, Hue, Sepia, Grayscale, and Blur with sliders. Click <strong>Reset Filters</strong> to restore defaults without losing your image.</p>,
+      },
+      {
+        heading: "Add text overlays",
+        body: <p>Go to the <strong>Text</strong> sub-tab. Type your message, choose font, size, color, alignment, and bold/italic/shadow options. Drag the text anchor point on the preview to reposition it. Add multiple text layers.</p>,
+      },
+      {
+        heading: "Merge two images",
+        body: <p>Use the <strong>Merge</strong> sub-tab to overlay a second image with adjustable opacity and blend mode, or switch to <strong>Side-by-Side</strong> layout with a draggable split line.</p>,
+      },
+      {
+        heading: "Remove the background",
+        body: <p>The <strong>Remove BG</strong> sub-tab uses the remove.bg API (requires a free API key). Enter your key and click Remove Background. The result replaces the photo with a transparent version.</p>,
+      },
+      {
+        heading: "Clear and close",
+        body: <p>Click the <strong>✕</strong> button in the top-right corner of the preview to clear the current image and start fresh. Use <strong>Reset Filters</strong> to undo only the filter adjustments.</p>,
+      },
+      {
+        heading: "Export or present",
+        body: <p>Click <strong>Download</strong> to save the edited image as a JPG, or <strong>Send to Screen</strong> to project it immediately on the presentation display.</p>,
+      },
+    ],
+    tips: [
+      <>The preview canvas reflects all edits in real time — what you see is what gets exported.</>,
+      <>Poster backgrounds are great for creating sermon title slides without needing a photo.</>,
     ],
   },
   {
@@ -231,6 +314,57 @@ const SECTIONS: Section[] = [
         heading: "Present a note",
         body: <p>Click <strong>Present to screen</strong> on any card, then adjust font, size, and alignment in the dialog before sending.</p>,
       },
+    ],
+  },
+  {
+    id: "live-session",
+    icon: Users,
+    title: "Live Session",
+    summary: "Connect your whole worship team in real time — shared screen control, team chat, and free voice comms.",
+    steps: [
+      {
+        heading: "Start a session",
+        body: <p>Click the <strong>Live Session</strong> button in the top bar. Enter your name and click <strong>Create Session</strong>. You'll get a 6-character room code to share with your team.</p>,
+      },
+      {
+        heading: "Join a session",
+        body: <p>On another device, click <strong>Live Session</strong>, enter your name and the room code, then click <strong>Join Session</strong>. You can also open the invite link the master copies — it auto-fills the code.</p>,
+      },
+      {
+        heading: "Roles",
+        body: (
+          <>
+            <p>Every member has a role:</p>
+            <ul className="list-disc pl-5 mt-1 space-y-0.5 text-sm">
+              <li><strong>Master</strong> — creates the session, manages roles, full control</li>
+              <li><strong>Operator</strong> — can send content to the projection screen</li>
+              <li><strong>Viewer</strong> — sees the current screen state, read-only</li>
+            </ul>
+            <p className="mt-1">The master can toggle any member between Operator and Viewer in the Members list.</p>
+          </>
+        ),
+      },
+      {
+        heading: "Team Chat",
+        body: <p>While in a session, open the <strong>Chat</strong> tab inside the Live Session panel. Type a message and press Enter or the send button. All members see messages in real time — great for quiet coordination during a service without speaking aloud.</p>,
+      },
+      {
+        heading: "Voice comms",
+        body: <p>Open the <strong>Voice</strong> tab and click <strong>Enable Microphone</strong>. Allow browser microphone access when prompted. Your browser uses free WebRTC peer-to-peer audio to connect you with other members who also enable their mic — no server cost, no subscriptions. Works best on the same network or via a reliable internet connection.</p>,
+      },
+      {
+        heading: "Remote control",
+        body: <p>Masters and operators see a <strong>Remote Control</strong> panel on the Control tab — font size ± buttons and a Blank/Unblank screen toggle. This lets a second person control the display without sitting at the main operator device.</p>,
+      },
+      {
+        heading: "Reconnection",
+        body: <p>If the connection drops, the app automatically reconnects and rejoins your session. An amber indicator appears while reconnecting — you don't need to do anything.</p>,
+      },
+    ],
+    tips: [
+      <>The master device is the source of truth. If someone's screen looks out of sync, they can leave and rejoin to resync.</>,
+      <>Chat messages are session-scoped — they clear when everyone leaves.</>,
+      <>Voice works entirely in your browser using WebRTC — no third-party service, no cost.</>,
     ],
   },
   {
@@ -285,10 +419,6 @@ const SECTIONS: Section[] = [
         heading: "Send all questions at once",
         body: <p>The Discussion Questions card has a <strong>Send All Questions to Screen</strong> button — perfect for small-group breakout time.</p>,
       },
-      {
-        heading: "Right lesson for the right moment",
-        body: <p>Pick <strong>Funeral</strong>, <strong>Baptism</strong>, or <strong>Holy Communion</strong> when preparing for those services. Pick <strong>Mothers</strong> or <strong>Fathers</strong> for fellowship meetings. Pick <strong>Happiness</strong> for joy-themed services or counselling.</p>,
-      },
     ],
     tips: [
       <>Lessons load instantly and work <strong>offline</strong> — no setup needed before class or service.</>,
@@ -342,50 +472,31 @@ const SECTIONS: Section[] = [
     icon: Gamepad2,
     title: "Bible Games",
     to: "/games",
-    summary: "Ten offline Bible games for youth nights, fellowship meetings, family time, or as a service warm-up — most can be projected on the main screen.",
+    summary: "Ten offline Bible games for youth nights, fellowship meetings, family time, or as a service warm-up.",
     steps: [
       {
         heading: "Pick a game",
         body: (
           <>
-            <p>Open <strong>Bible Games</strong> from the menu. You can choose:</p>
-            <ul className="list-disc pl-5 mt-1 space-y-1 text-sm">
-              <li><strong>Bible Trivia</strong> — 10 multiple-choice questions per round, with Easy / Medium / Hard / Mixed difficulty.</li>
-              <li><strong>Books of the Bible</strong> — put the OT or NT books in correct order with instant feedback.</li>
-              <li><strong>Who Said It?</strong> — match famous quotes to the Bible figure who spoke them.</li>
-              <li><strong>Bible Charades</strong> — draw a random card and act out the person, event, or parable.</li>
-              <li><strong>Verse Scramble</strong> — tap the words in the right order to rebuild a familiar verse (KJV).</li>
-              <li><strong>Bible Emoji Quiz</strong> — guess the Bible story or person from a row of emojis.</li>
-              <li><strong>Bible Hangman</strong> — classic letter-by-letter word guessing with six lives.</li>
-              <li><strong>True or False</strong> — quick-fire Bible statements, with explanations after every reveal.</li>
-              <li><strong>Bible Spell-It</strong> — read a clue and tap letters in order to spell the word.</li>
-              <li><strong>Two Truths and a Lie</strong> — three statements about a Bible figure; spot the lie.</li>
-            </ul>
+            <p>Open <strong>Bible Games</strong> from the menu. You can choose from Bible Trivia, Books of the Bible, Who Said It?, Bible Charades, Verse Scramble, Bible Emoji Quiz, Bible Hangman, True or False, Bible Spell-It, and Two Truths and a Lie.</p>
           </>
         ),
-      },
-      {
-        heading: "Play with a group",
-        body: <p>Trivia, Who Said It?, Bible Emoji Quiz, True or False, and Two Truths and a Lie give a final score and a per-question review with answers and references. Books of the Bible scores accuracy of placement. Charades, Verse Scramble, Hangman, and Spell-It are card-style rounds designed for playing together in person.</p>,
       },
       {
         heading: "Show the game on the projector",
         body: (
           <>
-            <p>Most games have a <strong>Show on screen</strong> button (and a <strong>Reveal answer on screen</strong> button) so the whole group can read the question, puzzle, or charade card on the projection.</p>
-            <p className="mt-1 text-sm text-muted-foreground">For Charades, the prompt only sends to the screen <em>after</em> you reveal it — so the actor can stay in the dark while the audience plays guesser.</p>
+            <p>Most games have a <strong>Show on screen</strong> button so the whole group can read the question or puzzle on the projection.</p>
           </>
         ),
       },
       {
         heading: "Restart anytime",
-        body: <p>Each game has a <strong>Restart</strong> button to reshuffle. The hub remembers which game you last opened so you can pick up where you left off.</p>,
+        body: <p>Each game has a <strong>Restart</strong> button to reshuffle.</p>,
       },
     ],
     tips: [
       <>Every game works fully <strong>offline</strong>.</>,
-      <>For Charades, only the actor should look at the card — tap to reveal it.</>,
-      <>The <strong>Show on screen</strong> buttons re-use the same projector, so anything game-related will replace the current verse/song.</>,
     ],
   },
   {
@@ -461,7 +572,6 @@ const SECTIONS: Section[] = [
     ],
     tips: [
       <>The operator window and broadcast window stay in sync even offline — they communicate directly through the browser.</>,
-      <>To back up your data, use the browser's export feature or take note of important content elsewhere — local storage is per-device.</>,
     ],
   },
   {
@@ -469,23 +579,23 @@ const SECTIONS: Section[] = [
     icon: Bot,
     title: "AI Features",
     to: "/ai",
-    summary: "Three AI-powered tools: Ask a Prophet (theological Q&A), AI Chapter Summary, and Context Lens (plain-English explanations). All require internet.",
+    summary: "Ask a Prophet (theological Q&A), AI Chapter Summary, and Context Lens. All require your own AI provider API key.",
     steps: [
       {
+        heading: "Set up your AI provider",
+        body: <p>Go to <strong>Settings → AI Features</strong> and enter your API key for OpenAI, Gemini, OpenRouter, DeepSeek, or Groq. Your key is stored locally on this device only — it is never sent to anyone except your chosen AI provider.</p>,
+      },
+      {
         heading: "Ask a Prophet",
-        body: <p>Type any theological question and get a rich, contextual answer grounded in Scripture. You can have a multi-turn conversation — the AI keeps track of what was said earlier. Five suggested questions appear at the start to help you get going.</p>,
+        body: <p>Type any theological question and get a rich, contextual answer grounded in Scripture. You can have a multi-turn conversation — the AI keeps track of what was said earlier.</p>,
       },
       {
         heading: "AI Chapter Summary (TL;DR)",
-        body: <p>Enter a book name and chapter number and click <strong>Summarise</strong>. You get a 3-bullet TL;DR — great for understanding Leviticus, Numbers, Revelation, or any long chapter before a service. Eight quick-access chapter chips are provided.</p>,
-      },
-      {
-        heading: "Context Lens (plain-English explanations)",
-        body: <p>Enter any passage reference (e.g. <em>Revelation 3:20</em> or <em>Matthew 13:44-46</em>) and click <strong>Explain</strong>. The AI gives a clear, accessible explanation — ideal for new believers or children's ministry. You can optionally paste the verse text in for extra accuracy.</p>,
+        body: <p>Enter a book name and chapter number and click <strong>Summarise</strong>. You get a 3-bullet TL;DR — great for understanding Leviticus, Numbers, Revelation, or any long chapter before a service.</p>,
       },
       {
         heading: "Send AI content to the screen",
-        body: <p>After any AI response appears, click <strong>Send to screen</strong> to project it on the presentation display — it goes up on a beautiful deep indigo gradient background. Use this to share an AI-generated explanation or summary with your congregation in real time.</p>,
+        body: <p>After any AI response appears, click <strong>Send to screen</strong> to project it on the presentation display. Use this to share an AI-generated explanation or summary with your congregation in real time.</p>,
       },
       {
         heading: "Export AI content as PDF",
@@ -493,7 +603,7 @@ const SECTIONS: Section[] = [
       },
     ],
     tips: [
-      <>AI features require an active internet connection. Everything else in the app still works offline.</>,
+      <>AI features require an active internet connection and your own API key. All other app features still work offline and without an API key.</>,
       <>AI responses are a starting point for study — always review them against Scripture before sharing with your church.</>,
     ],
   },
@@ -505,20 +615,19 @@ const SECTIONS: Section[] = [
     steps: [
       {
         heading: "Inspiration graphics",
-        body: <p>On the <strong>Daily Inspiration</strong> page, each Verse of the Day and "Did You Know?" card has a plain <strong>Send to screen</strong> button and a purple <strong>Send as graphic</strong> button. The graphic version uses a beautiful, category-specific gradient: deep indigo for verses, warm amber for facts, and violet for calendar events.</p>,
+        body: <p>On the <strong>Daily Inspiration</strong> page, each Verse of the Day and "Did You Know?" card has a plain <strong>Send to screen</strong> button and a purple <strong>Send as graphic</strong> button. The graphic version uses a beautiful, category-specific gradient.</p>,
       },
       {
         heading: "Teaching graphics",
-        body: <p>On the <strong>Teachings</strong> page, the Key Verse and Closing Prayer cards each have a <strong>Send as graphic</strong> button. The gradient color matches the lesson category — rose for Mothers, blue for Fathers, teal for Healing, slate for Funeral, and so on.</p>,
+        body: <p>On the <strong>Teachings</strong> page, the Key Verse and Closing Prayer cards each have a <strong>Send as graphic</strong> button. The gradient color matches the lesson category.</p>,
       },
       {
         heading: "Prayer Wall graphics",
-        body: <p>On the <strong>Prayer Wall</strong> page, each prayer request has a <strong>Graphic</strong> button (a single request with its category gradient) and there is a <strong>Full graphic</strong> button at the top to project all active requests together on a deep rose gradient.</p>,
+        body: <p>On the <strong>Prayer Wall</strong> page, each prayer request has a <strong>Graphic</strong> button and there is a <strong>Full graphic</strong> button at the top to project all active requests together.</p>,
       },
     ],
     tips: [
       <>Graphic mode sets its own background, overriding whatever theme is currently active — only for that one send.</>,
-      <>After projecting a graphic, the next plain send will restore your current theme background.</>,
     ],
   },
   {
@@ -529,11 +638,11 @@ const SECTIONS: Section[] = [
     steps: [
       {
         heading: "How it works",
-        body: <p>When you send a long passage — such as a multi-verse chapter or a full prayer — the broadcast window measures the text height after rendering. If it overflows the available space, it automatically reduces the font size proportionally so all the text fits within the screen without cutting off.</p>,
+        body: <p>When you send a long passage, the broadcast window measures the text height after rendering. If it overflows the available space, it automatically reduces the font size proportionally so all the text fits within the screen without cutting off.</p>,
       },
       {
         heading: "Manual font size still wins",
-        body: <p>Auto-fit only scales <em>down</em> — it never makes text larger than your configured font size. If you find that text is too small after auto-fit shrinks it, reduce the amount of text or increase the <strong>Text Width</strong> percentage in Settings to give the text more room.</p>,
+        body: <p>Auto-fit only scales <em>down</em> — it never makes text larger than your configured font size. If text is too small after auto-fit shrinks it, reduce the amount of text or increase the <strong>Text Width</strong> percentage in Settings.</p>,
       },
     ],
     tips: [
@@ -579,13 +688,91 @@ const SECTIONS: Section[] = [
         heading: "Lean on Recently Presented",
         body: <p>If the speaker calls back to a verse from earlier, tap it in Recently Presented instead of re-navigating.</p>,
       },
+      {
+        heading: "Use Live Session for team coordination",
+        body: <p>Start a session before service. Use Chat for silent coordination. Give a trusted team member Operator role so they can assist with the screen. Use Voice for hands-free comms during large services.</p>,
+      },
     ],
   },
 ];
 
+function AdvertBanner() {
+  return (
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-background border border-primary/30 p-6">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/15 via-transparent to-transparent pointer-events-none" />
+
+      <div className="relative space-y-5">
+        {/* Header */}
+        <div className="flex items-start gap-4">
+          <div className="p-3 rounded-xl bg-primary/20 border border-primary/30 shrink-0">
+            <BookOpen className="w-7 h-7 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold tracking-tight">Phiri WorshipFlow</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">The complete worship presentation platform — built for churches of all sizes.</p>
+          </div>
+        </div>
+
+        {/* Feature grid */}
+        <div className="grid sm:grid-cols-2 gap-3">
+          {[
+            { icon: Book,           label: "17 Bible Translations",   desc: "KJV, NIV, ESV, ASV & 13 more" },
+            { icon: Globe,          label: "Works Offline",            desc: "Full functionality without internet" },
+            { icon: Users,          label: "Live Team Sessions",       desc: "Multi-device control with chat & voice" },
+            { icon: Zap,            label: "Instant Broadcast",        desc: "Zero-delay to any connected display" },
+            { icon: Bot,            label: "AI-Powered Content",       desc: "Sermons, prayers, devotionals & more" },
+            { icon: SlidersHorizontal, label: "Photo Studio",          desc: "Filters, overlays, merge & BG removal" },
+            { icon: GraduationCap,  label: "Ready-Made Teachings",    desc: "100+ lessons for every occasion" },
+            { icon: Shield,         label: "100% Private",             desc: "All data stays on your device" },
+          ].map(f => (
+            <div key={f.label} className="flex items-start gap-3 p-3 rounded-xl bg-background/60 border border-border/50">
+              <div className="p-1.5 rounded-lg bg-primary/10 text-primary shrink-0">
+                <f.icon className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold leading-tight">{f.label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{f.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Highlights */}
+        <div className="flex flex-wrap gap-2">
+          {[
+            "10 Bible Games", "Animated Wallpapers", "Live Captions", "YouTube Player",
+            "Photo Studio", "Prayer Wall", "Service Schedule", "Teleprompter",
+          ].map(tag => (
+            <span key={tag} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">
+              <Star className="w-2.5 h-2.5" />{tag}
+            </span>
+          ))}
+        </div>
+
+        {/* CTA */}
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <FileText className="w-4 h-4 text-primary" />
+            <span>Free to use · No subscriptions · No account required</span>
+          </div>
+          <span className="ml-auto text-xs font-semibold text-primary/80 bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20">
+            phiriworshipflow.replit.app
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function HowToPage() {
   const [search, setSearch] = useState("");
   const [openItems, setOpenItems] = useLocalStorage<string[]>("wf-howto-open", []);
+
+  const printPdf = useCallback(() => {
+    // Expand all sections before printing
+    setOpenItems(SECTIONS.map(s => s.id));
+    setTimeout(() => window.print(), 300);
+  }, [setOpenItems]);
 
   const q = search.trim().toLowerCase();
   const filtered = q
@@ -597,9 +784,15 @@ export default function HowToPage() {
     : SECTIONS;
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl print:space-y-3">
+      {/* Print-only title */}
+      <div className="hidden print:block mb-4">
+        <h1 className="text-2xl font-bold">Phiri WorshipFlow — How To Guide</h1>
+        <p className="text-sm text-muted-foreground">Complete feature reference</p>
+      </div>
+
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="flex items-center justify-between gap-3 flex-wrap print:hidden">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-primary/20 rounded-lg text-primary"><HelpCircle className="w-6 h-6" /></div>
           <div>
@@ -607,21 +800,27 @@ export default function HowToPage() {
             <p className="text-muted-foreground text-sm mt-0.5">Quick guide to every feature in Phiri WorshipFlow.</p>
           </div>
         </div>
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search topics…"
-            className="pl-8 w-64"
-            data-testid="input-howto-search"
-          />
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search topics…"
+              className="pl-8 w-48 sm:w-64"
+              data-testid="input-howto-search"
+            />
+          </div>
+          <Button variant="outline" size="sm" onClick={printPdf} className="gap-1.5 shrink-0" title="Download as PDF">
+            <Printer className="w-4 h-4" />
+            <span className="hidden sm:inline">Download PDF</span>
+          </Button>
         </div>
       </div>
 
       {/* Quick-jump tiles */}
       {!q && (
-        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3" data-testid="howto-quick-tiles">
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3 print:hidden" data-testid="howto-quick-tiles">
           {SECTIONS.map(s => (
             <button
               key={s.id}
@@ -661,17 +860,17 @@ export default function HowToPage() {
               key={s.id}
               value={s.id}
               id={`howto-${s.id}`}
-              className="border border-border rounded-xl bg-card px-4 scroll-mt-4"
+              className="border border-border rounded-xl bg-card px-4 scroll-mt-4 print:border-0 print:rounded-none print:border-b print:border-border/30 print:px-0"
               data-testid={`section-${s.id}`}
             >
               <AccordionTrigger className="hover:no-underline py-4">
                 <div className="flex items-center gap-3 text-left flex-1">
-                  <div className="p-1.5 rounded-md bg-primary/10 text-primary shrink-0"><s.icon className="w-4 h-4" /></div>
+                  <div className="p-1.5 rounded-md bg-primary/10 text-primary shrink-0 print:hidden"><s.icon className="w-4 h-4" /></div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold">{s.title}</h3>
                       {s.to && (
-                        <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 font-mono">{s.to}</Badge>
+                        <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 font-mono print:hidden">{s.to}</Badge>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5 font-normal">{s.summary}</p>
@@ -679,16 +878,16 @@ export default function HowToPage() {
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pb-4">
-                <div className="space-y-4 pl-9">
+                <div className="space-y-4 pl-9 print:pl-0">
                   {s.steps.map((step, idx) => (
                     <div key={idx} className="space-y-1.5">
                       <div className="flex items-baseline gap-2">
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/15 text-primary text-[11px] font-semibold shrink-0">
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/15 text-primary text-[11px] font-semibold shrink-0 print:hidden">
                           {idx + 1}
                         </span>
                         <h4 className="font-semibold text-sm">{step.heading}</h4>
                       </div>
-                      <div className="pl-7 text-sm text-muted-foreground leading-relaxed [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:text-foreground [&_strong]:text-foreground">
+                      <div className="pl-7 text-sm text-muted-foreground leading-relaxed print:pl-4 [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:text-foreground [&_strong]:text-foreground">
                         {step.body}
                       </div>
                     </div>
@@ -698,7 +897,7 @@ export default function HowToPage() {
                     <div className="pt-2 mt-3 border-t border-border space-y-2">
                       {s.tips.map((tip, idx) => (
                         <div key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <Lightbulb className="w-3.5 h-3.5 mt-0.5 text-amber-500 shrink-0" />
+                          <Lightbulb className="w-3.5 h-3.5 mt-0.5 text-amber-500 shrink-0 print:hidden" />
                           <p className="leading-relaxed [&_strong]:text-foreground">{tip}</p>
                         </div>
                       ))}
@@ -706,7 +905,7 @@ export default function HowToPage() {
                   )}
 
                   {s.to && (
-                    <div className="pt-2">
+                    <div className="pt-2 print:hidden">
                       <Button asChild size="sm" variant="outline" className="gap-1.5">
                         <Link href={s.to} data-testid={`button-open-${s.id}`}>
                           Open {s.title} <ChevronRight className="w-3.5 h-3.5" />
@@ -722,7 +921,7 @@ export default function HowToPage() {
       )}
 
       {/* Keyboard / final note */}
-      <Card className="bg-muted/30 border-dashed">
+      <Card className="bg-muted/30 border-dashed print:hidden">
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2">
             <Keyboard className="w-4 h-4 text-muted-foreground" />
@@ -734,6 +933,20 @@ export default function HowToPage() {
         </CardHeader>
         <CardContent />
       </Card>
+
+      {/* Advert */}
+      <div className="print:hidden">
+        <AdvertBanner />
+      </div>
+
+      {/* Print-specific styles */}
+      <style>{`
+        @media print {
+          body { background: white !important; color: black !important; }
+          .sidebar, nav, [data-sidebar], .live-preview { display: none !important; }
+          [data-radix-collection-item] { display: block !important; }
+        }
+      `}</style>
     </div>
   );
 }

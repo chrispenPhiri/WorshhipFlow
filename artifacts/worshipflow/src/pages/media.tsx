@@ -1268,6 +1268,7 @@ export default function MediaPage() {
                       </div>
                     ))}
                     <button type="button"
+                      onPointerDown={e => e.stopPropagation()}
                       onClick={() => { setPhotoEditUrl(null); setPhotoUsePoster(false); setPhotoTexts([]); setPhotoMergeUrl(null); resetPhotoFilters(); }}
                       className="absolute top-2 right-2 rounded-full bg-black/60 text-white p-1 hover:bg-black/80 transition-colors z-10">
                       <X className="w-4 h-4" />

@@ -121,6 +121,36 @@ export function attachWebSocketServer(httpServer: Server): WebSocketServer {
           break;
         }
 
+        case "chat_message": {
+          const info = mgr.getSessionInfo(ws);
+          if (!info) return;
+          const { session, member } = info;
+          const text = String(msg["text"] ?? "").trim().slice(0, 500);
+          if (!text) return;
+          const chatMsg = {
+            id: crypto.randomUUID(),
+            memberId: member.id,
+            displayName: member.displayName,
+            text,
+            timestamp: Date.now(),
+          };
+          mgr.broadcast(session, { type: "chat_message", message: chatMsg });
+          mgr.sendTo(ws, { type: "chat_message", message: chatMsg });
+          break;
+        }
+
+        case "signal": {
+          const info = mgr.getSessionInfo(ws);
+          if (!info) return;
+          const { session, member } = info;
+          const targetId = String(msg["targetId"] ?? "");
+          const target = session.members.get(targetId);
+          if (target) {
+            mgr.sendTo(target.ws, { type: "signal", fromId: member.id, payload: msg["payload"] });
+          }
+          break;
+        }
+
         case "ping": {
           mgr.sendTo(ws, { type: "pong" });
           break;

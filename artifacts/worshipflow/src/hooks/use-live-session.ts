@@ -5,6 +5,7 @@ import {
   type LiveSessionState,
   type MemberRole,
   type ServerMessage,
+  type ChatMessage,
   INITIAL_SESSION_STATE,
   getSessionWsUrl,
 } from "@/lib/live-session";
@@ -18,16 +19,17 @@ export function useLiveSession() {
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const sessionRef = useRef<LiveSessionState>(INITIAL_SESSION_STATE);
-  // Queued message to send when the WS opens (create / join / rejoin)
   const pendingMsgRef = useRef<ClientMessage | null>(null);
-  // Remember display name so we can auto-rejoin after a disconnect
   const displayNameRef = useRef<string>("");
 
   const [state, setState] = useState<LiveSessionState>(INITIAL_SESSION_STATE);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+
+  // Signal handler registered by the WebRTC audio hook
+  const signalHandlerRef = useRef<((fromId: string, payload: unknown) => void) | null>(null);
 
   useEffect(() => { sessionRef.current = state; }, [state]);
 
-  // Apply a remote screen state to local IndexedDB without echoing back
   const applyRemoteState = useCallback(async (remoteState: Record<string, unknown>) => {
     if (!remoteState || Object.keys(remoteState).length === 0) return;
     isApplyingRemoteRef.current = true;
@@ -71,6 +73,7 @@ export function useLiveSession() {
 
       case "session_left":
         setState(INITIAL_SESSION_STATE);
+        setChatMessages([]);
         break;
 
       case "member_joined":
@@ -101,8 +104,19 @@ export function useLiveSession() {
         }));
         break;
 
+      case "chat_message":
+        setChatMessages(prev => {
+          // Deduplicate by id (sender also receives their own message back)
+          if (prev.some(m => m.id === msg.message.id)) return prev;
+          return [...prev, msg.message].slice(-200);
+        });
+        break;
+
+      case "signal":
+        signalHandlerRef.current?.(msg.fromId, msg.payload);
+        break;
+
       case "error":
-        // If error arrives while reconnecting/connecting, go back to idle
         setState(prev => ({
           ...prev,
           status: (prev.status === "connecting" || prev.status === "reconnecting") ? "idle" : prev.status,
@@ -120,10 +134,8 @@ export function useLiveSession() {
     }
   };
 
-  // Use a ref so closures always call the latest initWs
   const initWsRef = useRef<() => void>(() => { /* placeholder */ });
 
-  // Send immediately if open, otherwise queue and ensure we're connecting
   const sendOrQueue = useCallback((msg: ClientMessage) => {
     const ws = wsRef.current;
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -134,7 +146,6 @@ export function useLiveSession() {
     if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
       initWsRef.current();
     }
-    // If CONNECTING, onopen will flush pendingMsgRef
   }, []);
 
   const initWs = useCallback(() => {
@@ -169,9 +180,7 @@ export function useLiveSession() {
         const hasPending = !!pendingMsgRef.current;
 
         if (inSession) {
-          // Show disconnected state while we reconnect, preserving session info
           setState(prev => ({ ...prev, status: "reconnecting" }));
-          // Queue an auto-rejoin so the server re-associates this WS with the room
           pendingMsgRef.current = {
             type: "join_session",
             code: s.code!,
@@ -194,7 +203,6 @@ export function useLiveSession() {
 
   useEffect(() => { initWsRef.current = initWs; }, [initWs]);
 
-  // Forward local screen-state changes to the session (master / operator only)
   useEffect(() => {
     const unsub = subscribeScreenChanges(async () => {
       if (isApplyingRemoteRef.current) return;
@@ -212,7 +220,6 @@ export function useLiveSession() {
     return unsub;
   }, []);
 
-  // Connect on mount, clean up on unmount
   useEffect(() => {
     initWs();
     return () => {
@@ -243,6 +250,7 @@ export function useLiveSession() {
       ws.send(JSON.stringify({ type: "leave_session" }));
     }
     setState(INITIAL_SESSION_STATE);
+    setChatMessages([]);
   }, []);
 
   const changeRole = useCallback((memberId: string, role: "operator" | "viewer") => {
@@ -256,5 +264,30 @@ export function useLiveSession() {
     setState(prev => ({ ...prev, error: null }));
   }, []);
 
-  return { state, createSession, joinSession, leaveSession, changeRole, clearError };
+  const sendChatMessage = useCallback((text: string) => {
+    const t = text.trim();
+    if (!t) return;
+    const ws = wsRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "chat_message", text: t }));
+    }
+  }, []);
+
+  const sendSignal = useCallback((targetId: string, payload: unknown) => {
+    const ws = wsRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "signal", targetId, payload }));
+    }
+  }, []);
+
+  const setSignalHandler = useCallback((handler: (fromId: string, payload: unknown) => void) => {
+    signalHandlerRef.current = handler;
+  }, []);
+
+  return {
+    state,
+    createSession, joinSession, leaveSession, changeRole, clearError,
+    chatMessages, sendChatMessage,
+    sendSignal, setSignalHandler,
+  };
 }
