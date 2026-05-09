@@ -15,6 +15,7 @@ export interface Member {
 export interface Session {
   code: string;
   masterId: string;
+  masterKey: string;
   members: Map<string, Member>;
   screenState: Record<string, unknown>;
   createdAt: number;
@@ -65,6 +66,7 @@ export function getMembersSnapshot(session: Session) {
 export function createSession(ws: WebSocket, displayName: string): Session {
   const code = uniqueCode();
   const memberId = crypto.randomUUID();
+  const masterKey = crypto.randomUUID();
   const member: Member = {
     id: memberId,
     displayName: displayName.slice(0, 40) || "Master",
@@ -76,6 +78,7 @@ export function createSession(ws: WebSocket, displayName: string): Session {
   const session: Session = {
     code,
     masterId: memberId,
+    masterKey,
     members: new Map([[memberId, member]]),
     screenState: {},
     createdAt: Date.now(),
@@ -88,25 +91,42 @@ export function createSession(ws: WebSocket, displayName: string): Session {
 }
 
 export function joinSession(
-  ws: WebSocket, code: string, displayName: string,
-): { session: Session; member: Member } | { error: string } {
-  const session = sessions.get(code.toUpperCase().trim());
+  ws: WebSocket, code: string, displayName: string, masterKey?: string,
+): { session: Session; member: Member; demotedMasterId?: string } | { error: string } {
+  const upperCode = code.toUpperCase().trim();
+  const session = sessions.get(upperCode);
   if (!session) return { error: "Session not found. Check the code and try again." };
   if (session.members.size >= 20) return { error: "Session is full (max 20 participants)." };
+
+  // If the caller presents the master key, they reclaim the master role
+  const claimsMaster = !!masterKey && masterKey === session.masterKey;
   const memberId = crypto.randomUUID();
   const member: Member = {
     id: memberId,
     displayName: displayName.slice(0, 40) || "Member",
-    role: "viewer",
+    role: claimsMaster ? "master" : "viewer",
     ws,
     connectedAt: Date.now(),
     lastPing: Date.now(),
   };
   session.members.set(memberId, member);
   session.lastActivity = Date.now();
-  wsToSession.set(ws, { sessionCode: code.toUpperCase().trim(), memberId });
-  logger.info({ code, memberId, displayName }, "Member joined session");
-  return { session, member };
+  wsToSession.set(ws, { sessionCode: upperCode, memberId });
+
+  let demotedMasterId: string | undefined;
+  if (claimsMaster) {
+    // Demote whoever was temporarily holding master back to operator
+    const oldMaster = session.members.get(session.masterId);
+    if (oldMaster && oldMaster.id !== memberId) {
+      oldMaster.role = "operator";
+      demotedMasterId = oldMaster.id;
+    }
+    session.masterId = memberId;
+    logger.info({ code, memberId, displayName }, "Master reclaimed session");
+  } else {
+    logger.info({ code, memberId, displayName }, "Member joined session");
+  }
+  return { session, member, demotedMasterId };
 }
 
 export function leaveSession(ws: WebSocket): {

@@ -37,6 +37,7 @@ export function attachWebSocketServer(httpServer: Server): WebSocketServer {
           mgr.sendTo(ws, {
             type: "session_created",
             code: session.code,
+            masterKey: session.masterKey,
             myId: master.id,
             members: mgr.getMembersSnapshot(session),
           });
@@ -50,12 +51,13 @@ export function attachWebSocketServer(httpServer: Server): WebSocketServer {
           }
           const code = String(msg["code"] ?? "").toUpperCase().trim();
           const displayName = String(msg["displayName"] ?? "Member");
-          const result = mgr.joinSession(ws, code, displayName);
+          const masterKey = msg["masterKey"] as string | undefined;
+          const result = mgr.joinSession(ws, code, displayName, masterKey);
           if ("error" in result) {
             mgr.sendTo(ws, { type: "error", message: result.error });
             return;
           }
-          const { session, member } = result;
+          const { session, member, demotedMasterId } = result;
           mgr.sendTo(ws, {
             type: "session_joined",
             code: session.code,
@@ -73,6 +75,14 @@ export function attachWebSocketServer(httpServer: Server): WebSocketServer {
               connectedAt: member.connectedAt,
             },
           }, member.id);
+          // If master was reclaimed, tell the temporarily-promoted member they're now operator
+          if (demotedMasterId) {
+            mgr.broadcast(session, {
+              type: "role_changed",
+              memberId: demotedMasterId,
+              role: "operator",
+            });
+          }
           break;
         }
 

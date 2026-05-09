@@ -28,16 +28,33 @@ export function useLiveSession() {
   // Signal handler registered by the WebRTC audio hook
   const signalHandlerRef = useRef<((fromId: string, payload: unknown) => void) | null>(null);
 
+  // Master key — stored in sessionStorage so it survives HMR but clears on tab close
+  const masterKeyRef = useRef<string | null>(null);
+  const getMasterKey = (code: string) =>
+    masterKeyRef.current ?? sessionStorage.getItem(`wf-mk-${code}`);
+
   useEffect(() => { sessionRef.current = state; }, [state]);
 
   const applyRemoteState = useCallback(async (remoteState: Record<string, unknown>) => {
     if (!remoteState || Object.keys(remoteState).length === 0) return;
     isApplyingRemoteRef.current = true;
     try {
+      let stateToApply = remoteState;
+      // Viewers can have a personal font-size override — preserve it across remote updates
+      if (sessionRef.current.myRole === "viewer") {
+        const saved = localStorage.getItem("wf-viewer-font-size");
+        if (saved) {
+          const textStyle = ((remoteState.textStyle ?? {}) as Record<string, unknown>);
+          stateToApply = {
+            ...remoteState,
+            textStyle: { ...textStyle, fontSize: parseInt(saved, 10) },
+          };
+        }
+      }
       await fetch("/api/screen", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(remoteState),
+        body: JSON.stringify(stateToApply),
       });
       queryClient.invalidateQueries({ queryKey: getGetScreenStateQueryKey() });
     } catch { /* ignore */ } finally {
@@ -49,6 +66,9 @@ export function useLiveSession() {
   handleMsgRef.current = (msg: ServerMessage) => {
     switch (msg.type) {
       case "session_created":
+        // Persist master key so reconnects restore master role automatically
+        masterKeyRef.current = msg.masterKey;
+        sessionStorage.setItem(`wf-mk-${msg.code}`, msg.masterKey);
         setState({
           status: "connected",
           code: msg.code,
@@ -185,6 +205,8 @@ export function useLiveSession() {
             type: "join_session",
             code: s.code!,
             displayName: displayNameRef.current || "Member",
+            // Include master key so the server restores master role on reconnect
+            masterKey: getMasterKey(s.code!) ?? undefined,
           };
         }
 
@@ -242,8 +264,11 @@ export function useLiveSession() {
   }, [sendOrQueue]);
 
   const leaveSession = useCallback(() => {
+    const code = sessionRef.current.code;
     pendingMsgRef.current = null;
     displayNameRef.current = "";
+    masterKeyRef.current = null;
+    if (code) sessionStorage.removeItem(`wf-mk-${code}`);
     if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
     const ws = wsRef.current;
     if (ws && ws.readyState === WebSocket.OPEN) {

@@ -47,7 +47,8 @@ function RoleBadge({ role }: { role: string }) {
   );
 }
 
-function RemoteControl() {
+function RemoteControl({ myRole }: { myRole: string | null }) {
+  const isViewer = myRole === "viewer";
   const queryClient = useQueryClient();
   const { data: raw } = useGetScreenState({
     query: { queryKey: getGetScreenStateQueryKey(), refetchInterval: 3000 },
@@ -71,6 +72,8 @@ function RemoteControl() {
   const changeFontSize = async (delta: number) => {
     const next = Math.min(200, Math.max(16, fontSize + delta));
     await patch({ textStyle: { ...textStyle, fontSize: next } });
+    // Viewers save their personal preference so it survives incoming screen updates
+    if (isViewer) localStorage.setItem("wf-viewer-font-size", String(next));
   };
 
   const toggleBlack = async () => {
@@ -79,7 +82,16 @@ function RemoteControl() {
 
   return (
     <div className="rounded-xl border border-border bg-background/50 p-4 space-y-4">
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Remote Control</p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          {isViewer ? "My View Size" : "Remote Control"}
+        </p>
+        {isViewer && (
+          <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+            Your device only
+          </span>
+        )}
+      </div>
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">Font size</span>
@@ -102,17 +114,23 @@ function RemoteControl() {
           </Button>
         </div>
       </div>
-      <Button
-        variant={isBlack ? "default" : "outline"}
-        className={`w-full h-12 rounded-xl text-sm font-medium active:scale-95 transition-transform ${
-          isBlack ? "bg-slate-800 hover:bg-slate-700 text-white border-0" : ""
-        }`}
-        onClick={toggleBlack}>
-        {isBlack
-          ? <><Monitor className="w-4 h-4 mr-2" />Unblank Screen</>
-          : <><MonitorOff className="w-4 h-4 mr-2" />Blank Screen</>
-        }
-      </Button>
+      {isViewer ? (
+        <p className="text-[10px] text-muted-foreground leading-relaxed">
+          Adjusts text size on <strong className="text-foreground/70">your screen only</strong> — does not affect the operator or projection. Your preference is remembered.
+        </p>
+      ) : (
+        <Button
+          variant={isBlack ? "default" : "outline"}
+          className={`w-full h-12 rounded-xl text-sm font-medium active:scale-95 transition-transform ${
+            isBlack ? "bg-slate-800 hover:bg-slate-700 text-white border-0" : ""
+          }`}
+          onClick={toggleBlack}>
+          {isBlack
+            ? <><Monitor className="w-4 h-4 mr-2" />Unblank Screen</>
+            : <><MonitorOff className="w-4 h-4 mr-2" />Blank Screen</>
+          }
+        </Button>
+      )}
     </div>
   );
 }
@@ -419,7 +437,7 @@ export function LiveSessionPanel({
                 </TabsList>
 
                 <TabsContent value="control" className="space-y-4 mt-3">
-                  {canControl && <RemoteControl />}
+                  <RemoteControl myRole={sessionState.myRole} />
 
                   {/* Members list */}
                   <div className="space-y-2">

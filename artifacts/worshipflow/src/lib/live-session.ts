@@ -35,7 +35,7 @@ export const INITIAL_SESSION_STATE: LiveSessionState = {
 
 export type ClientMessage =
   | { type: "create_session"; displayName: string }
-  | { type: "join_session"; code: string; displayName: string }
+  | { type: "join_session"; code: string; displayName: string; masterKey?: string }
   | { type: "leave_session" }
   | { type: "screen_update"; state: Record<string, unknown> }
   | { type: "change_role"; memberId: string; role: "operator" | "viewer" }
@@ -44,7 +44,7 @@ export type ClientMessage =
   | { type: "ping" };
 
 export type ServerMessage =
-  | { type: "session_created"; code: string; myId: string; members: SessionMember[] }
+  | { type: "session_created"; code: string; masterKey: string; myId: string; members: SessionMember[] }
   | { type: "session_joined"; code: string; myId: string; role: MemberRole; members: SessionMember[]; screenState: Record<string, unknown> }
   | { type: "session_left" }
   | { type: "member_joined"; member: SessionMember }
