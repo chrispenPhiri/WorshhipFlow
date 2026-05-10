@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Play, X, ArrowUp, ArrowDown, ChevronRight,
   ListVideo, ExternalLink, BookOpen, Image as ImageIcon,
-  Video, Music, Type, Music2,
+  Video, Music, Type, Music2, Palette, Hash, Timer,
 } from "lucide-react";
 import {
   loadQueue, saveQueue, type QueueItem, type QueueItemKind,
@@ -23,6 +23,7 @@ import { toast } from "sonner";
 const KIND_COLORS: Record<QueueItemKind, string> = {
   image: "#3b82f6", video: "#ef4444", audio: "#a855f7",
   bible: "#f59e0b", text: "#06b6d4", song: "#22c55e",
+  theme: "#8b5cf6", hymn: "#ec4899", countdown: "#f97316",
 };
 const KIND_ICONS: Record<QueueItemKind, React.ReactNode> = {
   image: <ImageIcon className="w-3 h-3" />,
@@ -31,6 +32,9 @@ const KIND_ICONS: Record<QueueItemKind, React.ReactNode> = {
   bible: <BookOpen className="w-3 h-3" />,
   text: <Type className="w-3 h-3" />,
   song: <Music2 className="w-3 h-3" />,
+  theme: <Palette className="w-3 h-3" />,
+  hymn: <Hash className="w-3 h-3" />,
+  countdown: <Timer className="w-3 h-3" />,
 };
 
 export function QueuePanel() {
@@ -50,6 +54,16 @@ export function QueuePanel() {
   }, []);
 
   useEffect(() => { saveQueue(queue); }, [queue]);
+
+  function songSections(lyrics: string): { label: string; content: string }[] {
+    const raw = lyrics.split(/\n{2,}/).map(s => s.trim()).filter(Boolean);
+    let v = 0;
+    return raw.map(text => {
+      const m = text.split("\n")[0].trim().match(/^\[(.+?)\]/);
+      if (m) { const rest = text.slice(text.split("\n")[0].length).trim(); return { label: m[1], content: rest || text }; }
+      v++; return { label: `Verse ${v}`, content: text };
+    });
+  }
 
   const goLive = useCallback(async (item: QueueItem) => {
     const bg = screenState?.background ?? { type: "color" as const, value: "#000000" };
@@ -74,6 +88,25 @@ export function QueuePanel() {
         await updateScreen({ data: { ...base, contentType: "verse" as const, background: bg, title: item.label, content: item.text } as never });
       } else if (item.kind === "text" && item.text) {
         await updateScreen({ data: { ...base, contentType: "custom_text" as const, background: bg, title: "Custom Text", content: item.text } as never });
+      } else if (item.kind === "song" && item.text) {
+        const sections = songSections(item.text);
+        const first = sections[0] ?? { label: "Verse 1", content: item.text };
+        const songTitle = item.label.includes(" — ") ? item.label.split(" — ")[0] : item.label;
+        const secLabel = item.label.includes(" — ") ? item.label.split(" — ").slice(1).join(" — ") : first.label;
+        await updateScreen({ data: { ...base, contentType: "song" as const, background: bg, title: `${songTitle}§${secLabel}`, content: first.content } as never });
+      } else if (item.kind === "theme" && item.text) {
+        const background = JSON.parse(item.text);
+        const ct = screenState?.contentType ?? "none";
+        await updateScreen({ data: { ...base, contentType: ct as never, background, title: screenState?.title ?? "", content: screenState?.content ?? "" } as never });
+      } else if (item.kind === "hymn" && item.text) {
+        await updateScreen({ data: { ...base, contentType: "custom_text" as const, background: bg, title: "Hymn", content: item.text } as never });
+      } else if (item.kind === "countdown" && item.text) {
+        const minutes = parseFloat(item.text) || 5;
+        const targetMs = Date.now() + minutes * 60_000;
+        const cLabel = item.subLabel || "Service starts in";
+        localStorage.setItem("wf-countdown", JSON.stringify({ label: cLabel, targetMs, active: true }));
+        const mm = String(Math.floor(minutes)).padStart(2, "0");
+        await updateScreen({ data: { ...base, contentType: "custom_text" as const, background: bg, title: cLabel, content: `${mm}:00` } as never });
       } else {
         toast.info("Open Live Queue to manage this item");
         return;

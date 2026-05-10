@@ -5,7 +5,11 @@
  * can reconstruct the screen state when the operator clicks "Go Live".
  */
 
-export type QueueItemKind = "image" | "video" | "audio" | "bible" | "text" | "song";
+export type QueueItemKind =
+  | "image" | "video" | "audio" | "bible" | "text" | "song"
+  | "theme"      // background preset — text = JSON of { type, value, overlay? }
+  | "hymn"       // hymn number display — text = formatted display lines
+  | "countdown"; // service countdown cue — text = String(minutes)
 
 export interface QueueItem {
   id: string;
@@ -15,7 +19,7 @@ export interface QueueItem {
   thumbnail?: string;
   /** Reference to a wf-media-library entry (for image/video/audio/song). */
   mediaId?: string;
-  /** Inline text content (for bible / custom text items). */
+  /** Inline text content (for bible / custom text / hymn / theme / countdown items). */
   text?: string;
   /** Sub-label shown in smaller text (e.g. "John 3:16" under the verse). */
   subLabel?: string;
