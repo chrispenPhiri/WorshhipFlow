@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ChevronsLeft, ChevronsRight, LayoutGrid, LogOut, Pencil, Tv, User as UserIcon, BookOpen, Radio, Users, Calendar, Monitor } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, LayoutGrid, LogOut, Pencil, Tv, User as UserIcon, BookOpen, Radio, Users, Calendar, Monitor, ListVideo } from "lucide-react";
 import { LivePreview } from "./live-preview";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -27,6 +27,7 @@ import { SessionViewerMode } from "./session-viewer-mode";
 import { isChatSoundMuted } from "./live-session-panel";
 import { useLiveSession } from "@/hooks/use-live-session";
 import { SchedulePanel } from "./schedule-panel";
+import { QueuePanel } from "./queue-panel";
 
 /** Bottom tab bar — the 4 pages accessible directly from mobile nav */
 const BOTTOM_NAV_HREFS = ["/", "/songs", "/custom", "/media"] as const;
@@ -183,7 +184,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [sessionOpen, setSessionOpen] = useState(false);
-  const [rightTab, setRightTab] = useLocalStorage<"preview" | "schedule">("wf-right-tab", "preview");
+  const [rightTab, setRightTab] = useLocalStorage<"preview" | "schedule" | "queue">("wf-right-tab", "preview");
   const session = useLiveSession();
   const inSession = (session.state.status === "connected" || session.state.status === "reconnecting") && !!session.state.code;
 
@@ -613,7 +614,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <button
               type="button"
               onClick={() => setRightTab("preview")}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-medium transition-colors border-b-2 ${
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors border-b-2 ${
                 rightTab === "preview"
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
@@ -624,13 +625,24 @@ export function Layout({ children }: { children: ReactNode }) {
             <button
               type="button"
               onClick={() => setRightTab("schedule")}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-medium transition-colors border-b-2 ${
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors border-b-2 ${
                 rightTab === "schedule"
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               <Calendar className="w-3.5 h-3.5" /> Schedule
+            </button>
+            <button
+              type="button"
+              onClick={() => setRightTab("queue")}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors border-b-2 ${
+                rightTab === "queue"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <ListVideo className="w-3.5 h-3.5" /> Queue
             </button>
           </div>
 
@@ -642,6 +654,11 @@ export function Layout({ children }: { children: ReactNode }) {
           {rightTab === "schedule" && (
             <div className="flex-1 overflow-hidden flex flex-col">
               <SchedulePanel />
+            </div>
+          )}
+          {rightTab === "queue" && (
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <QueuePanel />
             </div>
           )}
         </aside>
