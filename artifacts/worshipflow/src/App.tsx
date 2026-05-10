@@ -27,6 +27,7 @@ import HymnNumberPage from "@/pages/hymn-number";
 import AIPage from "@/pages/ai";
 import LibraryPage from "@/pages/library";
 import QueuePage from "@/pages/queue";
+import StudioPage from "@/pages/studio";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +69,7 @@ function ProtectedApp() {
         <Route path="/ai" component={AIPage} />
         <Route path="/library" component={LibraryPage} />
         <Route path="/queue" component={QueuePage} />
+        <Route path="/studio" component={StudioPage} />
         <Route path="/how-to" component={HowToPage} />
         <Route path="/settings" component={SettingsPage} />
         <Route component={NotFound} />
