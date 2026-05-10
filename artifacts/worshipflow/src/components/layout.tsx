@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ChevronsLeft, ChevronsRight, LayoutGrid, LogOut, Pencil, Tv, User as UserIcon, BookOpen, Radio, Users } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, LayoutGrid, LogOut, Pencil, Tv, User as UserIcon, BookOpen, Radio, Users, Calendar, Monitor } from "lucide-react";
 import { LivePreview } from "./live-preview";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -26,6 +26,7 @@ import { LiveSessionPanel } from "./live-session-panel";
 import { SessionViewerMode } from "./session-viewer-mode";
 import { isChatSoundMuted } from "./live-session-panel";
 import { useLiveSession } from "@/hooks/use-live-session";
+import { SchedulePanel } from "./schedule-panel";
 
 /** Bottom tab bar — the 4 pages accessible directly from mobile nav */
 const BOTTOM_NAV_HREFS = ["/", "/songs", "/custom", "/media"] as const;
@@ -182,6 +183,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [sessionOpen, setSessionOpen] = useState(false);
+  const [rightTab, setRightTab] = useLocalStorage<"preview" | "schedule">("wf-right-tab", "preview");
   const session = useLiveSession();
   const inSession = (session.state.status === "connected" || session.state.status === "reconnecting") && !!session.state.code;
 
@@ -603,15 +605,45 @@ export function Layout({ children }: { children: ReactNode }) {
         </div>
       </main>
 
-      {/* ── Desktop live preview panel ────────────────────────────────── */}
+      {/* ── Desktop right panel — EasyWorship-style Preview + Schedule ── */}
       {isDesktop && (
         <aside className="w-96 border-l border-border bg-sidebar flex-shrink-0 flex flex-col">
-          <div className="p-4 border-b border-border">
-            <h2 className="font-semibold text-lg">Live Preview</h2>
+          {/* Tab bar */}
+          <div className="flex border-b border-border shrink-0">
+            <button
+              type="button"
+              onClick={() => setRightTab("preview")}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-medium transition-colors border-b-2 ${
+                rightTab === "preview"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Monitor className="w-3.5 h-3.5" /> Preview
+            </button>
+            <button
+              type="button"
+              onClick={() => setRightTab("schedule")}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-medium transition-colors border-b-2 ${
+                rightTab === "schedule"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5" /> Schedule
+            </button>
           </div>
-          <div className={`flex-1 p-4 flex flex-col gap-4 overflow-y-auto ${getScrollbarClass(previewScrollbar)}`}>
-            <LivePreview />
-          </div>
+
+          {rightTab === "preview" && (
+            <div className={`flex-1 p-4 flex flex-col gap-4 overflow-y-auto ${getScrollbarClass(previewScrollbar)}`}>
+              <LivePreview />
+            </div>
+          )}
+          {rightTab === "schedule" && (
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <SchedulePanel />
+            </div>
+          )}
         </aside>
       )}
 

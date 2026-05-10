@@ -17,7 +17,7 @@ import {
   HandHeart, HeartHandshake, BookHeart, BookmarkCheck, Cake, Gift, Users2,
   Megaphone, Coffee, Building2, Anchor, Sprout, Handshake, Wind, Droplet,
   Wheat, Grape, Trees, Soup, Wine, Flag, Mountain, Eye, Music2, Quote, Album,
-  Tent,
+  Tent, FolderOpen,
   type LucideIcon,
 } from "lucide-react";
 
@@ -48,6 +48,7 @@ export const DEFAULT_NAV_ITEMS: readonly NavItemDef[] = [
   { href: "/countdown",    label: "Countdown",         defaultIconId: "Clock",         color: "#14b8a6", emoji: "⏱️" },
   { href: "/games",        label: "Bible Games",       defaultIconId: "Gamepad2",      color: "#84cc16", emoji: "🎮" },
   { href: "/ai",           label: "AI Features",       defaultIconId: "Sparkles",      color: "#6366f1", emoji: "🤖" },
+  { href: "/library",      label: "Media Library",     defaultIconId: "FolderOpen",    color: "#10b981", emoji: "🗂️" },
   { href: "/how-to",       label: "How To",            defaultIconId: "HelpCircle",    color: "#0ea5e9", emoji: "💡" },
   { href: "/settings",     label: "Settings",          defaultIconId: "Settings",      color: "#94a3b8", emoji: "⚙️" },
 ] as const;
@@ -63,7 +64,7 @@ export const ICON_REGISTRY: Record<string, LucideIcon> = {
   Coffee, Building2, Flag, MapPin, Globe, Compass, Lightbulb,
   Sun, Moon, Cloud, Clock, Bell, Bookmark, BookmarkCheck, Award,
   Mic, Headphones, Speaker, Tv, MonitorPlay, Camera, Image: ImageIcon,
-  PlayCircle, Drum, ListMusic, Music2, Album, FileText,
+  PlayCircle, Drum, ListMusic, Music2, Album, FileText, FolderOpen,
 };
 
 /** Stable list of icon ids in display order for the picker. */
