@@ -23,12 +23,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CollapsibleTabsBar } from "@/components/ui/collapsible-tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Music, Plus, Search, Cast, ChevronLeft, ChevronRight, Trash2, Layers, X, Sparkles, Loader2, Wand2 } from "lucide-react";
+import { Music, Plus, Search, Cast, ChevronLeft, ChevronRight, Trash2, Layers, X, Sparkles, Loader2, Wand2, BookOpen, CheckCircle2 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { SongImportDialog } from "@/components/song-import-dialog";
+import { FREE_HYMN_PACKS } from "@/lib/free-hymns";
 
 const CATEGORIES = ["hymn", "worship", "gospel", "contemporary", "christmas", "shona", "ndebele", "other"] as const;
 
@@ -129,6 +130,11 @@ export default function SongsPage() {
   const [sectionIdx, setSectionIdx] = useLocalStorage<number>("wf-songs-section-idx", 0);
   const [addOpen, setAddOpen] = useState(false);
 
+  // Hymn Pack installer state
+  const [hymnPackOpen, setHymnPackOpen] = useState(false);
+  const [installingPack, setInstallingPack] = useState<string | null>(null);
+  const [installedPacks, setInstalledPacks] = useLocalStorage<string[]>("wf-installed-hymn-packs", []);
+
   // AI Song Generator state
   const [aiSongOpen, setAiSongOpen] = useState(false);
   const [aiSongTheme, setAiSongTheme] = useState("");
@@ -167,6 +173,26 @@ export default function SongsPage() {
       onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetScreenStateQueryKey() }),
     },
   });
+
+  const { mutateAsync: createSongAsync } = useCreateSong();
+
+  const installHymnPack = async (packId: string) => {
+    const pack = FREE_HYMN_PACKS.find(p => p.id === packId);
+    if (!pack) return;
+    setInstallingPack(packId);
+    let added = 0;
+    for (const hymn of pack.hymns) {
+      try {
+        await createSongAsync({ data: { title: hymn.title, author: hymn.author, category: "hymn", lyrics: hymn.lyrics, key: hymn.key } });
+        added++;
+      } catch { /* skip duplicates */ }
+    }
+    await queryClient.invalidateQueries({ queryKey: getListSongsQueryKey({}) });
+    await queryClient.invalidateQueries({ queryKey: getGetSongStatsQueryKey() });
+    setInstalledPacks(prev => [...prev, packId]);
+    setInstallingPack(null);
+    toast({ title: `${pack.emoji} ${added} hymns installed`, description: `"${pack.name}" added to your library.` });
+  };
 
   const { mutate: createSong, isPending: creating } = useCreateSong({
     mutation: {
@@ -293,6 +319,54 @@ export default function SongsPage() {
         </div>
 
         <div className="flex items-center gap-2">
+        {/* Hymn Pack Installer Dialog */}
+        <Dialog open={hymnPackOpen} onOpenChange={setHymnPackOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="gap-2">
+              <BookOpen className="w-4 h-4" /> Hymn Packs
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-primary" /> Free Hymn Packs
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-1">
+              <p className="text-sm text-muted-foreground">Install curated collections of public-domain hymns into your library with one click.</p>
+              {FREE_HYMN_PACKS.map(pack => {
+                const isInstalled = installedPacks.includes(pack.id);
+                const isInstalling = installingPack === pack.id;
+                return (
+                  <div key={pack.id} className="flex items-center gap-4 p-4 rounded-xl border border-border bg-muted/20">
+                    <span className="text-3xl">{pack.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm">{pack.name}</p>
+                      <p className="text-xs text-muted-foreground">{pack.description}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{pack.hymns.length} hymns — Public Domain</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={isInstalled ? "outline" : "default"}
+                      className="shrink-0 gap-1.5"
+                      disabled={isInstalling}
+                      onClick={() => installHymnPack(pack.id)}
+                    >
+                      {isInstalling ? (
+                        <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Installing…</>
+                      ) : isInstalled ? (
+                        <><CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> Reinstall</>
+                      ) : (
+                        <><Plus className="w-3.5 h-3.5" /> Install</>
+                      )}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {/* AI Song Generator Dialog */}
         <Dialog open={aiSongOpen} onOpenChange={setAiSongOpen}>
           <DialogTrigger asChild>

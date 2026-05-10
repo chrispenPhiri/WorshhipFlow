@@ -198,6 +198,17 @@ export function LiveStudioPanel() {
     toast({ title: "Camera switched", description: dev?.label ?? "Camera updated on broadcast." });
   };
 
+  const switchCameraLayout = (layout: string) => {
+    const bg = screenState?.background;
+    if (!bg) return;
+    updateScreen({
+      data: {
+        ...safeBase(),
+        background: { ...bg, cameraLayout: layout } as typeof bg,
+      },
+    });
+  };
+
   // ── Live duration timer ──────────────────────────────────────────────────
   useEffect(() => {
     if (!isLive || !liveStartTime) { setLiveDuration(0); return; }
@@ -822,6 +833,63 @@ export function LiveStudioPanel() {
                     </Button>
                   </div>
                 )}
+              </CardContent>
+            )}
+          </Card>
+
+          {/* ── Camera Layout ── */}
+          <Card>
+            <CardHeader className="pb-0 pt-3 px-4">
+              <button
+                className="flex items-center justify-between w-full text-left"
+                onClick={() => toggleSection("cameraLayout")}
+              >
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Layers3 className="w-4 h-4" /> Camera Layout
+                </CardTitle>
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${openSections.cameraLayout !== false ? "rotate-180" : ""}`} />
+              </button>
+            </CardHeader>
+            {openSections.cameraLayout !== false && (
+              <CardContent className="px-4 pb-3 pt-3">
+                {(() => {
+                  const currentLayout = (screenState?.background as { cameraLayout?: string } | undefined)?.cameraLayout ?? "fullscreen";
+                  const layouts: { id: string; label: string; icon: string; desc: string }[] = [
+                    { id: "fullscreen", label: "Full Screen", icon: "⬛", desc: "Camera fills entire background" },
+                    { id: "pip-bottomright", label: "PiP — Bottom Right", icon: "↘", desc: "Small camera overlay, bottom right" },
+                    { id: "pip-bottomleft", label: "PiP — Bottom Left", icon: "↙", desc: "Small camera overlay, bottom left" },
+                    { id: "pip-topright", label: "PiP — Top Right", icon: "↗", desc: "Small camera overlay, top right" },
+                    { id: "pip-topleft", label: "PiP — Top Left", icon: "↖", desc: "Small camera overlay, top left" },
+                    { id: "side-left", label: "Split — Camera Left", icon: "⬛▪", desc: "Camera left · Content right" },
+                    { id: "side-right", label: "Split — Camera Right", icon: "▪⬛", desc: "Content left · Camera right" },
+                  ];
+                  return (
+                    <div className="space-y-1.5">
+                      {layouts.map(l => (
+                        <button
+                          key={l.id}
+                          onClick={() => switchCameraLayout(l.id)}
+                          className={`w-full flex items-center gap-2.5 p-2 rounded-lg border text-left text-xs transition-all ${
+                            currentLayout === l.id
+                              ? "bg-primary/15 border-primary text-primary font-medium"
+                              : "border-border hover:bg-muted/40"
+                          }`}
+                        >
+                          <span className="w-6 text-center text-base leading-none shrink-0">{l.icon}</span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium">{l.label}</p>
+                            <p className="text-[10px] text-muted-foreground">{l.desc}</p>
+                          </div>
+                          {currentLayout === l.id && (
+                            <span className="ml-auto text-[10px] font-bold text-green-400 shrink-0 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Active
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()}
               </CardContent>
             )}
           </Card>

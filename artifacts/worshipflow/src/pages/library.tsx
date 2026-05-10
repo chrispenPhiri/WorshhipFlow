@@ -190,16 +190,33 @@ function PreviewModal({ id, onClose }: { id: string; onClose: () => void }) {
           </div>
         )}
         {url && (meta?.category === "document" || meta?.category === "presentation") && (
-          <div className="bg-card rounded-xl p-8 flex flex-col items-center gap-4">
-            <FileText className="w-16 h-16 text-primary" />
-            <p className="text-sm font-medium">{meta?.name}</p>
-            <a
-              href={url}
-              download={meta?.name}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm"
+          <div className="bg-card rounded-xl overflow-hidden flex flex-col w-full" style={{ height: "85vh" }}>
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <FileText className="w-4 h-4 text-primary shrink-0" />
+                <p className="text-sm font-medium truncate">{meta?.name}</p>
+              </div>
+              <a
+                href={url}
+                download={meta?.name}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-muted/80 text-xs text-muted-foreground transition-colors shrink-0 ml-2"
+                onClick={e => e.stopPropagation()}
+              >
+                <Download className="w-3.5 h-3.5" /> Download
+              </a>
+            </div>
+            <object
+              data={url}
+              type={meta?.name?.toLowerCase().endsWith(".pdf") ? "application/pdf" : undefined}
+              className="flex-1 w-full"
+              aria-label={meta?.name}
             >
-              <Download className="w-4 h-4" /> Download to view
-            </a>
+              <iframe
+                src={url}
+                className="w-full h-full border-0"
+                title={meta?.name}
+              />
+            </object>
           </div>
         )}
         {url && meta?.category === "song" && (
