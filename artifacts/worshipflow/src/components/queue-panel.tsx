@@ -52,19 +52,17 @@ export function QueuePanel() {
   useEffect(() => { saveQueue(queue); }, [queue]);
 
   const goLive = useCallback(async (item: QueueItem) => {
-    const base = {
-      isLive: true, isBlack: false, isClear: false,
-      background: screenState?.background ?? { type: "color" as const, value: "#000000" },
-    };
+    const bg = screenState?.background ?? { type: "color" as const, value: "#000000" };
+    const base = { isBlack: screenState?.isBlack ?? false, isClear: false, comparisonMode: false, secondaryTitle: "", secondaryContent: "" };
     try {
       if (item.kind === "image" && item.mediaId) {
         const dataUrl = await getDataUrl(item.mediaId);
         if (!dataUrl) { toast.error("Could not load image"); return; }
-        await updateScreen({ data: { ...base, contentType: "image" as const, background: { type: "image", value: dataUrl, overlay: 0, fit: "cover" } as never } });
+        await updateScreen({ data: { ...base, contentType: "image" as const, title: item.label, content: undefined, background: { type: "image", value: dataUrl, overlay: 0, fit: "cover" } as never } });
       } else if (item.kind === "video" && item.mediaId) {
         const url = await createObjectUrl(item.mediaId);
         if (!url) { toast.error("Could not load video"); return; }
-        await updateScreen({ data: { ...base, contentType: "image" as const, background: { type: "video", value: url, loop: true, overlay: 0 } as never } });
+        await updateScreen({ data: { ...base, contentType: "image" as const, title: item.label, content: undefined, background: { type: "video", value: url, loop: true, overlay: 0 } as never } });
       } else if (item.kind === "audio" && item.mediaId) {
         const url = await createObjectUrl(item.mediaId);
         if (!url) { toast.error("Could not load audio"); return; }
@@ -73,9 +71,9 @@ export function QueuePanel() {
         setLiveId(item.id);
         return;
       } else if (item.kind === "bible" && item.text) {
-        await updateScreen({ data: { ...base, contentType: "verse" as const, verseText: item.text, verseReference: item.label, isScrolling: false, scrollPosition: 0 } as never });
+        await updateScreen({ data: { ...base, contentType: "verse" as const, background: bg, title: item.label, content: item.text } as never });
       } else if (item.kind === "text" && item.text) {
-        await updateScreen({ data: { ...base, contentType: "custom" as const, customText: item.text, isScrolling: false, scrollPosition: 0 } as never });
+        await updateScreen({ data: { ...base, contentType: "custom_text" as const, background: bg, title: "Custom Text", content: item.text } as never });
       } else {
         toast.info("Open Live Queue to manage this item");
         return;
