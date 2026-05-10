@@ -1591,6 +1591,37 @@ export default function BroadcastPage() {
               }}
               className="whitespace-pre-wrap drop-shadow-lg"
             >
+              {contentType === "song" && sectionLabel && (
+                <div
+                  className="whitespace-normal"
+                  style={{
+                    marginBottom: "0.4em",
+                    display: "flex",
+                    justifyContent:
+                      textAlignValue === "right" ? "flex-end"
+                      : textAlignValue === "left" ? "flex-start"
+                      : "center",
+                  }}
+                >
+                  <span style={{
+                    display: "inline-block",
+                    background: "rgba(255,255,255,0.10)",
+                    borderRadius: "4px",
+                    padding: "0.06em 0.45em",
+                    border: "1px solid rgba(255,255,255,0.16)",
+                    backdropFilter: "blur(4px)",
+                    color: "rgba(255,255,255,0.6)",
+                    fontSize: "0.27em",
+                    fontWeight: 600,
+                    letterSpacing: "0.13em",
+                    textTransform: "uppercase",
+                    whiteSpace: "nowrap",
+                    lineHeight: 1.8,
+                  }}>
+                    {sectionLabel}
+                  </span>
+                </div>
+              )}
               {contentType === "verse"
                 ? renderVerseContent(screenState!.content!)
                 : screenState!.content}
@@ -1659,16 +1690,6 @@ export default function BroadcastPage() {
         </div>
       )}
 
-      {/* ── Song section — bottom center ─────────────────────────────────────── */}
-      {showContent && contentType === "song" && sectionLabel && (
-        <div className="absolute z-30 pointer-events-none" style={{ bottom: tickerH + 20, ...labelHorizontalCenter }}>
-          <div style={{ background: "rgba(0,0,0,0.55)", borderRadius: "4px", padding: "5px 18px", backdropFilter: "blur(4px)", whiteSpace: "nowrap" }}>
-            <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "12px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase" }}>
-              {sectionLabel}
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* ── Presenter lower-third ── */}
       {screenState?.lowerThirdEnabled && screenState.lowerThirdName && !screenState.isBlack && (

@@ -10,7 +10,7 @@ export const FREE_HYMN_PACKS: { id: string; name: string; description: string; e
   {
     id: "classic-hymns",
     name: "Classic Hymns",
-    description: "30 beloved public domain hymns",
+    description: "30 beloved public-domain hymns",
     emoji: "🎵",
     hymns: [
       {
@@ -991,6 +991,480 @@ I fear no foe with Thee at hand to bless
 Ills have no weight and tears no bitterness
 Where is death's sting, where grave thy victory
 I triumph still, if Thou abide with me`,
+      },
+    ],
+  },
+  {
+    id: "gospel-songs",
+    name: "Gospel Songs",
+    description: "14 beloved public-domain gospel songs",
+    emoji: "🎶",
+    hymns: [
+      {
+        title: "Just a Closer Walk with Thee",
+        author: "Traditional",
+        key: "F",
+        category: "hymn",
+        lyrics: `[Verse 1]
+I am weak but Thou art strong
+Jesus keep me from all wrong
+I'll be satisfied as long
+As I walk, let me walk close to Thee
+
+[Chorus]
+Just a closer walk with Thee
+Grant it, Jesus, is my plea
+Daily walking close to Thee
+Let it be, dear Lord, let it be
+
+[Verse 2]
+Through this world of toil and snares
+If I falter, Lord, who cares
+Who with me my burden shares
+None but Thee, dear Lord, none but Thee
+
+[Verse 3]
+When my feeble life is o'er
+Time for me will be no more
+Guide me gently, safely o'er
+To Thy kingdom shore, to Thy shore`,
+      },
+      {
+        title: "Swing Low, Sweet Chariot",
+        author: "Traditional Spiritual",
+        key: "G",
+        category: "hymn",
+        lyrics: `[Chorus]
+Swing low, sweet chariot
+Coming for to carry me home
+Swing low, sweet chariot
+Coming for to carry me home
+
+[Verse 1]
+I looked over Jordan and what did I see
+Coming for to carry me home
+A band of angels coming after me
+Coming for to carry me home
+
+[Verse 2]
+If you get there before I do
+Coming for to carry me home
+Tell all my friends I'm coming too
+Coming for to carry me home
+
+[Verse 3]
+I'm sometimes up and sometimes down
+Coming for to carry me home
+But still my soul feels heavenly bound
+Coming for to carry me home`,
+      },
+      {
+        title: "In the Garden",
+        author: "C. Austin Miles",
+        key: "Bb",
+        category: "hymn",
+        lyrics: `[Verse 1]
+I come to the garden alone
+While the dew is still on the roses
+And the voice I hear, falling on my ear
+The Son of God discloses
+
+[Chorus]
+And He walks with me and He talks with me
+And He tells me I am His own
+And the joy we share as we tarry there
+None other has ever known
+
+[Verse 2]
+He speaks and the sound of His voice
+Is so sweet the birds hush their singing
+And the melody that He gave to me
+Within my heart is ringing
+
+[Verse 3]
+I'd stay in the garden with Him
+Though the night around me be falling
+But He bids me go, through the voice of woe
+His voice to me is calling`,
+      },
+      {
+        title: "Leaning on the Everlasting Arms",
+        author: "Elisha A. Hoffman",
+        key: "D",
+        category: "hymn",
+        lyrics: `[Verse 1]
+What a fellowship, what a joy divine
+Leaning on the everlasting arms
+What a blessedness, what a peace is mine
+Leaning on the everlasting arms
+
+[Chorus]
+Leaning, leaning
+Safe and secure from all alarms
+Leaning, leaning
+Leaning on the everlasting arms
+
+[Verse 2]
+Oh how sweet to walk in this pilgrim way
+Leaning on the everlasting arms
+Oh how bright the path grows from day to day
+Leaning on the everlasting arms
+
+[Verse 3]
+What have I to dread, what have I to fear
+Leaning on the everlasting arms
+I have blessed peace with my Lord so near
+Leaning on the everlasting arms`,
+      },
+      {
+        title: "Standing on the Promises",
+        author: "R. Kelso Carter",
+        key: "G",
+        category: "hymn",
+        lyrics: `[Verse 1]
+Standing on the promises of Christ my King
+Through eternal ages let His praises ring
+Glory in the highest I will shout and sing
+Standing on the promises of God
+
+[Chorus]
+Standing, standing
+Standing on the promises of God my Saviour
+Standing, standing
+I'm standing on the promises of God
+
+[Verse 2]
+Standing on the promises that cannot fail
+When the howling storms of doubt and fear assail
+By the living Word of God I shall prevail
+Standing on the promises of God
+
+[Verse 3]
+Standing on the promises of Christ the Lord
+Bound to Him eternally by love's strong cord
+Overcoming daily with the Spirit's sword
+Standing on the promises of God
+
+[Verse 4]
+Standing on the promises I cannot fall
+Listening every moment to the Spirit's call
+Resting in my Saviour as my all in all
+Standing on the promises of God`,
+      },
+      {
+        title: "Love Lifted Me",
+        author: "James Rowe",
+        key: "A",
+        category: "hymn",
+        lyrics: `[Verse 1]
+I was sinking deep in sin
+Far from the peaceful shore
+Very deeply stained within
+Sinking to rise no more
+But the Master of the sea
+Heard my despairing cry
+From the waters lifted me
+Now safe am I
+
+[Chorus]
+Love lifted me, love lifted me
+When nothing else could help
+Love lifted me
+Love lifted me, love lifted me
+When nothing else could help
+Love lifted me
+
+[Verse 2]
+All my heart to Him I give
+Ever to Him I'll cling
+In His blessed presence live
+Ever His praises sing
+Love so mighty and so true
+Merits my soul's best songs
+Faithful loving service too
+To Him belongs
+
+[Verse 3]
+Souls in danger, look above
+Jesus completely saves
+He will lift you by His love
+Out of the angry waves
+He's the Master of the sea
+Billows His will obey
+He your Saviour wants to be
+Be saved today`,
+      },
+      {
+        title: "When the Roll Is Called Up Yonder",
+        author: "James Milton Black",
+        key: "Bb",
+        category: "hymn",
+        lyrics: `[Verse 1]
+When the trumpet of the Lord shall sound
+And time shall be no more
+And the morning breaks eternal bright and fair
+When the saved of earth shall gather over on the other shore
+And the roll is called up yonder I'll be there
+
+[Chorus]
+When the roll is called up yonder
+When the roll is called up yonder
+When the roll is called up yonder
+When the roll is called up yonder I'll be there
+
+[Verse 2]
+On that bright and cloudless morning
+When the dead in Christ shall rise
+And the glory of His resurrection share
+When His chosen ones shall gather to their home beyond the skies
+And the roll is called up yonder I'll be there
+
+[Verse 3]
+Let us labour for the Master from the dawn till setting sun
+Let us talk of all His wondrous love and care
+Then when all of life is over and our work on earth is done
+And the roll is called up yonder I'll be there`,
+      },
+      {
+        title: "He Keeps Me Singing",
+        author: "Luther B. Bridgers",
+        key: "G",
+        category: "hymn",
+        lyrics: `[Verse 1]
+There's within my heart a melody
+Jesus whispers sweet and low
+Fear not, I am with thee, peace, be still
+In all of life's ebb and flow
+
+[Chorus]
+Jesus, Jesus, Jesus
+Sweetest name I know
+Fills my every longing
+Keeps me singing as I go
+
+[Verse 2]
+All my life was wrecked by sin and strife
+Discord filled my heart with pain
+Jesus swept across the broken strings
+Stirred the slumbering chords again
+
+[Verse 3]
+Feasting on the riches of His grace
+Resting 'neath His sheltering wing
+Always looking on His smiling face
+That is why I shout and sing
+
+[Verse 4]
+Though sometimes He leads through waters deep
+Trials fall across the way
+Though sometimes the path seems rough and steep
+See His footprints all the way
+
+[Verse 5]
+Soon He's coming back to welcome me
+Far beyond the starry sky
+I shall wing my flight to worlds unknown
+I shall reign with Him on high`,
+      },
+      {
+        title: "There Is Power in the Blood",
+        author: "Lewis E. Jones",
+        key: "E",
+        category: "hymn",
+        lyrics: `[Verse 1]
+Would you be free from the burden of sin
+There's power in the blood, power in the blood
+Would you o'er evil a victory win
+There's wonderful power in the blood
+
+[Chorus]
+There is power, power, wonder-working power
+In the blood of the Lamb
+There is power, power, wonder-working power
+In the precious blood of the Lamb
+
+[Verse 2]
+Would you be free from your passion and pride
+There's power in the blood, power in the blood
+Come for a cleansing to Calvary's tide
+There's wonderful power in the blood
+
+[Verse 3]
+Would you be whiter, much whiter than snow
+There's power in the blood, power in the blood
+Sin stains are lost in its life-giving flow
+There's wonderful power in the blood
+
+[Verse 4]
+Would you do service for Jesus your King
+There's power in the blood, power in the blood
+Would you live daily His praises to sing
+There's wonderful power in the blood`,
+      },
+      {
+        title: "Bringing in the Sheaves",
+        author: "Knowles Shaw",
+        key: "Bb",
+        category: "hymn",
+        lyrics: `[Verse 1]
+Sowing in the morning, sowing seeds of kindness
+Sowing in the noontide and the dewy eve
+Waiting for the harvest and the time of reaping
+We shall come rejoicing, bringing in the sheaves
+
+[Chorus]
+Bringing in the sheaves
+Bringing in the sheaves
+We shall come rejoicing
+Bringing in the sheaves
+Bringing in the sheaves
+Bringing in the sheaves
+We shall come rejoicing
+Bringing in the sheaves
+
+[Verse 2]
+Sowing in the sunshine, sowing in the shadows
+Fearing neither clouds nor winter's chilling breeze
+By and by the harvest and the labour ended
+We shall come rejoicing, bringing in the sheaves
+
+[Verse 3]
+Going forth with weeping, sowing for the Master
+Though the loss sustained our spirit often grieves
+When our weeping's over, He will bid us welcome
+We shall come rejoicing, bringing in the sheaves`,
+      },
+      {
+        title: "Rescue the Perishing",
+        author: "Fanny J. Crosby",
+        key: "Eb",
+        category: "hymn",
+        lyrics: `[Verse 1]
+Rescue the perishing, care for the dying
+Snatch them in pity from sin and the grave
+Weep o'er the erring one, lift up the fallen
+Tell them of Jesus the mighty to save
+
+[Chorus]
+Rescue the perishing
+Care for the dying
+Jesus is merciful
+Jesus will save
+
+[Verse 2]
+Though they are slighting Him, still He is waiting
+Waiting the penitent child to receive
+Plead with them earnestly, plead with them gently
+He will forgive if they only believe
+
+[Verse 3]
+Down in the human heart, crushed by the tempter
+Feelings lie buried that grace can restore
+Touched by a loving heart, wakened by kindness
+Chords that were broken will vibrate once more
+
+[Verse 4]
+Rescue the perishing, duty demands it
+Strength for thy labour the Lord will provide
+Back to the narrow way patiently win them
+Tell the poor wanderer a Saviour has died`,
+      },
+      {
+        title: "Revive Us Again",
+        author: "William P. Mackay",
+        key: "D",
+        category: "hymn",
+        lyrics: `[Verse 1]
+We praise Thee, O God, for the Son of Thy love
+For Jesus who died and is now gone above
+
+[Chorus]
+Hallelujah, Thine the glory
+Hallelujah, amen
+Hallelujah, Thine the glory
+Revive us again
+
+[Verse 2]
+We praise Thee, O God, for Thy Spirit of light
+Who has shown us our Saviour and scattered our night
+
+[Verse 3]
+All glory and praise to the Lamb that was slain
+Who has borne all our sins and has cleansed every stain
+
+[Verse 4]
+Revive us again, fill each heart with Thy love
+May each soul be rekindled with fire from above`,
+      },
+      {
+        title: "Send the Light",
+        author: "Charles H. Gabriel",
+        key: "G",
+        category: "hymn",
+        lyrics: `[Verse 1]
+There's a call comes ringing o'er the restless wave
+Send the light, send the light
+There are souls to rescue, there are souls to save
+Send the light, send the light
+
+[Chorus]
+Send the light, the blessed gospel light
+Let it shine from shore to shore
+Send the light, the blessed gospel light
+Let it shine for evermore
+
+[Verse 2]
+We have heard the Macedonian call today
+Send the light, send the light
+And a golden offering at the cross we lay
+Send the light, send the light
+
+[Verse 3]
+Let us pray that grace may everywhere abound
+Send the light, send the light
+And a Christlike spirit everywhere be found
+Send the light, send the light
+
+[Verse 4]
+Let us not grow weary in the work of love
+Send the light, send the light
+Let us gather jewels for a crown above
+Send the light, send the light`,
+      },
+      {
+        title: "Since Jesus Came into My Heart",
+        author: "Rufus H. McDaniel",
+        key: "A",
+        category: "hymn",
+        lyrics: `[Verse 1]
+What a wonderful change in my life has been wrought
+Since Jesus came into my heart
+I have light in my soul for which long I had sought
+Since Jesus came into my heart
+
+[Chorus]
+Since Jesus came into my heart
+Since Jesus came into my heart
+Floods of joy o'er my soul like the sea billows roll
+Since Jesus came into my heart
+
+[Verse 2]
+I have ceased from my wandering and going astray
+Since Jesus came into my heart
+And my sins which were many are all washed away
+Since Jesus came into my heart
+
+[Verse 3]
+I'm possessed of a hope that is steadfast and sure
+Since Jesus came into my heart
+And no dark clouds of doubt now my pathway obscure
+Since Jesus came into my heart
+
+[Verse 4]
+There's a light in the valley of death now for me
+Since Jesus came into my heart
+And the gates of the city beyond I can see
+Since Jesus came into my heart`,
       },
     ],
   },
