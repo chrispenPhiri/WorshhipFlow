@@ -1,0 +1,200 @@
+name: Build Desktop Installers
+
+on:
+  release:
+    types: [published]
+  # Also allow manual runs from the Actions tab
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to build'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - windows
+          - mac
+          - linux
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Windows → Phiri WorshipFlow Setup x.x.x.exe
+  # ─────────────────────────────────────────────
+  build-windows:
+    name: Windows (.exe)
+    runs-on: windows-latest
+    if: >
+      github.event_name == 'release' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (inputs.platform == 'all' || inputs.platform == 'windows'))
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web app
+        run: pnpm --filter @workspace/worshipflow run build
+
+      - name: Install Electron dependencies
+        working-directory: artifacts/electron
+        run: npm install
+
+      - name: Build Windows installer
+        working-directory: artifacts/electron
+        run: npm run build:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: artifacts/electron/dist-electron/*.exe
+          retention-days: 30
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/electron/dist-electron/*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─────────────────────────────────────────────
+  # macOS → Phiri WorshipFlow-x.x.x.dmg
+  # ─────────────────────────────────────────────
+  build-mac:
+    name: macOS (.dmg)
+    runs-on: macos-latest
+    if: >
+      github.event_name == 'release' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (inputs.platform == 'all' || inputs.platform == 'mac'))
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web app
+        run: pnpm --filter @workspace/worshipflow run build
+
+      - name: Install Electron dependencies
+        working-directory: artifacts/electron
+        run: npm install
+
+      - name: Build macOS DMG (x64 + arm64)
+        working-directory: artifacts/electron
+        run: npm run build:mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Set these secrets in your repo for notarisation (optional but recommended)
+          # APPLE_ID: ${{ secrets.APPLE_ID }}
+          # APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Upload macOS DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-installer
+          path: artifacts/electron/dist-electron/*.dmg
+          retention-days: 30
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/electron/dist-electron/*.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─────────────────────────────────────────────
+  # Linux → Phiri WorshipFlow-x.x.x.AppImage
+  # ─────────────────────────────────────────────
+  build-linux:
+    name: Linux (.AppImage)
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'release' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (inputs.platform == 'all' || inputs.platform == 'linux'))
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libnss3-dev libatk-bridge2.0-dev libgtk-3-dev libgbm-dev
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web app
+        run: pnpm --filter @workspace/worshipflow run build
+
+      - name: Install Electron dependencies
+        working-directory: artifacts/electron
+        run: npm install
+
+      - name: Build Linux AppImage
+        working-directory: artifacts/electron
+        run: npm run build:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Linux AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-installer
+          path: |
+            artifacts/electron/dist-electron/*.AppImage
+            artifacts/electron/dist-electron/*.deb
+          retention-days: 30
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/electron/dist-electron/*.AppImage
+            artifacts/electron/dist-electron/*.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
