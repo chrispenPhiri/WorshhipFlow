@@ -13,7 +13,7 @@ import {
   Sun, Moon, Cloud, Mic, Headphones, Tv, MonitorPlay, Camera, Image as ImageIcon,
   Bell, Award, Bookmark, Clock, MapPin, Globe, Lightbulb, Compass, Feather,
   Crown, ScrollText, Speaker, Users, MessageCircle, Hand, ListMusic, FileText,
-  PlayCircle, Drum,
+  PlayCircle, Drum, ListVideo,
   HandHeart, HeartHandshake, BookHeart, BookmarkCheck, Cake, Gift, Users2,
   Megaphone, Coffee, Building2, Anchor, Sprout, Handshake, Wind, Droplet,
   Wheat, Grape, Trees, Soup, Wine, Flag, Mountain, Eye, Music2, Quote, Album,
@@ -49,6 +49,7 @@ export const DEFAULT_NAV_ITEMS: readonly NavItemDef[] = [
   { href: "/games",        label: "Bible Games",       defaultIconId: "Gamepad2",      color: "#84cc16", emoji: "🎮" },
   { href: "/ai",           label: "AI Features",       defaultIconId: "Sparkles",      color: "#6366f1", emoji: "🤖" },
   { href: "/library",      label: "Media Library",     defaultIconId: "FolderOpen",    color: "#10b981", emoji: "🗂️" },
+  { href: "/queue",        label: "Live Queue",        defaultIconId: "ListVideo",     color: "#f97316", emoji: "▶️" },
   { href: "/how-to",       label: "How To",            defaultIconId: "HelpCircle",    color: "#0ea5e9", emoji: "💡" },
   { href: "/settings",     label: "Settings",          defaultIconId: "Settings",      color: "#94a3b8", emoji: "⚙️" },
 ] as const;
@@ -64,7 +65,7 @@ export const ICON_REGISTRY: Record<string, LucideIcon> = {
   Coffee, Building2, Flag, MapPin, Globe, Compass, Lightbulb,
   Sun, Moon, Cloud, Clock, Bell, Bookmark, BookmarkCheck, Award,
   Mic, Headphones, Speaker, Tv, MonitorPlay, Camera, Image: ImageIcon,
-  PlayCircle, Drum, ListMusic, Music2, Album, FileText, FolderOpen,
+  PlayCircle, Drum, ListMusic, Music2, Album, FileText, FolderOpen, ListVideo,
 };
 
 /** Stable list of icon ids in display order for the picker. */
