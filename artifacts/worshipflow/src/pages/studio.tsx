@@ -548,7 +548,7 @@ export default function StudioPage() {
           <div className="flex flex-col gap-2.5 p-3">
 
             {/* ── Screen Output ── */}
-            <Section title="Screen Output" icon={<Monitor className="w-3.5 h-3.5" />}>
+            <Section title="Screen Output" icon={<Monitor className="w-3.5 h-3.5" />} collapsible defaultOpen>
               <div className="grid grid-cols-2 gap-2">
                 {/* Black screen */}
                 <button onClick={toggleBlack}
@@ -579,7 +579,7 @@ export default function StudioPage() {
             </Section>
 
             {/* ── Platform selector ── */}
-            <Section title="Destinations" icon={<Tv className="w-3.5 h-3.5" />}>
+            <Section title="Destinations" icon={<Tv className="w-3.5 h-3.5" />} collapsible defaultOpen>
               {(["youtube", "facebook", "twitch", "custom"] as Platform[]).map(p => {
                 const pi = PLATFORM_INFO[p];
                 const isSelected = platform === p;
@@ -606,7 +606,7 @@ export default function StudioPage() {
             </Section>
 
             {/* ── Overlays / graphic presets ── */}
-            <Section title="Overlays" icon={<Sparkles className="w-3.5 h-3.5" />}
+            <Section title="Overlays" icon={<Sparkles className="w-3.5 h-3.5" />} collapsible defaultOpen
               badge={lowerActive ? <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" /> : undefined}>
               <div className="grid grid-cols-2 gap-1.5">
                 {presets.map(g => (

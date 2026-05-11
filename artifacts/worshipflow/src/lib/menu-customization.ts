@@ -39,7 +39,6 @@ export const DEFAULT_NAV_ITEMS: readonly NavItemDef[] = [
   { href: "/custom",       label: "Custom Text",       defaultIconId: "Type",          color: "#06b6d4", emoji: "✏️" },
   { href: "/themes",       label: "Themes",            defaultIconId: "Palette",       color: "#ec4899", emoji: "🎨" },
   { href: "/media",        label: "Media & Broadcast", defaultIconId: "Video",         color: "#ef4444", emoji: "🎥" },
-  { href: "/studio",       label: "Live Studio",       defaultIconId: "MonitorPlay",   color: "#ef4444", emoji: "📡" },
   { href: "/schedule",     label: "Schedule",          defaultIconId: "Calendar",      color: "#22c55e", emoji: "📅" },
   { href: "/notes",        label: "Sermon Notes",      defaultIconId: "BookOpen",      color: "#f97316", emoji: "📝" },
   { href: "/inspiration",  label: "Daily Inspiration", defaultIconId: "Sparkles",      color: "#eab308", emoji: "✨" },
