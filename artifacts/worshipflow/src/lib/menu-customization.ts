@@ -49,6 +49,7 @@ export const DEFAULT_NAV_ITEMS: readonly NavItemDef[] = [
   { href: "/games",        label: "Bible Games",       defaultIconId: "Gamepad2",      color: "#84cc16", emoji: "🎮" },
   { href: "/ai",           label: "AI Features",       defaultIconId: "Sparkles",      color: "#6366f1", emoji: "🤖" },
   { href: "/library",      label: "Media Library",     defaultIconId: "FolderOpen",    color: "#10b981", emoji: "🗂️" },
+  { href: "/studio",       label: "Live Studio",       defaultIconId: "MonitorPlay",   color: "#7c3aed", emoji: "🎬" },
   { href: "/queue",        label: "Live Queue",        defaultIconId: "ListVideo",     color: "#f97316", emoji: "▶️" },
   { href: "/how-to",       label: "How To",            defaultIconId: "HelpCircle",    color: "#0ea5e9", emoji: "💡" },
   { href: "/settings",     label: "Settings",          defaultIconId: "Settings",      color: "#94a3b8", emoji: "⚙️" },

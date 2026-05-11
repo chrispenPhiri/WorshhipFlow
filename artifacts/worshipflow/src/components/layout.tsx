@@ -28,6 +28,7 @@ import { isChatSoundMuted } from "./live-session-panel";
 import { useLiveSession } from "@/hooks/use-live-session";
 import { SchedulePanel } from "./schedule-panel";
 import { QueuePanel } from "./queue-panel";
+import { TextSelectionSend } from "./text-selection-send";
 
 /** Bottom tab bar — the 4 pages accessible directly from mobile nav */
 const BOTTOM_NAV_HREFS = ["/", "/songs", "/custom", "/media"] as const;
@@ -770,6 +771,9 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {/* ── AI quick panel (floating) ─────────────────────────────────── */}
       <AiQuickPanel />
+
+      {/* ── Text-selection "Send to screen" pill (global) ─────────────── */}
+      <TextSelectionSend />
     </div>
   );
 }
