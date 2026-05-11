@@ -467,6 +467,111 @@ function TimerOverlay({ mode, startedAt, accumulatedMs, durationSec, position, f
   );
 }
 
+// ── Scoreboard overlay ────────────────────────────────────────────────────────
+function ScoreboardOverlay({ teamA, teamB, scoreA, scoreB, period, style, position, bgColor, accentA, accentB, tickerH }: {
+  teamA: string; teamB: string; scoreA: number; scoreB: number;
+  period: string; style: string; position: string;
+  bgColor: string; accentA: string; accentB: string; tickerH: number;
+}) {
+  const pos: React.CSSProperties = (() => {
+    if (position === "top-center")    return { top: 16,          left: "50%", transform: "translateX(-50%)" };
+    if (position === "bottom-center") return { bottom: tickerH + 16, left: "50%", transform: "translateX(-50%)" };
+    return {
+      top:    position.startsWith("top")    ? 16 : undefined,
+      bottom: position.startsWith("bottom") ? tickerH + 16 : undefined,
+      left:   position.endsWith("left")     ? 16 : undefined,
+      right:  position.endsWith("right")    ? 16 : undefined,
+    };
+  })();
+
+  if (style === "classic") {
+    return (
+      <div style={{ position: "absolute", zIndex: 35, pointerEvents: "none", ...pos }}>
+        <div style={{ display: "flex", alignItems: "stretch", overflow: "hidden", borderRadius: "4px", boxShadow: "0 4px 20px rgba(0,0,0,0.6)" }}>
+          <div style={{ background: accentA, padding: "6px 16px", textAlign: "center" }}>
+            <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>{teamA}</div>
+            <div style={{ color: "#fff", fontSize: "30px", fontWeight: 900, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{scoreA}</div>
+          </div>
+          {period && (
+            <div style={{ background: bgColor, padding: "6px 10px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ color: "rgba(255,255,255,0.65)", fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>{period}</span>
+            </div>
+          )}
+          <div style={{ background: accentB, padding: "6px 16px", textAlign: "center" }}>
+            <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>{teamB}</div>
+            <div style={{ color: "#fff", fontSize: "30px", fontWeight: 900, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{scoreB}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (style === "minimal") {
+    return (
+      <div style={{ position: "absolute", zIndex: 35, pointerEvents: "none", ...pos, display: "flex", alignItems: "center", gap: "10px" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ color: "rgba(255,255,255,0.55)", fontSize: "10px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", textShadow: "0 2px 8px rgba(0,0,0,0.9)" }}>{teamA}</div>
+          <div style={{ color: "#fff", fontSize: "38px", fontWeight: 800, lineHeight: 1, textShadow: "0 2px 14px rgba(0,0,0,0.95)", fontVariantNumeric: "tabular-nums" }}>{scoreA}</div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          {period && <div style={{ color: "rgba(255,255,255,0.45)", fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", textShadow: "0 2px 8px rgba(0,0,0,0.9)", marginBottom: "2px" }}>{period}</div>}
+          <div style={{ color: "rgba(255,255,255,0.3)", fontSize: "22px", textShadow: "0 2px 8px rgba(0,0,0,0.9)" }}>–</div>
+        </div>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ color: "rgba(255,255,255,0.55)", fontSize: "10px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", textShadow: "0 2px 8px rgba(0,0,0,0.9)" }}>{teamB}</div>
+          <div style={{ color: "#fff", fontSize: "38px", fontWeight: 800, lineHeight: 1, textShadow: "0 2px 14px rgba(0,0,0,0.95)", fontVariantNumeric: "tabular-nums" }}>{scoreB}</div>
+        </div>
+      </div>
+    );
+  }
+
+  // modern (default)
+  return (
+    <div style={{ position: "absolute", zIndex: 35, pointerEvents: "none", ...pos }}>
+      <div style={{ background: bgColor, borderRadius: "8px", overflow: "hidden", backdropFilter: "blur(10px)", display: "flex", alignItems: "stretch", minWidth: "220px", boxShadow: "0 4px 24px rgba(0,0,0,0.55)" }}>
+        <div style={{ flex: 1, padding: "8px 14px", borderLeft: `4px solid ${accentA}` }}>
+          <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>{teamA}</div>
+          <div style={{ color: "#fff", fontSize: "30px", fontWeight: 800, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{scoreA}</div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "4px 10px", background: "rgba(255,255,255,0.05)" }}>
+          {period && <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "9px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "3px" }}>{period}</div>}
+          <div style={{ color: "rgba(255,255,255,0.2)", fontSize: "20px", fontWeight: 300 }}>:</div>
+        </div>
+        <div style={{ flex: 1, padding: "8px 14px", borderRight: `4px solid ${accentB}`, textAlign: "right" }}>
+          <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>{teamB}</div>
+          <div style={{ color: "#fff", fontSize: "30px", fontWeight: 800, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{scoreB}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── URL iframe overlay ────────────────────────────────────────────────────────
+function UrlOverlayLayer({ url, position, width, height, opacity, tickerH }: {
+  url: string; position: string; width: number; height: number; opacity: number; tickerH: number;
+}) {
+  const pos: React.CSSProperties = (() => {
+    if (position === "top-center")    return { top: 16,          left: "50%", transform: "translateX(-50%)" };
+    if (position === "bottom-center") return { bottom: tickerH + 16, left: "50%", transform: "translateX(-50%)" };
+    return {
+      top:    position.startsWith("top")    ? 16 : undefined,
+      bottom: position.startsWith("bottom") ? tickerH + 16 : undefined,
+      left:   position.endsWith("left")     ? 16 : undefined,
+      right:  position.endsWith("right")    ? 16 : undefined,
+    };
+  })();
+  return (
+    <div style={{ position: "absolute", zIndex: 36, pointerEvents: "none", ...pos }}>
+      <iframe
+        src={url}
+        style={{ width: `${width}vw`, height: `${height}vh`, border: "none", opacity: opacity / 100, display: "block", background: "transparent" }}
+        sandbox="allow-scripts allow-same-origin"
+        title="URL Overlay"
+      />
+    </div>
+  );
+}
+
 // ── Camera PiP / side-by-side overlay ────────────────────────────────────────
 // Shared transition for smooth camera switch
 const CAM_TRANSITION = "opacity 0.45s ease";
@@ -1794,6 +1899,35 @@ export default function BroadcastPage() {
           warningSec={screenState.timerWarningSec ?? 60}
           warningColor={screenState.timerWarningColor ?? "#fbbf24"}
           criticalColor={screenState.timerCriticalColor ?? "#ef4444"}
+          tickerH={tickerH}
+        />
+      )}
+
+      {/* ── Scoreboard ── */}
+      {screenState?.scoreboardEnabled && !screenState.isBlack && (
+        <ScoreboardOverlay
+          teamA={(screenState.scoreboardTeamA as string) ?? "Home"}
+          teamB={(screenState.scoreboardTeamB as string) ?? "Away"}
+          scoreA={(screenState.scoreboardScoreA as number) ?? 0}
+          scoreB={(screenState.scoreboardScoreB as number) ?? 0}
+          period={(screenState.scoreboardPeriod as string) ?? ""}
+          style={(screenState.scoreboardStyle as string) ?? "modern"}
+          position={(screenState.scoreboardPosition as string) ?? "top-left"}
+          bgColor={(screenState.scoreboardBgColor as string) ?? "rgba(10,10,20,0.88)"}
+          accentA={(screenState.scoreboardAccentA as string) ?? "#ef4444"}
+          accentB={(screenState.scoreboardAccentB as string) ?? "#3b82f6"}
+          tickerH={tickerH}
+        />
+      )}
+
+      {/* ── URL iframe overlay ── */}
+      {screenState?.urlOverlayEnabled && screenState.urlOverlayUrl && !screenState.isBlack && (
+        <UrlOverlayLayer
+          url={screenState.urlOverlayUrl as string}
+          position={(screenState.urlOverlayPosition as string) ?? "top-right"}
+          width={(screenState.urlOverlayWidth as number) ?? 32}
+          height={(screenState.urlOverlayHeight as number) ?? 22}
+          opacity={(screenState.urlOverlayOpacity as number) ?? 100}
           tickerH={tickerH}
         />
       )}

@@ -981,6 +981,43 @@ components:
           type: integer
         bibleBookUppercase:
           type: boolean
+        scoreboardEnabled:
+          type: boolean
+        scoreboardTeamA:
+          type: string
+        scoreboardTeamB:
+          type: string
+        scoreboardScoreA:
+          type: integer
+        scoreboardScoreB:
+          type: integer
+        scoreboardPeriod:
+          type: string
+        scoreboardStyle:
+          type: string
+          enum: [modern, classic, minimal]
+        scoreboardPosition:
+          type: string
+          enum: [top-left, top-center, top-right, bottom-left, bottom-center, bottom-right]
+        scoreboardBgColor:
+          type: string
+        scoreboardAccentA:
+          type: string
+        scoreboardAccentB:
+          type: string
+        urlOverlayEnabled:
+          type: boolean
+        urlOverlayUrl:
+          type: string
+        urlOverlayPosition:
+          type: string
+          enum: [top-left, top-center, top-right, bottom-left, bottom-center, bottom-right]
+        urlOverlayWidth:
+          type: integer
+        urlOverlayHeight:
+          type: integer
+        urlOverlayOpacity:
+          type: integer
       required:
         - isBlack
         - isClear

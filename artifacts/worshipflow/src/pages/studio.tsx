@@ -14,6 +14,9 @@ import { useLocalStorage } from "@/hooks/use-local-storage";
 import {
   useUpdateScreenState, useGetScreenState, getGetScreenStateQueryKey,
   type Background, type BackgroundCameraLayout,
+  type ScreenStateScoreboardStyle, type ScreenStateScoreboardPosition,
+  type ScreenStateLogoPosition, type ScreenStateTimerMode,
+  type ScreenStateTimerPosition, type ScreenStateUrlOverlayPosition,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +27,7 @@ import {
   Layers3, Mic2, ChevronDown, ChevronUp, Copy,
   Eye, EyeOff, Monitor, MonitorOff, VideoOff, Video,
   AlignLeft, FlipHorizontal, Sun, Sliders,
+  Trophy, Timer as TimerIcon, Globe, FileImage, Plus, Minus,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -247,6 +251,28 @@ export default function StudioPage() {
   const [presenterName, setPresenterName]   = useState("");
   const [presenterTitle, setPresenterTitle] = useState("");
 
+  // ── Graphic Overlays local state ───────────────────────────────────────────
+  const [overlayTab, setOverlayTab] = useState<"scoreboard" | "image" | "timer" | "url">("scoreboard");
+  const [imageUrl,   setImageUrl]   = useState((screenState?.logoUrl    as string) ?? "");
+  const [teamA,      setTeamA]      = useState((screenState?.scoreboardTeamA as string) ?? "Home");
+  const [teamB,      setTeamB]      = useState((screenState?.scoreboardTeamB as string) ?? "Away");
+  const [timerDurMin, setTimerDurMin] = useState(Math.floor(((screenState?.timerDurationSec as number) ?? 300) / 60));
+  const [timerDurSec, setTimerDurSec] = useState(((screenState?.timerDurationSec as number) ?? 300) % 60);
+  const [timerLabelLocal, setTimerLabelLocal] = useState((screenState?.timerLabel as string) ?? "");
+  const [urlInput,   setUrlInput]   = useState((screenState?.urlOverlayUrl as string) ?? "");
+
+  useEffect(() => {
+    if (screenState?.logoUrl         != null) setImageUrl(screenState.logoUrl as string);
+    if (screenState?.scoreboardTeamA != null) setTeamA(screenState.scoreboardTeamA as string);
+    if (screenState?.scoreboardTeamB != null) setTeamB(screenState.scoreboardTeamB as string);
+    const dur = (screenState?.timerDurationSec as number) ?? 300;
+    setTimerDurMin(Math.floor(dur / 60));
+    setTimerDurSec(dur % 60);
+    if (screenState?.timerLabel     != null) setTimerLabelLocal((screenState.timerLabel as string) ?? "");
+    if (screenState?.urlOverlayUrl  != null) setUrlInput((screenState.urlOverlayUrl as string) ?? "");
+  }, [screenState?.logoUrl, screenState?.scoreboardTeamA, screenState?.scoreboardTeamB,
+      screenState?.timerDurationSec, screenState?.timerLabel, screenState?.urlOverlayUrl]);
+
   // ── Live duration counter ──────────────────────────────────────────────────
   const [liveDuration, setLiveDuration] = useState(0);
   useEffect(() => {
@@ -294,6 +320,56 @@ export default function StudioPage() {
   const switchScene = (scene: Scene) => {
     updateScreen({ data: { ...safeBase(), liveScene: scene.name } });
     toast({ title: `Scene → ${scene.name}` });
+  };
+
+  // ── Graphic Overlays derived values ───────────────────────────────────────
+  const scoreboardEnabled  = (screenState?.scoreboardEnabled  as boolean) ?? false;
+  const scoreA             = (screenState?.scoreboardScoreA   as number)  ?? 0;
+  const scoreB             = (screenState?.scoreboardScoreB   as number)  ?? 0;
+  const scoreboardStyle    = (screenState?.scoreboardStyle    as string)  ?? "modern";
+  const scoreboardPosition = (screenState?.scoreboardPosition as string)  ?? "top-left";
+  const scoreboardAccentA  = (screenState?.scoreboardAccentA  as string)  ?? "#ef4444";
+  const scoreboardAccentB  = (screenState?.scoreboardAccentB  as string)  ?? "#3b82f6";
+  const timerEnabled  = (screenState?.timerEnabled  as boolean) ?? false;
+  const timerRunning  = !!(screenState?.timerStartedAt);
+  const timerMode     = (screenState?.timerMode     as string)  ?? "stopwatch";
+  const timerPosition = (screenState?.timerPosition as string)  ?? "top-center";
+  const imageEnabled  = (screenState?.logoOverlayEnabled as boolean) ?? false;
+  const imagePosition = (screenState?.logoPosition as string)  ?? "top-right";
+  const imageSize     = (screenState?.logoSize     as number)  ?? 20;
+  const imageOpacity  = (screenState?.logoOpacity  as number)  ?? 100;
+  const urlOverlayEnabled = (screenState?.urlOverlayEnabled as boolean) ?? false;
+  const urlWidth    = (screenState?.urlOverlayWidth    as number) ?? 32;
+  const urlHeight   = (screenState?.urlOverlayHeight   as number) ?? 22;
+  const urlOpacity  = (screenState?.urlOverlayOpacity  as number) ?? 100;
+  const urlPosition = (screenState?.urlOverlayPosition as string) ?? "top-right";
+  const activeGraphicOverlayCount = [scoreboardEnabled, timerEnabled, imageEnabled, urlOverlayEnabled].filter(Boolean).length;
+
+  // ── Graphic Overlays helpers ────────────────────────────────────────────────
+  const bumpScore = (team: "A" | "B", delta: number) => {
+    const next = Math.max(0, (team === "A" ? scoreA : scoreB) + delta);
+    updateScreen({ data: { ...safeBase(), scoreboardEnabled: true, scoreboardTeamA: teamA, scoreboardTeamB: teamB, scoreboardScoreA: team === "A" ? next : scoreA, scoreboardScoreB: team === "B" ? next : scoreB, scoreboardPeriod: (screenState?.scoreboardPeriod as string) ?? "" } });
+  };
+  const pushScoreboard = (patch: Record<string, unknown>) => {
+    updateScreen({ data: { ...safeBase(), scoreboardTeamA: teamA, scoreboardTeamB: teamB, scoreboardScoreA: scoreA, scoreboardScoreB: scoreB, scoreboardPeriod: (screenState?.scoreboardPeriod as string) ?? "", scoreboardStyle: scoreboardStyle as ScreenStateScoreboardStyle, scoreboardPosition: scoreboardPosition as ScreenStateScoreboardPosition, scoreboardAccentA, scoreboardAccentB, ...patch } });
+  };
+  const pushImageOverlay = (enabled: boolean, opts?: Record<string, unknown>) => {
+    updateScreen({ data: { ...safeBase(), logoOverlayEnabled: enabled, logoUrl: imageUrl, logoPosition: imagePosition as ScreenStateLogoPosition, logoSize: imageSize, logoOpacity: imageOpacity, ...opts } });
+  };
+  const timerStart = () => {
+    updateScreen({ data: { ...safeBase(), timerEnabled: true, timerStartedAt: new Date().toISOString(), timerMode: timerMode as ScreenStateTimerMode, timerDurationSec: timerDurMin * 60 + timerDurSec, timerLabel: timerLabelLocal || null as unknown as string, timerPosition: timerPosition as ScreenStateTimerPosition } });
+  };
+  const timerPause = () => {
+    const st = screenState?.timerStartedAt as string | undefined;
+    const elapsed = st ? Date.now() - Date.parse(st) : 0;
+    const acc = ((screenState?.timerAccumulatedMs as number) ?? 0) + elapsed;
+    updateScreen({ data: { ...safeBase(), timerStartedAt: null as unknown as string, timerAccumulatedMs: acc } });
+  };
+  const timerReset = () => {
+    updateScreen({ data: { ...safeBase(), timerStartedAt: null as unknown as string, timerAccumulatedMs: 0 } });
+  };
+  const pushUrlOverlay = (enabled: boolean) => {
+    updateScreen({ data: { ...safeBase(), urlOverlayEnabled: enabled, urlOverlayUrl: urlInput, urlOverlayPosition: urlPosition as ScreenStateUrlOverlayPosition, urlOverlayWidth: urlWidth, urlOverlayHeight: urlHeight, urlOverlayOpacity: urlOpacity } });
   };
 
   // ── Overlay / graphic presets ──────────────────────────────────────────────
@@ -675,6 +751,304 @@ export default function StudioPage() {
                   Clear
                 </button>
               </div>
+            </Section>
+
+            {/* ── Graphic Overlays ── */}
+            <Section title="Graphic Overlays" icon={<Sparkles className="w-3.5 h-3.5" />} collapsible defaultOpen={false}
+              badge={activeGraphicOverlayCount > 0
+                ? <span className="flex items-center justify-center w-4 h-4 rounded-full bg-primary/30 text-primary text-[9px] font-bold">{activeGraphicOverlayCount}</span>
+                : undefined}>
+
+              {/* Mini tab bar */}
+              <div className="flex p-0.5 bg-white/5 rounded-lg gap-0.5">
+                {([
+                  { id: "scoreboard" as const, label: "Score",  icon: <Trophy    className="w-3 h-3" />, active: scoreboardEnabled },
+                  { id: "image"      as const, label: "Image",  icon: <FileImage className="w-3 h-3" />, active: imageEnabled },
+                  { id: "timer"      as const, label: "Timer",  icon: <TimerIcon className="w-3 h-3" />, active: timerEnabled },
+                  { id: "url"        as const, label: "URL",    icon: <Globe     className="w-3 h-3" />, active: urlOverlayEnabled },
+                ]).map(tab => (
+                  <button key={tab.id} onClick={() => setOverlayTab(tab.id)}
+                    className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[10px] font-medium transition-all ${overlayTab === tab.id ? "bg-white/15 text-white" : "text-white/40 hover:text-white/70"}`}>
+                    {tab.icon} {tab.label}
+                    {tab.active && <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse ml-0.5" />}
+                  </button>
+                ))}
+              </div>
+
+              {/* ── Scoreboard tab ── */}
+              {overlayTab === "scoreboard" && (
+                <div className="space-y-2">
+                  {/* Style */}
+                  <div className="flex gap-1">
+                    {(["modern", "classic", "minimal"] as const).map(s => (
+                      <button key={s} onClick={() => pushScoreboard({ scoreboardStyle: s })}
+                        className={`flex-1 h-7 rounded text-[10px] font-medium capitalize transition-all ${scoreboardStyle === s ? "bg-primary/25 text-primary border border-primary/40" : "border border-white/10 text-white/40 hover:bg-white/10"}`}>
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Team A row */}
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: scoreboardAccentA }} />
+                    <input value={teamA} onChange={e => setTeamA(e.target.value)}
+                      onBlur={() => pushScoreboard({ scoreboardTeamA: teamA })}
+                      placeholder="Team A"
+                      className="flex-1 min-w-0 h-7 px-2 rounded-lg border border-white/10 bg-white/5 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-primary/60" />
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      <button onClick={() => bumpScore("A", -1)} className="w-7 h-7 flex items-center justify-center rounded border border-white/10 text-white/50 hover:bg-white/10 transition-all"><Minus className="w-3 h-3" /></button>
+                      <span className="w-7 text-center text-sm font-bold text-white tabular-nums">{scoreA}</span>
+                      <button onClick={() => bumpScore("A", 1)}  className="w-7 h-7 flex items-center justify-center rounded border border-white/10 text-white/50 hover:bg-white/10 transition-all"><Plus  className="w-3 h-3" /></button>
+                    </div>
+                  </div>
+
+                  {/* Team B row */}
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: scoreboardAccentB }} />
+                    <input value={teamB} onChange={e => setTeamB(e.target.value)}
+                      onBlur={() => pushScoreboard({ scoreboardTeamB: teamB })}
+                      placeholder="Team B"
+                      className="flex-1 min-w-0 h-7 px-2 rounded-lg border border-white/10 bg-white/5 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-primary/60" />
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      <button onClick={() => bumpScore("B", -1)} className="w-7 h-7 flex items-center justify-center rounded border border-white/10 text-white/50 hover:bg-white/10 transition-all"><Minus className="w-3 h-3" /></button>
+                      <span className="w-7 text-center text-sm font-bold text-white tabular-nums">{scoreB}</span>
+                      <button onClick={() => bumpScore("B", 1)}  className="w-7 h-7 flex items-center justify-center rounded border border-white/10 text-white/50 hover:bg-white/10 transition-all"><Plus  className="w-3 h-3" /></button>
+                    </div>
+                  </div>
+
+                  {/* Period */}
+                  <input value={(screenState?.scoreboardPeriod as string) ?? ""}
+                    onChange={e => pushScoreboard({ scoreboardPeriod: e.target.value })}
+                    placeholder="Period / half / quarter (optional)"
+                    className="w-full h-7 px-2 rounded-lg border border-white/10 bg-white/5 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-primary/60" />
+
+                  {/* Position */}
+                  <div className="flex gap-1">
+                    {(["top-left","top-center","top-right","bottom-left","bottom-right"] as const).map((p, i) => (
+                      <button key={p} onClick={() => pushScoreboard({ scoreboardPosition: p })}
+                        className={`flex-1 h-7 rounded text-sm transition-all ${scoreboardPosition === p ? "bg-primary/30 text-primary" : "border border-white/10 text-white/40 hover:bg-white/10"}`}>
+                        {["↖","↑","↗","↙","↘"][i]}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Team accent colors */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-white/40">Colors</span>
+                    <label className="flex items-center gap-1 cursor-pointer">
+                      <span className="text-[10px] text-white/40">A</span>
+                      <input type="color" value={scoreboardAccentA}
+                        onChange={e => pushScoreboard({ scoreboardAccentA: e.target.value })}
+                        className="w-7 h-7 rounded cursor-pointer bg-transparent border-0 p-0.5" />
+                    </label>
+                    <label className="flex items-center gap-1 cursor-pointer">
+                      <span className="text-[10px] text-white/40">B</span>
+                      <input type="color" value={scoreboardAccentB}
+                        onChange={e => pushScoreboard({ scoreboardAccentB: e.target.value })}
+                        className="w-7 h-7 rounded cursor-pointer bg-transparent border-0 p-0.5" />
+                    </label>
+                  </div>
+
+                  {/* Show / Hide */}
+                  <div className="flex gap-1.5">
+                    <button onClick={() => pushScoreboard({ scoreboardEnabled: true })}
+                      className={`flex-1 h-8 rounded-lg text-xs font-medium transition-all ${scoreboardEnabled ? "bg-green-500/20 text-green-300 border border-green-500/30" : "bg-white/8 text-white/70 hover:bg-white/15"}`}>
+                      {scoreboardEnabled ? "● Live" : "Show"}
+                    </button>
+                    {scoreboardEnabled && (
+                      <button onClick={() => pushScoreboard({ scoreboardEnabled: false })}
+                        className="h-8 px-3 rounded-lg border border-white/10 text-xs text-white/50 hover:bg-white/10 transition-all">
+                        Hide
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Image tab ── */}
+              {overlayTab === "image" && (
+                <div className="space-y-2">
+                  <input value={imageUrl} onChange={e => setImageUrl(e.target.value)}
+                    placeholder="https://… (PNG, JPG, GIF)"
+                    className="w-full h-8 px-2.5 rounded-lg border border-white/10 bg-white/5 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-primary/60" />
+
+                  {/* Position */}
+                  <div className="flex gap-1">
+                    {(["top-left","top-center","top-right","bottom-left","bottom-right"] as const).map((p, i) => (
+                      <button key={p} onClick={() => pushImageOverlay(imageEnabled, { logoPosition: p })}
+                        className={`flex-1 h-7 rounded text-sm transition-all ${imagePosition === p ? "bg-primary/30 text-primary" : "border border-white/10 text-white/40 hover:bg-white/10"}`}>
+                        {["↖","↑","↗","↙","↘"][i]}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Size */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-white/40 w-8">Size</span>
+                    <input type="range" min={5} max={40} value={imageSize}
+                      onChange={e => updateScreen({ data: { ...safeBase(), logoSize: Number(e.target.value) } })}
+                      className="flex-1 accent-primary h-1" />
+                    <span className="text-[10px] text-white/40 w-10 text-right">{imageSize}vw</span>
+                  </div>
+
+                  {/* Opacity */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-white/40 w-8">Opacity</span>
+                    <input type="range" min={10} max={100} value={imageOpacity}
+                      onChange={e => updateScreen({ data: { ...safeBase(), logoOpacity: Number(e.target.value) } })}
+                      className="flex-1 accent-primary h-1" />
+                    <span className="text-[10px] text-white/40 w-10 text-right">{imageOpacity}%</span>
+                  </div>
+
+                  {/* Show / Hide */}
+                  <div className="flex gap-1.5">
+                    <button onClick={() => pushImageOverlay(true)} disabled={!imageUrl.trim()}
+                      className={`flex-1 h-8 rounded-lg text-xs font-medium transition-all disabled:opacity-40 ${imageEnabled ? "bg-green-500/20 text-green-300 border border-green-500/30" : "bg-white/8 text-white/70 hover:bg-white/15"}`}>
+                      {imageEnabled ? "● Live" : "Show"}
+                    </button>
+                    {imageEnabled && (
+                      <button onClick={() => pushImageOverlay(false)}
+                        className="h-8 px-3 rounded-lg border border-white/10 text-xs text-white/50 hover:bg-white/10 transition-all">
+                        Hide
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Timer tab ── */}
+              {overlayTab === "timer" && (
+                <div className="space-y-2">
+                  {/* Mode */}
+                  <div className="flex gap-1">
+                    {(["countdown","stopwatch"] as const).map(m => (
+                      <button key={m} onClick={() => updateScreen({ data: { ...safeBase(), timerMode: m } })}
+                        className={`flex-1 h-7 rounded text-[10px] font-medium transition-all ${timerMode === m ? "bg-primary/25 text-primary border border-primary/40" : "border border-white/10 text-white/40 hover:bg-white/10"}`}>
+                        {m === "countdown" ? "Countdown" : "Stopwatch"}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Duration (countdown only) */}
+                  {timerMode === "countdown" && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-white/40">Duration</span>
+                      <input type="number" min={0} max={99} value={timerDurMin}
+                        onChange={e => setTimerDurMin(Number(e.target.value))}
+                        onBlur={() => updateScreen({ data: { ...safeBase(), timerDurationSec: timerDurMin * 60 + timerDurSec } })}
+                        className="w-12 h-7 px-1 text-center rounded-lg border border-white/10 bg-white/5 text-xs text-white focus:outline-none focus:border-primary/60" />
+                      <span className="text-[10px] text-white/40">m</span>
+                      <input type="number" min={0} max={59} value={timerDurSec}
+                        onChange={e => setTimerDurSec(Number(e.target.value))}
+                        onBlur={() => updateScreen({ data: { ...safeBase(), timerDurationSec: timerDurMin * 60 + timerDurSec } })}
+                        className="w-12 h-7 px-1 text-center rounded-lg border border-white/10 bg-white/5 text-xs text-white focus:outline-none focus:border-primary/60" />
+                      <span className="text-[10px] text-white/40">s</span>
+                    </div>
+                  )}
+
+                  {/* Label */}
+                  <input value={timerLabelLocal} onChange={e => setTimerLabelLocal(e.target.value)}
+                    onBlur={() => updateScreen({ data: { ...safeBase(), timerLabel: timerLabelLocal || null as unknown as string } })}
+                    placeholder="Label (e.g. 'Starts in')"
+                    className="w-full h-7 px-2 rounded-lg border border-white/10 bg-white/5 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-primary/60" />
+
+                  {/* Position */}
+                  <div className="flex gap-1">
+                    {(["top-left","top-center","top-right","bottom-left","bottom-right"] as const).map((p, i) => (
+                      <button key={p} onClick={() => updateScreen({ data: { ...safeBase(), timerPosition: p } })}
+                        className={`flex-1 h-7 rounded text-sm transition-all ${timerPosition === p ? "bg-primary/30 text-primary" : "border border-white/10 text-white/40 hover:bg-white/10"}`}>
+                        {["↖","↑","↗","↙","↘"][i]}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Controls */}
+                  <div className="flex gap-1.5">
+                    {!timerRunning ? (
+                      <button onClick={timerStart}
+                        className="flex-1 h-8 flex items-center justify-center gap-1.5 rounded-lg text-xs font-medium bg-green-500/20 text-green-300 hover:bg-green-500/30 transition-all">
+                        <Play className="w-3 h-3" /> Start
+                      </button>
+                    ) : (
+                      <button onClick={timerPause}
+                        className="flex-1 h-8 flex items-center justify-center gap-1.5 rounded-lg text-xs font-medium bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 transition-all">
+                        <Square className="w-3 h-3" /> Pause
+                      </button>
+                    )}
+                    <button onClick={timerReset} title="Reset"
+                      className="h-8 px-3 rounded-lg border border-white/10 text-xs text-white/50 hover:bg-white/10 transition-all">
+                      <RotateCcw className="w-3 h-3" />
+                    </button>
+                    <button onClick={() => updateScreen({ data: { ...safeBase(), timerEnabled: !timerEnabled } })}
+                      className={`h-8 px-3 rounded-lg border text-[10px] font-medium transition-all ${timerEnabled ? "border-green-500/30 text-green-400 bg-green-500/10" : "border-white/10 text-white/40 hover:bg-white/10"}`}>
+                      {timerEnabled ? "On" : "Off"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── URL tab ── */}
+              {overlayTab === "url" && (
+                <div className="space-y-2">
+                  <input value={urlInput} onChange={e => setUrlInput(e.target.value)}
+                    placeholder="https://…"
+                    className="w-full h-8 px-2.5 rounded-lg border border-white/10 bg-white/5 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-primary/60" />
+
+                  {/* Position */}
+                  <div className="flex gap-1">
+                    {(["top-left","top-center","top-right","bottom-left","bottom-right"] as const).map((p, i) => (
+                      <button key={p} onClick={() => updateScreen({ data: { ...safeBase(), urlOverlayPosition: p } })}
+                        className={`flex-1 h-7 rounded text-sm transition-all ${urlPosition === p ? "bg-primary/30 text-primary" : "border border-white/10 text-white/40 hover:bg-white/10"}`}>
+                        {["↖","↑","↗","↙","↘"][i]}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Width */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-white/40 w-5">W</span>
+                    <input type="range" min={10} max={80} value={urlWidth}
+                      onChange={e => updateScreen({ data: { ...safeBase(), urlOverlayWidth: Number(e.target.value) } })}
+                      className="flex-1 accent-primary h-1" />
+                    <span className="text-[10px] text-white/40 w-10 text-right">{urlWidth}vw</span>
+                  </div>
+
+                  {/* Height */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-white/40 w-5">H</span>
+                    <input type="range" min={10} max={80} value={urlHeight}
+                      onChange={e => updateScreen({ data: { ...safeBase(), urlOverlayHeight: Number(e.target.value) } })}
+                      className="flex-1 accent-primary h-1" />
+                    <span className="text-[10px] text-white/40 w-10 text-right">{urlHeight}vh</span>
+                  </div>
+
+                  {/* Opacity */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-white/40 w-5">Op</span>
+                    <input type="range" min={10} max={100} value={urlOpacity}
+                      onChange={e => updateScreen({ data: { ...safeBase(), urlOverlayOpacity: Number(e.target.value) } })}
+                      className="flex-1 accent-primary h-1" />
+                    <span className="text-[10px] text-white/40 w-10 text-right">{urlOpacity}%</span>
+                  </div>
+
+                  <p className="text-[10px] text-white/25 leading-relaxed">Some sites block embedding with X-Frame-Options. Works best with your own content.</p>
+
+                  {/* Show / Hide */}
+                  <div className="flex gap-1.5">
+                    <button onClick={() => pushUrlOverlay(true)} disabled={!urlInput.trim()}
+                      className={`flex-1 h-8 rounded-lg text-xs font-medium transition-all disabled:opacity-40 ${urlOverlayEnabled ? "bg-green-500/20 text-green-300 border border-green-500/30" : "bg-white/8 text-white/70 hover:bg-white/15"}`}>
+                      {urlOverlayEnabled ? "● Live" : "Show"}
+                    </button>
+                    {urlOverlayEnabled && (
+                      <button onClick={() => pushUrlOverlay(false)}
+                        className="h-8 px-3 rounded-lg border border-white/10 text-xs text-white/50 hover:bg-white/10 transition-all">
+                        Hide
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
             </Section>
 
             {/* ── Camera Layout (FIXED) ── */}

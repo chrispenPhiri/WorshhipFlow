@@ -454,6 +454,39 @@ export const ScreenStateTextOverlayAlign = {
   right: "right",
 } as const;
 
+export type ScreenStateScoreboardStyle =
+  (typeof ScreenStateScoreboardStyle)[keyof typeof ScreenStateScoreboardStyle];
+
+export const ScreenStateScoreboardStyle = {
+  modern: "modern",
+  classic: "classic",
+  minimal: "minimal",
+} as const;
+
+export type ScreenStateScoreboardPosition =
+  (typeof ScreenStateScoreboardPosition)[keyof typeof ScreenStateScoreboardPosition];
+
+export const ScreenStateScoreboardPosition = {
+  "top-left": "top-left",
+  "top-center": "top-center",
+  "top-right": "top-right",
+  "bottom-left": "bottom-left",
+  "bottom-center": "bottom-center",
+  "bottom-right": "bottom-right",
+} as const;
+
+export type ScreenStateUrlOverlayPosition =
+  (typeof ScreenStateUrlOverlayPosition)[keyof typeof ScreenStateUrlOverlayPosition];
+
+export const ScreenStateUrlOverlayPosition = {
+  "top-left": "top-left",
+  "top-center": "top-center",
+  "top-right": "top-right",
+  "bottom-left": "bottom-left",
+  "bottom-center": "bottom-center",
+  "bottom-right": "bottom-right",
+} as const;
+
 export interface ScreenState {
   isBlack: boolean;
   isClear: boolean;
@@ -577,6 +610,23 @@ export interface ScreenState {
   bibleBookRadius?: number;
   bibleBookLetterSpacing?: number;
   bibleBookUppercase?: boolean;
+  scoreboardEnabled?: boolean;
+  scoreboardTeamA?: string;
+  scoreboardTeamB?: string;
+  scoreboardScoreA?: number;
+  scoreboardScoreB?: number;
+  scoreboardPeriod?: string;
+  scoreboardStyle?: ScreenStateScoreboardStyle;
+  scoreboardPosition?: ScreenStateScoreboardPosition;
+  scoreboardBgColor?: string;
+  scoreboardAccentA?: string;
+  scoreboardAccentB?: string;
+  urlOverlayEnabled?: boolean;
+  urlOverlayUrl?: string;
+  urlOverlayPosition?: ScreenStateUrlOverlayPosition;
+  urlOverlayWidth?: number;
+  urlOverlayHeight?: number;
+  urlOverlayOpacity?: number;
 }
 
 export type ListSongsParams = {

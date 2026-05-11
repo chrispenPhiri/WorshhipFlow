@@ -786,6 +786,41 @@ export const GetScreenStateResponse = zod.object({
   bibleBookRadius: zod.number().optional(),
   bibleBookLetterSpacing: zod.number().optional(),
   bibleBookUppercase: zod.boolean().optional(),
+  scoreboardEnabled: zod.boolean().optional(),
+  scoreboardTeamA: zod.string().optional(),
+  scoreboardTeamB: zod.string().optional(),
+  scoreboardScoreA: zod.number().optional(),
+  scoreboardScoreB: zod.number().optional(),
+  scoreboardPeriod: zod.string().optional(),
+  scoreboardStyle: zod.enum(["modern", "classic", "minimal"]).optional(),
+  scoreboardPosition: zod
+    .enum([
+      "top-left",
+      "top-center",
+      "top-right",
+      "bottom-left",
+      "bottom-center",
+      "bottom-right",
+    ])
+    .optional(),
+  scoreboardBgColor: zod.string().optional(),
+  scoreboardAccentA: zod.string().optional(),
+  scoreboardAccentB: zod.string().optional(),
+  urlOverlayEnabled: zod.boolean().optional(),
+  urlOverlayUrl: zod.string().optional(),
+  urlOverlayPosition: zod
+    .enum([
+      "top-left",
+      "top-center",
+      "top-right",
+      "bottom-left",
+      "bottom-center",
+      "bottom-right",
+    ])
+    .optional(),
+  urlOverlayWidth: zod.number().optional(),
+  urlOverlayHeight: zod.number().optional(),
+  urlOverlayOpacity: zod.number().optional(),
 });
 
 /**
@@ -1048,6 +1083,41 @@ export const UpdateScreenStateBody = zod.object({
   bibleBookRadius: zod.number().optional(),
   bibleBookLetterSpacing: zod.number().optional(),
   bibleBookUppercase: zod.boolean().optional(),
+  scoreboardEnabled: zod.boolean().optional(),
+  scoreboardTeamA: zod.string().optional(),
+  scoreboardTeamB: zod.string().optional(),
+  scoreboardScoreA: zod.number().optional(),
+  scoreboardScoreB: zod.number().optional(),
+  scoreboardPeriod: zod.string().optional(),
+  scoreboardStyle: zod.enum(["modern", "classic", "minimal"]).optional(),
+  scoreboardPosition: zod
+    .enum([
+      "top-left",
+      "top-center",
+      "top-right",
+      "bottom-left",
+      "bottom-center",
+      "bottom-right",
+    ])
+    .optional(),
+  scoreboardBgColor: zod.string().optional(),
+  scoreboardAccentA: zod.string().optional(),
+  scoreboardAccentB: zod.string().optional(),
+  urlOverlayEnabled: zod.boolean().optional(),
+  urlOverlayUrl: zod.string().optional(),
+  urlOverlayPosition: zod
+    .enum([
+      "top-left",
+      "top-center",
+      "top-right",
+      "bottom-left",
+      "bottom-center",
+      "bottom-right",
+    ])
+    .optional(),
+  urlOverlayWidth: zod.number().optional(),
+  urlOverlayHeight: zod.number().optional(),
+  urlOverlayOpacity: zod.number().optional(),
 });
 
 export const UpdateScreenStateResponse = zod.object({
@@ -1307,4 +1377,39 @@ export const UpdateScreenStateResponse = zod.object({
   bibleBookRadius: zod.number().optional(),
   bibleBookLetterSpacing: zod.number().optional(),
   bibleBookUppercase: zod.boolean().optional(),
+  scoreboardEnabled: zod.boolean().optional(),
+  scoreboardTeamA: zod.string().optional(),
+  scoreboardTeamB: zod.string().optional(),
+  scoreboardScoreA: zod.number().optional(),
+  scoreboardScoreB: zod.number().optional(),
+  scoreboardPeriod: zod.string().optional(),
+  scoreboardStyle: zod.enum(["modern", "classic", "minimal"]).optional(),
+  scoreboardPosition: zod
+    .enum([
+      "top-left",
+      "top-center",
+      "top-right",
+      "bottom-left",
+      "bottom-center",
+      "bottom-right",
+    ])
+    .optional(),
+  scoreboardBgColor: zod.string().optional(),
+  scoreboardAccentA: zod.string().optional(),
+  scoreboardAccentB: zod.string().optional(),
+  urlOverlayEnabled: zod.boolean().optional(),
+  urlOverlayUrl: zod.string().optional(),
+  urlOverlayPosition: zod
+    .enum([
+      "top-left",
+      "top-center",
+      "top-right",
+      "bottom-left",
+      "bottom-center",
+      "bottom-right",
+    ])
+    .optional(),
+  urlOverlayWidth: zod.number().optional(),
+  urlOverlayHeight: zod.number().optional(),
+  urlOverlayOpacity: zod.number().optional(),
 });
