@@ -5,7 +5,9 @@ import { Input } from "@/components/ui/input";
 import { SliderWithButtons } from "@/components/slider-with-buttons";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { useUpdateScreenState, useGetScreenState, getGetScreenStateQueryKey, type Background } from "@workspace/api-client-react";
+import { useUpdateScreenState, useGetScreenState, getGetScreenStateQueryKey, type Background,
+  type ScreenStateScoreboardStyle, type ScreenStateScoreboardPosition, type ScreenStateUrlOverlayPosition,
+} from "@workspace/api-client-react";
 import { useRecording, startRecording as recStart, stopRecording as recStop, setIncludeMic, clearDownload } from "@/lib/recording";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -17,7 +19,7 @@ import {
   Circle, StopCircle, Download, Radio,
   Timer as TimerIcon, Pause, RotateCw, Hexagon, Shield, Type, Sparkles,
   Wifi, FlipHorizontal, SlidersHorizontal, MonitorPlay, Tv,
-  Smartphone, ExternalLink
+  Smartphone, ExternalLink, Trophy, Globe, Minus, Plus,
 } from "lucide-react";
 import { LiveStudioPanel } from "@/components/live-studio";
 import { LiveCaptionsCard } from "@/components/live-captions-card";
@@ -449,6 +451,23 @@ export default function MediaPage() {
   const { data: screenState } = useGetScreenState({
     query: { queryKey: getGetScreenStateQueryKey(), refetchInterval: 2000 },
   });
+
+  // ── Scoreboard overlay local state ──────────────────────────────────────────
+  const [sbTeamA,    setSbTeamA]    = useState((screenState?.scoreboardTeamA as string) ?? "Home");
+  const [sbTeamB,    setSbTeamB]    = useState((screenState?.scoreboardTeamB as string) ?? "Away");
+  const [sbScoreA,   setSbScoreA]   = useState((screenState?.scoreboardScoreA as number) ?? 0);
+  const [sbScoreB,   setSbScoreB]   = useState((screenState?.scoreboardScoreB as number) ?? 0);
+  const [sbStyle,    setSbStyle]    = useState<ScreenStateScoreboardStyle>((screenState?.scoreboardStyle as ScreenStateScoreboardStyle) ?? "modern");
+  const [sbPosition, setSbPosition] = useState<ScreenStateScoreboardPosition>((screenState?.scoreboardPosition as ScreenStateScoreboardPosition) ?? "top-center");
+  const [sbAccentA,  setSbAccentA]  = useState((screenState?.scoreboardAccentA as string) ?? "#3b82f6");
+  const [sbAccentB,  setSbAccentB]  = useState((screenState?.scoreboardAccentB as string) ?? "#ef4444");
+
+  // ── URL overlay local state ──────────────────────────────────────────────────
+  const [urlOvUrl,      setUrlOvUrl]      = useState((screenState?.urlOverlayUrl as string) ?? "");
+  const [urlOvPosition, setUrlOvPosition] = useState<ScreenStateUrlOverlayPosition>((screenState?.urlOverlayPosition as ScreenStateUrlOverlayPosition) ?? "bottom-right");
+  const [urlOvWidth,    setUrlOvWidth]    = useState((screenState?.urlOverlayWidth  as number) ?? 35);
+  const [urlOvHeight,   setUrlOvHeight]   = useState((screenState?.urlOverlayHeight as number) ?? 25);
+  const [urlOvOpacity,  setUrlOvOpacity]  = useState((screenState?.urlOverlayOpacity as number) ?? 90);
 
   const { mutate: updateScreen } = useUpdateScreenState({
     mutation: {
@@ -4230,6 +4249,184 @@ export default function MediaPage() {
                 {screenState?.tickerEnabled && (
                   <Button variant="outline" className="gap-2"
                     onClick={() => updateScreen({ data: { ...safeFullState(), tickerEnabled: false } })}>
+                    Hide
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Scoreboard Overlay ── */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle className="flex items-center gap-2 text-base"><Trophy className="w-4 h-4 text-yellow-400" /> Scoreboard</CardTitle>
+                <div className="flex items-center gap-2">
+                  <SectionChevron section="scoreboard" />
+                  {screenState?.scoreboardEnabled && <Badge className="text-[10px] py-0 h-4 bg-green-600 border-0">LIVE</Badge>}
+                  <Switch
+                    checked={screenState?.scoreboardEnabled ?? false}
+                    onCheckedChange={v => updateOverlay({ scoreboardEnabled: v,
+                      scoreboardTeamA: sbTeamA, scoreboardTeamB: sbTeamB,
+                      scoreboardScoreA: sbScoreA, scoreboardScoreB: sbScoreB,
+                      scoreboardStyle: sbStyle, scoreboardPosition: sbPosition,
+                      scoreboardAccentA: sbAccentA, scoreboardAccentB: sbAccentB,
+                    } as Parameters<typeof updateOverlay>[0])}
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4" hidden={!openOverlays.has("scoreboard")}>
+              {/* Team rows */}
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full shrink-0" style={{ background: sbAccentA }} />
+                    Team A
+                  </label>
+                  <div className="flex gap-2">
+                    <Input value={sbTeamA} onChange={e => setSbTeamA(e.target.value)} placeholder="Home" className="flex-1" />
+                    <input type="color" value={sbAccentA} onChange={e => setSbAccentA(e.target.value)}
+                      className="h-9 w-10 rounded border border-input cursor-pointer bg-transparent p-0.5 shrink-0" />
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <button onClick={() => setSbScoreA(Math.max(0, sbScoreA - 1))} className="w-8 h-8 flex items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted/40 transition-colors"><Minus className="w-3.5 h-3.5" /></button>
+                    <span className="flex-1 text-center text-2xl font-bold tabular-nums">{sbScoreA}</span>
+                    <button onClick={() => setSbScoreA(sbScoreA + 1)} className="w-8 h-8 flex items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted/40 transition-colors"><Plus className="w-3.5 h-3.5" /></button>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full shrink-0" style={{ background: sbAccentB }} />
+                    Team B
+                  </label>
+                  <div className="flex gap-2">
+                    <Input value={sbTeamB} onChange={e => setSbTeamB(e.target.value)} placeholder="Away" className="flex-1" />
+                    <input type="color" value={sbAccentB} onChange={e => setSbAccentB(e.target.value)}
+                      className="h-9 w-10 rounded border border-input cursor-pointer bg-transparent p-0.5 shrink-0" />
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <button onClick={() => setSbScoreB(Math.max(0, sbScoreB - 1))} className="w-8 h-8 flex items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted/40 transition-colors"><Minus className="w-3.5 h-3.5" /></button>
+                    <span className="flex-1 text-center text-2xl font-bold tabular-nums">{sbScoreB}</span>
+                    <button onClick={() => setSbScoreB(sbScoreB + 1)} className="w-8 h-8 flex items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted/40 transition-colors"><Plus className="w-3.5 h-3.5" /></button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Style */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Style</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(["modern", "classic", "minimal"] as const).map(s => (
+                    <button key={s} onClick={() => setSbStyle(s)}
+                      className={`py-1.5 rounded text-xs capitalize transition-colors border ${sbStyle === s ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Position */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Position</label>
+                <div className="grid grid-cols-5 gap-1">
+                  {(["top-left","top-center","top-right","bottom-left","bottom-right"] as const).map((p, i) => (
+                    <button key={p} onClick={() => setSbPosition(p)}
+                      className={`py-2 rounded text-base transition-colors border ${sbPosition === p ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                      {["↖","↑","↗","↙","↘"][i]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button className="flex-1 gap-2" onClick={() => updateOverlay({
+                  scoreboardEnabled: true,
+                  scoreboardTeamA: sbTeamA, scoreboardTeamB: sbTeamB,
+                  scoreboardScoreA: sbScoreA, scoreboardScoreB: sbScoreB,
+                  scoreboardStyle: sbStyle, scoreboardPosition: sbPosition,
+                  scoreboardAccentA: sbAccentA, scoreboardAccentB: sbAccentB,
+                } as Parameters<typeof updateOverlay>[0])}>
+                  <Trophy className="w-4 h-4" /> Show Scoreboard
+                </Button>
+                {screenState?.scoreboardEnabled && (
+                  <Button variant="outline" className="gap-2"
+                    onClick={() => updateOverlay({ scoreboardEnabled: false } as Parameters<typeof updateOverlay>[0])}>
+                    Hide
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── URL Overlay ── */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle className="flex items-center gap-2 text-base"><Globe className="w-4 h-4" /> URL Overlay</CardTitle>
+                <div className="flex items-center gap-2">
+                  <SectionChevron section="url-overlay" />
+                  {screenState?.urlOverlayEnabled && <Badge className="text-[10px] py-0 h-4 bg-green-600 border-0">LIVE</Badge>}
+                  <Switch
+                    checked={screenState?.urlOverlayEnabled ?? false}
+                    onCheckedChange={v => updateOverlay({
+                      urlOverlayEnabled: v, urlOverlayUrl: urlOvUrl,
+                      urlOverlayPosition: urlOvPosition, urlOverlayWidth: urlOvWidth,
+                      urlOverlayHeight: urlOvHeight, urlOverlayOpacity: urlOvOpacity,
+                    } as Parameters<typeof updateOverlay>[0])}
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4" hidden={!openOverlays.has("url-overlay")}>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">URL</label>
+                <Input value={urlOvUrl} onChange={e => setUrlOvUrl(e.target.value)} placeholder="https://…" />
+                <p className="text-xs text-muted-foreground">Some sites block embedding (X-Frame-Options). Works best with your own content.</p>
+              </div>
+
+              {/* Position */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Position</label>
+                <div className="grid grid-cols-5 gap-1">
+                  {(["top-left","top-center","top-right","bottom-left","bottom-right"] as const).map((p, i) => (
+                    <button key={p} onClick={() => setUrlOvPosition(p)}
+                      className={`py-2 rounded text-base transition-colors border ${urlOvPosition === p ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                      {["↖","↑","↗","↙","↘"][i]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-[11px] text-muted-foreground">Width: {urlOvWidth}vw</label>
+                  <SliderWithButtons value={[urlOvWidth]} min={10} max={80} step={5}
+                    onValueChange={([v]) => setUrlOvWidth(v)} className="mt-1.5" />
+                </div>
+                <div>
+                  <label className="text-[11px] text-muted-foreground">Height: {urlOvHeight}vh</label>
+                  <SliderWithButtons value={[urlOvHeight]} min={10} max={80} step={5}
+                    onValueChange={([v]) => setUrlOvHeight(v)} className="mt-1.5" />
+                </div>
+                <div>
+                  <label className="text-[11px] text-muted-foreground">Opacity: {urlOvOpacity}%</label>
+                  <SliderWithButtons value={[urlOvOpacity]} min={10} max={100} step={5}
+                    onValueChange={([v]) => setUrlOvOpacity(v)} className="mt-1.5" />
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button className="flex-1 gap-2" disabled={!urlOvUrl.trim()} onClick={() => updateOverlay({
+                  urlOverlayEnabled: true, urlOverlayUrl: urlOvUrl,
+                  urlOverlayPosition: urlOvPosition, urlOverlayWidth: urlOvWidth,
+                  urlOverlayHeight: urlOvHeight, urlOverlayOpacity: urlOvOpacity,
+                } as Parameters<typeof updateOverlay>[0])}>
+                  <Globe className="w-4 h-4" /> Show URL Overlay
+                </Button>
+                {screenState?.urlOverlayEnabled && (
+                  <Button variant="outline" className="gap-2"
+                    onClick={() => updateOverlay({ urlOverlayEnabled: false } as Parameters<typeof updateOverlay>[0])}>
                     Hide
                   </Button>
                 )}

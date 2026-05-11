@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ChevronsLeft, ChevronsRight, LayoutGrid, LogOut, Pencil, Tv, User as UserIcon, BookOpen, Radio, Users, Calendar, Monitor, ListVideo } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, LayoutGrid, LogOut, Pencil, Tv, User as UserIcon, BookOpen, Radio, Users, Calendar, Monitor, ListVideo, Eye, EyeOff } from "lucide-react";
 import { LivePreview } from "./live-preview";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -183,6 +183,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const [emojiMode] = useEmojiMode();
   const [menuOpen, setMenuOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [mobilePreviewEnabled, setMobilePreviewEnabled] = useLocalStorage("wf-mobile-preview-enabled", false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [sessionOpen, setSessionOpen] = useState(false);
   const [rightTab, setRightTab] = useLocalStorage<"preview" | "schedule" | "queue">("wf-right-tab", "preview");
@@ -408,14 +409,26 @@ export function Layout({ children }: { children: ReactNode }) {
                 </span>
               )}
             </button>
+            {mobilePreviewEnabled && (
+              <button
+                type="button"
+                onClick={() => setPreviewOpen(true)}
+                className="px-2 h-8 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 flex items-center gap-1.5"
+                aria-label="Open live preview"
+                data-testid="button-mobile-preview"
+              >
+                <Tv className="w-4 h-4" />
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => setPreviewOpen(true)}
-              className="px-2.5 h-8 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 flex items-center gap-1.5"
-              aria-label="Open live preview"
-              data-testid="button-mobile-preview"
+              onClick={() => setMobilePreviewEnabled((v: boolean) => !v)}
+              className={`flex items-center justify-center w-8 h-8 rounded-md transition-colors ${mobilePreviewEnabled ? "text-primary bg-primary/10" : "text-sidebar-foreground/50 hover:bg-sidebar-accent/60"}`}
+              aria-label={mobilePreviewEnabled ? "Hide preview controls" : "Show preview controls"}
+              data-testid="button-mobile-preview-toggle"
+              title={mobilePreviewEnabled ? "Hide preview" : "Show preview"}
             >
-              <Tv className="w-4 h-4" /> Preview
+              {mobilePreviewEnabled ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
             </button>
           </div>
         </header>

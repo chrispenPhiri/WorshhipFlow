@@ -252,7 +252,8 @@ export default function StudioPage() {
   const [presenterTitle, setPresenterTitle] = useState("");
 
   // ── Graphic Overlays local state ───────────────────────────────────────────
-  const [overlayTab, setOverlayTab] = useState<"scoreboard" | "image" | "timer" | "url">("scoreboard");
+  const [overlayTab, setOverlayTab] = useState<"scoreboard" | "image" | "timer" | "url" | "camera">("scoreboard");
+  const [studioPanel, setStudioPanel] = useState<"monitor" | "controls">("controls");
   const [imageUrl,   setImageUrl]   = useState((screenState?.logoUrl    as string) ?? "");
   const [teamA,      setTeamA]      = useState((screenState?.scoreboardTeamA as string) ?? "Home");
   const [teamB,      setTeamB]      = useState((screenState?.scoreboardTeamB as string) ?? "Away");
@@ -521,11 +522,24 @@ export default function StudioPage() {
         </div>
       </div>
 
+      {/* ── Mobile panel tabs (hidden on lg+) ── */}
+      <div className="flex lg:hidden border-b border-white/10 shrink-0">
+        {([
+          { id: "monitor"  as const, label: "Monitor",  icon: "📺" },
+          { id: "controls" as const, label: "Controls", icon: "🎛️" },
+        ]).map(p => (
+          <button key={p.id} onClick={() => setStudioPanel(p.id)}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-all border-b-2 ${studioPanel === p.id ? "border-primary text-white" : "border-transparent text-white/40 hover:text-white/70"}`}>
+            <span>{p.icon}</span> {p.label}
+          </button>
+        ))}
+      </div>
+
       {/* ── Body ── */}
       <div className="flex flex-1 min-h-0 divide-x divide-white/10">
 
         {/* LEFT: preview + scene grid */}
-        <div className="flex flex-col flex-1 min-w-0">
+        <div className={`flex-col flex-1 min-w-0 ${studioPanel === "monitor" ? "flex" : "hidden lg:flex"}`}>
 
           {/* Broadcast preview */}
           <div className="relative bg-black shrink-0" style={{ aspectRatio: "16/9", maxHeight: "55%" }}>
@@ -620,7 +634,7 @@ export default function StudioPage() {
         </div>
 
         {/* RIGHT: controls panel */}
-        <div className="w-72 xl:w-80 shrink-0 flex flex-col overflow-y-auto bg-[#0f0f18]">
+        <div className={`${studioPanel === "controls" ? "flex" : "hidden lg:flex"} w-full lg:w-72 xl:w-80 shrink-0 flex-col overflow-y-auto bg-[#0f0f18]`}>
           <div className="flex flex-col gap-2.5 p-3">
 
             {/* ── Screen Output ── */}
@@ -766,6 +780,7 @@ export default function StudioPage() {
                   { id: "image"      as const, label: "Image",  icon: <FileImage className="w-3 h-3" />, active: imageEnabled },
                   { id: "timer"      as const, label: "Timer",  icon: <TimerIcon className="w-3 h-3" />, active: timerEnabled },
                   { id: "url"        as const, label: "URL",    icon: <Globe     className="w-3 h-3" />, active: urlOverlayEnabled },
+                  { id: "camera"     as const, label: "Camera", icon: <Video     className="w-3 h-3" />, active: isCameraBg },
                 ]).map(tab => (
                   <button key={tab.id} onClick={() => setOverlayTab(tab.id)}
                     className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[10px] font-medium transition-all ${overlayTab === tab.id ? "bg-white/15 text-white" : "text-white/40 hover:text-white/70"}`}>
@@ -1046,6 +1061,61 @@ export default function StudioPage() {
                       </button>
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* ── Camera tab ── */}
+              {overlayTab === "camera" && (
+                <div className="space-y-2">
+                  {/* Enable / disable */}
+                  <div className="flex gap-1.5">
+                    <button onClick={enableCamera}
+                      className={`flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg border text-xs font-medium transition-all ${isCameraBg ? "border-green-500/40 bg-green-500/15 text-green-300" : "border-white/15 bg-white/5 text-white/60 hover:bg-white/10"}`}>
+                      <Video className="w-3.5 h-3.5" /> {isCameraBg ? "Camera Active" : "Enable Camera"}
+                    </button>
+                    {isCameraBg && (
+                      <button onClick={disableCamera}
+                        className="h-8 px-3 rounded-lg border border-white/10 text-xs text-white/40 hover:bg-white/10 hover:text-red-400 hover:border-red-500/30 transition-all">
+                        <VideoOff className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Layout grid */}
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {CAM_LAYOUTS.map(l => {
+                      const active = isCameraBg && currentLayout === l.id;
+                      return (
+                        <button key={l.id} onClick={() => switchCameraLayout(l.id)} title={l.label}
+                          className={`flex flex-col items-center gap-1 py-2 px-1 rounded-lg border transition-all ${active ? "border-primary bg-primary/15" : "border-white/10 hover:bg-white/10 hover:border-white/20"}`}>
+                          <LayoutDiagram id={l.id} active={active} />
+                          <span className={`text-[9px] leading-none font-medium ${active ? "text-primary" : "text-white/50"}`}>{l.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Detected cameras */}
+                  {cameraDevices.length > 0 && (
+                    <div className="space-y-1 pt-1 border-t border-white/8">
+                      {cameraDevices.map(dev => (
+                        <button key={dev.deviceId} onClick={() => switchCamera(dev.deviceId)}
+                          className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-xs transition-all text-left ${currentCamId === dev.deviceId ? "border-green-500/50 bg-green-500/10 text-green-300" : "border-white/10 hover:bg-white/10 text-white/60"}`}>
+                          <Camera className="w-3 h-3 shrink-0" />
+                          <span className="truncate flex-1">{dev.label}</span>
+                          {currentCamId === dev.deviceId && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Detect / re-scan */}
+                  <button onClick={detectCameras} disabled={detectingCams}
+                    className="w-full flex items-center justify-center gap-1.5 h-7 rounded-lg border border-white/10 text-[10px] text-white/40 hover:text-white/70 hover:bg-white/10 transition-all">
+                    {detectingCams
+                      ? <><Loader2 className="w-3 h-3 animate-spin" /> Detecting…</>
+                      : <><SwitchCamera className="w-3 h-3" /> {cameraDevices.length ? "Re-scan cameras" : "Detect cameras"}</>}
+                  </button>
                 </div>
               )}
 
