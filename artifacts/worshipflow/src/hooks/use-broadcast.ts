@@ -42,6 +42,8 @@ export type BroadcastCommand =
   // the broadcast is the single source of truth, so controllers don't need
   // to track local copies.  Optional speed only applies when starting.
   | { type: "scroll_auto_toggle"; speed?: number }
+  // Seek to an absolute scroll position (0 = top, 100 = bottom of overflow)
+  | { type: "scroll_to"; pct: number }
   // Live captions — operator-side speech recognition pushes interim text here
   | { type: "caption_set"; text: string; isFinal?: boolean }
   | { type: "caption_clear" };
@@ -53,7 +55,10 @@ export type BroadcastStatus =
   // Authoritative auto-scroll state.  Emitted whenever the teleprompter
   // starts, stops, changes speed, or auto-stops at the end of the text.
   // running=false implies speed=0 conceptually.
-  | { type: "scroll_auto_state"; running: boolean; speed: number };
+  | { type: "scroll_auto_state"; running: boolean; speed: number }
+  // Live scroll position — emitted whenever scrollOffset or textOverflowH
+  // changes so the operator panel can show a real-time scrollbar.
+  | { type: "scroll_state"; offset: number; max: number };
 
 export const CHANNEL_NAME = "wf-broadcast-cmd";
 

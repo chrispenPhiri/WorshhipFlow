@@ -984,6 +984,12 @@ export default function BroadcastPage() {
           stopAutoScroll();
           setScrollOffset(0);
           break;
+        case "scroll_to":
+          if (typeof cmd.pct === "number") {
+            stopAutoScroll();
+            setScrollOffset(Math.round((Math.max(0, Math.min(100, cmd.pct)) / 100) * textOverflowHRef.current));
+          }
+          break;
         case "scroll_auto_start":
           startAutoScroll(typeof cmd.speed === "number" ? cmd.speed : AUTO_SCROLL_DEFAULT_SPEED);
           break;
@@ -1053,6 +1059,11 @@ export default function BroadcastPage() {
   // Keep a ref to the current overflow for use in the keyboard handler closure
   const textOverflowHRef = useRef(0);
   useEffect(() => { textOverflowHRef.current = textOverflowH; }, [textOverflowH]);
+
+  // Emit live scroll position back to the operator panel whenever offset or max changes
+  useEffect(() => {
+    try { ctrlChannelRef.current?.postMessage({ type: "scroll_state", offset: scrollOffset, max: textOverflowH }); } catch {}
+  }, [scrollOffset, textOverflowH]);
 
   /**
    * After bumping `scrollOffset`, wait two animation frames so React commits

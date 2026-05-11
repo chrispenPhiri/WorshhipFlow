@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useGetScreenState, useUpdateScreenState, getGetScreenStateQueryKey } from "@workspace/api-client-react";
 import { Button } from "./ui/button";
 import { useQueryClient } from "@tanstack/react-query";
@@ -6,7 +6,7 @@ import {
   AlertCircle, ExternalLink, Monitor, MonitorSpeaker, ChevronDown, Loader2,
   ZoomIn, AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   Maximize2, Minimize2, EyeOff, Eye, RotateCcw, CheckCircle2, Tv2, PictureInPicture2,
-  MonitorOff, ChevronUp, ArrowUp, ArrowDown, RefreshCw, Play, Pause, Gauge,
+  MonitorOff, ChevronUp, RefreshCw, Play, Pause, Gauge,
 } from "lucide-react";
 import { useBroadcast, CHANNEL_NAME } from "@/hooks/use-broadcast";
 import {
@@ -33,6 +33,11 @@ export function LivePreview() {
   // auto-stops at end-of-text or someone toggles it from a keyboard shortcut.
   const [autoScrollOn, setAutoScrollOn] = useState(false);
   const [autoScrollSpeed, setAutoScrollSpeed] = useState(60);
+  // Live scroll position reported back by the broadcast window (0–100 %)
+  const [scrollPct, setScrollPct] = useState(0);
+  const [scrollHasOverflow, setScrollHasOverflow] = useState(false);
+  // Prevent incoming scroll_state messages from fighting the user while dragging
+  const isDraggingScrollRef = useRef(false);
   const { toast } = useToast();
 
   const { data: screenState, isLoading, error } = useGetScreenState({
@@ -85,6 +90,14 @@ export function LivePreview() {
         // end-of-text or someone toggled it from the global keyboard shortcut.
         setAutoScrollOn(!!m.running);
         if (typeof m.speed === "number" && m.speed > 0) setAutoScrollSpeed(m.speed);
+      }
+      else if (m.type === "scroll_state") {
+        // Live scroll position emitted by broadcast — drives the scrollbar.
+        // Skip updates while the operator is actively dragging to avoid jitter.
+        setScrollHasOverflow(m.max > 0);
+        if (!isDraggingScrollRef.current) {
+          setScrollPct(m.max > 0 ? Math.round((m.offset / m.max) * 100) : 0);
+        }
       }
     };
     // Ask for current state on mount (handles late-mounting / reload after broadcast is already fullscreen)
@@ -408,26 +421,46 @@ export function LivePreview() {
 
             {/* Text scroll controls */}
             <div className="pt-1.5 border-t border-border/40">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium mb-1.5">Text Scroll</p>
-              <div className="grid grid-cols-3 gap-1.5">
-                <RemoteBtn
-                  onClick={() => { sendCommand({ type: "scroll_auto_stop" }); setAutoScrollOn(false); sendCommand({ type: "scroll_up" }); }}
-                  icon={<ArrowUp className="w-4 h-4" />}
-                  label="Scroll Up"
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">Text Scroll</p>
+                <button
+                  type="button"
+                  onClick={() => { sendCommand({ type: "scroll_auto_stop" }); setAutoScrollOn(false); sendCommand({ type: "scroll_reset" }); setScrollPct(0); }}
                   disabled={!broadcastLive}
-                />
-                <RemoteBtn
-                  onClick={() => { sendCommand({ type: "scroll_auto_stop" }); setAutoScrollOn(false); sendCommand({ type: "scroll_reset" }); }}
-                  icon={<RefreshCw className="w-3.5 h-3.5" />}
-                  label="Reset"
-                  disabled={!broadcastLive}
-                />
-                <RemoteBtn
-                  onClick={() => { sendCommand({ type: "scroll_auto_stop" }); setAutoScrollOn(false); sendCommand({ type: "scroll_down" }); }}
-                  icon={<ArrowDown className="w-4 h-4" />}
-                  label="Scroll Down"
-                  disabled={!broadcastLive}
-                />
+                  className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-40 px-1.5 py-0.5 rounded hover:bg-muted/50 transition-colors"
+                >
+                  <RefreshCw className="w-2.5 h-2.5" /> Reset
+                </button>
+              </div>
+              <div className="flex items-center gap-2 px-0.5">
+                <span className="text-[9px] text-muted-foreground/50 select-none leading-none">▲</span>
+                <div className="flex-1 relative">
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={scrollPct}
+                    disabled={!broadcastLive}
+                    onChange={e => {
+                      const v = Number(e.target.value);
+                      setScrollPct(v);
+                      isDraggingScrollRef.current = true;
+                      sendCommand({ type: "scroll_to", pct: v });
+                    }}
+                    onMouseUp={() => { isDraggingScrollRef.current = false; }}
+                    onTouchEnd={() => { isDraggingScrollRef.current = false; }}
+                    className="w-full accent-primary disabled:opacity-40 cursor-pointer"
+                    style={{ height: "6px" }}
+                  />
+                  {!scrollHasOverflow && broadcastLive && (
+                    <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <span className="text-[9px] text-muted-foreground/40 italic">no overflow</span>
+                    </span>
+                  )}
+                </div>
+                <span className="text-[9px] text-muted-foreground/50 select-none leading-none">▼</span>
+                <span className="text-[10px] text-muted-foreground/60 w-7 text-right tabular-nums">{scrollPct}%</span>
               </div>
 
               {/* Auto-scroll (teleprompter) — continuous scroll at chosen speed.
